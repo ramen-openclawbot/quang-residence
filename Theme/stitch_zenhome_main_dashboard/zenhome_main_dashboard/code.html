@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#56c91d",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#162111",
+                        "border-light": "#e2e8e2",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Manrope', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'WHT' 300, 'opsz' 24;
+            font-size: 24px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen font-display">
+<div class="max-w-md mx-auto bg-background-light dark:bg-background-dark min-h-screen flex flex-col relative overflow-hidden shadow-2xl">
+<!-- Header -->
+<header class="flex items-center justify-between p-6 pt-8">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-primary/20">
+<img class="w-full h-full object-cover" data-alt="Professional portrait of Mr. Quang" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGmyE-3dyCKlh1adLXn5e7UyrjgO0tWTGCQw8KwLk04d7PRw4Tu9icxPfldEkoJpRhFcOFo0-6440ii_mDApyGKxmwAydSCc05m4_5AKySSrhSld4Yi2irzKZtqSicvfb9rUgXp7V9uxQ70m_h-CsxDtliMhBf21QQUjUB2TPRstzXiPn95d57BGvGhaZ0ajorIrJ95FEPLkDSzPO-o5JsHz00un61VjYOwYAx_p9iUAtRohSJ1ABB-eXFnNEiQYEWQiK3nWmQnw"/>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Welcome back</p>
+<h1 class="text-xl font-bold tracking-tight">Mr. Quang</h1>
+</div>
+</div>
+<button class="size-10 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="flex-1 px-6 pb-24 space-y-8 overflow-y-auto">
+<!-- Wealth Card -->
+<section>
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-sm font-bold uppercase tracking-widest text-slate-400">Wealth</h2>
+<span class="text-xs text-primary font-medium">View Report</span>
+</div>
+<div class="bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm border border-border-light dark:border-slate-800">
+<div class="flex items-baseline gap-2 mb-4">
+<span class="text-3xl font-light">$4,250</span>
+<span class="text-slate-400 text-sm font-normal">this month</span>
+</div>
+<div class="space-y-4">
+<div>
+<div class="flex justify-between text-xs mb-1.5">
+<span class="text-slate-500">Investments</span>
+<span class="font-semibold">$2,500</span>
+</div>
+<div class="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[58%]"></div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<p class="text-[10px] text-slate-400 uppercase font-bold">Groceries</p>
+<p class="text-sm font-semibold">$800</p>
+</div>
+<div>
+<p class="text-[10px] text-slate-400 uppercase font-bold">Utilities</p>
+<p class="text-sm font-semibold">$950</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Ambiance Card -->
+<section>
+<h2 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">Ambiance</h2>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-border-light dark:border-slate-800 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-primary">videocam</span>
+<div class="size-2 rounded-full bg-primary"></div>
+</div>
+<div>
+<p class="text-sm font-bold">Security</p>
+<p class="text-[10px] text-slate-500 uppercase tracking-tight">4 Cameras Active</p>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-border-light dark:border-slate-800 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-primary">light_group</span>
+<span class="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded-full">60%</span>
+</div>
+<div>
+<p class="text-sm font-bold">Lighting</p>
+<p class="text-[10px] text-slate-500 uppercase tracking-tight">Soft Warm Preset</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Agenda Card -->
+<section>
+<h2 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">Agenda</h2>
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-sm border border-border-light dark:border-slate-800">
+<div class="p-4 border-b border-border-light dark:border-slate-800 flex items-center gap-4">
+<div class="size-10 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">directions_car</span>
+</div>
+<div class="flex-1">
+<p class="text-xs text-slate-400 font-bold uppercase">Driver</p>
+<p class="text-sm font-medium">Airport Transfer at 14:00</p>
+</div>
+<div class="text-[10px] text-slate-400">2h left</div>
+</div>
+<div class="p-4 flex items-center gap-4">
+<div class="size-10 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">article</span>
+</div>
+<div class="flex-1">
+<p class="text-xs text-slate-400 font-bold uppercase">Secretary</p>
+<p class="text-sm font-medium">Sign Q4 budget report</p>
+</div>
+<div class="text-[10px] text-slate-400">16:30</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation -->
+<nav class="absolute bottom-0 left-0 right-0 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-t border-border-light dark:border-slate-800 px-6 py-4">
+<div class="flex justify-between items-center max-w-xs mx-auto">
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">ZenHome</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">shield</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Secure</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Finance</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">System</span>
+</a>
+</div>
+</nav>
+</div>
+</body></html>

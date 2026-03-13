@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#56c91d",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#162111",
+                        "slate-custom": "#4a5544",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<title>ZenHome Wealth Analytics</title>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100">
+<div class="relative flex min-h-screen w-full flex-col max-w-md mx-auto bg-background-light dark:bg-background-dark shadow-2xl overflow-x-hidden">
+<!-- Header -->
+<header class="flex items-center justify-between px-6 py-6">
+<button class="flex h-10 w-10 items-center justify-center rounded-full bg-white dark:bg-slate-800 shadow-sm border border-primary/10">
+<span class="material-symbols-outlined text-slate-900 dark:text-slate-100">arrow_back</span>
+</button>
+<h1 class="text-lg font-bold tracking-tight">Wealth Analytics</h1>
+<button class="flex h-10 w-10 items-center justify-center rounded-full bg-white dark:bg-slate-800 shadow-sm border border-primary/10">
+<span class="material-symbols-outlined text-slate-900 dark:text-slate-100">search</span>
+</button>
+</header>
+<!-- Time Period Selector -->
+<div class="px-6 mb-8">
+<div class="flex h-12 w-full items-center justify-center rounded-xl bg-primary/5 p-1 border border-primary/10">
+<label class="flex h-full grow cursor-pointer items-center justify-center rounded-lg px-4 transition-all has-[:checked]:bg-white has-[:checked]:shadow-sm text-slate-custom font-medium text-sm">
+<span>Month</span>
+<input checked="" class="hidden" name="period" type="radio" value="month"/>
+</label>
+<label class="flex h-full grow cursor-pointer items-center justify-center rounded-lg px-4 transition-all has-[:checked]:bg-white has-[:checked]:shadow-sm text-slate-custom font-medium text-sm">
+<span>Year</span>
+<input class="hidden" name="period" type="radio" value="year"/>
+</label>
+</div>
+</div>
+<!-- Total Balance Section -->
+<div class="px-6 mb-8 text-center">
+<p class="text-sm font-medium text-slate-custom/60 uppercase tracking-widest mb-1">Total Net Worth</p>
+<h2 class="text-4xl font-extrabold tracking-tight text-slate-900 mb-2">$1,240,500.00</h2>
+<div class="flex items-center justify-center gap-1.5 text-primary">
+<span class="material-symbols-outlined text-sm font-bold">trending_up</span>
+<span class="text-sm font-bold">+2.4% vs last month</span>
+</div>
+</div>
+<!-- Monthly Trend Chart (Simulated minimalist bar chart) -->
+<div class="px-6 mb-10">
+<div class="bg-white dark:bg-slate-800/50 p-6 rounded-xl border border-primary/5 shadow-sm">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-bold text-slate-900">Spending vs Budget</h3>
+<span class="text-xs font-medium text-slate-custom/60 uppercase tracking-tighter">Last 6 Months</span>
+</div>
+<div class="flex items-end justify-between h-32 gap-2">
+<div class="flex-1 bg-primary/10 rounded-t-lg h-2/3 relative group">
+<div class="absolute inset-x-0 bottom-0 bg-primary/40 rounded-t-lg h-1/2"></div>
+</div>
+<div class="flex-1 bg-primary/10 rounded-t-lg h-3/4 relative">
+<div class="absolute inset-x-0 bottom-0 bg-primary/40 rounded-t-lg h-2/3"></div>
+</div>
+<div class="flex-1 bg-primary/10 rounded-t-lg h-1/2 relative">
+<div class="absolute inset-x-0 bottom-0 bg-primary/40 rounded-t-lg h-1/3"></div>
+</div>
+<div class="flex-1 bg-primary/10 rounded-t-lg h-5/6 relative">
+<div class="absolute inset-x-0 bottom-0 bg-primary rounded-t-lg h-4/5"></div>
+</div>
+<div class="flex-1 bg-primary/10 rounded-t-lg h-2/3 relative">
+<div class="absolute inset-x-0 bottom-0 bg-primary/40 rounded-t-lg h-1/2"></div>
+</div>
+<div class="flex-1 bg-primary/10 rounded-t-lg h-1/2 relative">
+<div class="absolute inset-x-0 bottom-0 bg-primary/40 rounded-t-lg h-1/4"></div>
+</div>
+</div>
+<div class="flex justify-between mt-3 text-[10px] text-slate-custom/40 font-bold uppercase tracking-widest">
+<span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span>
+</div>
+</div>
+</div>
+<!-- Spending Breakdown -->
+<div class="px-6 mb-10">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-bold text-slate-900 text-lg">Spending Breakdown</h3>
+<a class="text-primary text-sm font-bold" href="#">View All</a>
+</div>
+<div class="space-y-3">
+<!-- Groceries -->
+<div class="flex items-center justify-between p-4 bg-white dark:bg-slate-800/50 rounded-xl border border-primary/5">
+<div class="flex items-center gap-4">
+<div class="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-orange-600 text-xl">shopping_basket</span>
+</div>
+<div>
+<p class="font-bold text-slate-900 text-sm">Groceries</p>
+<p class="text-xs text-slate-custom/60">Weekly Restock</p>
+</div>
+</div>
+<p class="font-bold text-slate-900">-$1,240.00</p>
+</div>
+<!-- Utilities -->
+<div class="flex items-center justify-between p-4 bg-white dark:bg-slate-800/50 rounded-xl border border-primary/5">
+<div class="flex items-center gap-4">
+<div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-blue-600 text-xl">bolt</span>
+</div>
+<div>
+<p class="font-bold text-slate-900 text-sm">Bill Payments</p>
+<p class="text-xs text-slate-custom/60">Electricity &amp; Water</p>
+</div>
+</div>
+<p class="font-bold text-slate-900">-$450.20</p>
+</div>
+<!-- Subscriptions -->
+<div class="flex items-center justify-between p-4 bg-white dark:bg-slate-800/50 rounded-xl border border-primary/5">
+<div class="flex items-center gap-4">
+<div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-purple-600 text-xl">subscriptions</span>
+</div>
+<div>
+<p class="font-bold text-slate-900 text-sm">Online Subscriptions</p>
+<p class="text-xs text-slate-custom/60">Netflix, Spotify, iCloud</p>
+</div>
+</div>
+<p class="font-bold text-slate-900">-$89.99</p>
+</div>
+<!-- Travel -->
+<div class="flex items-center justify-between p-4 bg-white dark:bg-slate-800/50 rounded-xl border border-primary/5">
+<div class="flex items-center gap-4">
+<div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-green-600 text-xl">flight</span>
+</div>
+<div>
+<p class="font-bold text-slate-900 text-sm">Travel</p>
+<p class="text-xs text-slate-custom/60">Weekend Retreat</p>
+</div>
+</div>
+<p class="font-bold text-slate-900">-$2,800.00</p>
+</div>
+</div>
+</div>
+<!-- Investment Portfolio -->
+<div class="px-6 mb-24">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-bold text-slate-900 text-lg">Small Investments</h3>
+<span class="text-primary text-sm font-bold">Manage Assets</span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-white p-4 rounded-xl border border-primary/5 shadow-sm">
+<div class="w-full aspect-square rounded-lg mb-3 overflow-hidden">
+<img class="h-full w-full object-cover" data-alt="Abstract modern oil painting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBy24kIoNlgftW32XJ44AxDJNfC86HHull45VzX0kKykjDAXMLOcBcKlzC_QFNluaqczxApt3fGgfpPkbMCcuNL3LBdTH6ZE0P-dB65rTjuUM7eALqa9GFa9_PbuvKhsZPRW0B4jaEbfUJ0lNO3oHtadi78jtxMEjqFkmQW6PMZsiRQ_2rI8mAous6u1_1__fuDpaNOHsrHAO-QYIzHzDwvMjF7wpqWLlbLSlCWWzLqUEA6vQjDQlU3ZoPhRCh_4Um50_iRT1Aj3A"/>
+</div>
+<p class="text-xs font-bold text-slate-900">Original Painting</p>
+<p class="text-[10px] text-slate-custom/60 mb-2">Acquired: Jan 2024</p>
+<p class="font-extrabold text-primary">$12,500</p>
+</div>
+<div class="bg-white p-4 rounded-xl border border-primary/5 shadow-sm">
+<div class="w-full aspect-square rounded-lg mb-3 overflow-hidden">
+<img class="h-full w-full object-cover" data-alt="Classic vintage leather armchair" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC99C79_6learAJ3V0xtqQMIkNiYiCdgg8FJaqLUo1qaBd2hEaqZeWQEMKTL6B3bHh2QTTs5HS2lZX5G76leMGBkP4gz5FTf9e-NZ8ajPXFBWHlxc289RWiaf2r6sMCC9rbZLcDW59Vl0o70U5I5AfFC9Cz_--gijuXZKAmutoVJXOLak3jl658YALwq_GM7FZKAzqaGP167HdQ45LYgofdr33I9xuDZAJrhc1ob2adGPoj_-KX7Vfq7CGtYpC_R237YmuVKpwi6w"/>
+</div>
+<p class="text-xs font-bold text-slate-900">Vintage Furniture</p>
+<p class="text-[10px] text-slate-custom/60 mb-2">Acquired: Mar 2024</p>
+<p class="font-extrabold text-primary">$4,200</p>
+</div>
+</div>
+</div>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-primary/5 flex justify-around py-3 px-6 pb-6">
+<a class="flex flex-col items-center gap-1 text-slate-custom/40" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Wealth</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-custom/40" href="#">
+<span class="material-symbols-outlined">dataset</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Assets</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-custom/40" href="#">
+<span class="material-symbols-outlined">person_outline</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Profile</span>
+</a>
+</nav>
+</div>
+</body></html>

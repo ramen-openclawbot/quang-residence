@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#56c91d",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#162111",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-dot::after {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 4px;
+            background-color: #56c91d;
+            border-radius: 50%;
+            margin: 2px auto 0;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display">
+<!-- Header -->
+<header class="flex items-center justify-between px-6 pt-8 pb-4">
+<h1 class="text-2xl font-light tracking-tight text-slate-900 dark:text-slate-100 uppercase">Agenda</h1>
+<button class="relative p-2 rounded-full hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-slate-700 dark:text-slate-300">notifications</span>
+<span class="absolute top-2 right-2 flex h-2 w-2 rounded-full bg-primary"></span>
+</button>
+</header>
+<!-- Calendar Strip (Zen Style) -->
+<div class="px-6 py-4">
+<div class="flex items-center justify-between mb-6">
+<div class="flex flex-col">
+<span class="text-xs uppercase tracking-widest text-slate-400 font-semibold">October 2023</span>
+<span class="text-lg font-medium">Thursday, 5th</span>
+</div>
+<button class="flex items-center gap-1 text-primary text-sm font-medium">
+<span class="material-symbols-outlined text-sm">calendar_today</span>
+                Month View
+            </button>
+</div>
+<div class="flex justify-between gap-2 overflow-x-auto no-scrollbar">
+<div class="flex flex-col items-center min-w-[48px] py-3 rounded-xl border border-slate-200 dark:border-slate-800">
+<span class="text-[10px] uppercase font-bold text-slate-400 mb-1">Mon</span>
+<span class="text-sm font-medium">2</span>
+</div>
+<div class="flex flex-col items-center min-w-[48px] py-3 rounded-xl border border-slate-200 dark:border-slate-800">
+<span class="text-[10px] uppercase font-bold text-slate-400 mb-1">Tue</span>
+<span class="text-sm font-medium">3</span>
+</div>
+<div class="flex flex-col items-center min-w-[48px] py-3 rounded-xl border border-slate-200 dark:border-slate-800">
+<span class="text-[10px] uppercase font-bold text-slate-400 mb-1">Wed</span>
+<span class="text-sm font-medium">4</span>
+</div>
+<div class="flex flex-col items-center min-w-[48px] py-3 rounded-xl bg-primary text-white shadow-lg shadow-primary/20">
+<span class="text-[10px] uppercase font-bold text-white/70 mb-1">Thu</span>
+<span class="text-sm font-bold">5</span>
+</div>
+<div class="flex flex-col items-center min-w-[48px] py-3 rounded-xl border border-slate-200 dark:border-slate-800">
+<span class="text-[10px] uppercase font-bold text-slate-400 mb-1">Fri</span>
+<span class="text-sm font-medium">6</span>
+</div>
+<div class="flex flex-col items-center min-w-[48px] py-3 rounded-xl border border-slate-200 dark:border-slate-800">
+<span class="text-[10px] uppercase font-bold text-slate-400 mb-1">Sat</span>
+<span class="text-sm font-medium">7</span>
+</div>
+</div>
+</div>
+<!-- Main Content (Scrollable Area) -->
+<main class="flex-1 px-6 space-y-10 pb-24">
+<!-- Driver Section -->
+<section>
+<div class="flex items-center gap-2 mb-4">
+<div class="w-8 h-[1px] bg-primary/40"></div>
+<h2 class="text-xs uppercase tracking-[0.2em] font-bold text-slate-400">Driver</h2>
+</div>
+<div class="space-y-4">
+<!-- Task 1 -->
+<div class="flex gap-4 items-start group">
+<div class="flex flex-col items-center shrink-0 w-12 pt-1">
+<span class="text-sm font-semibold text-slate-900 dark:text-slate-100">14:00</span>
+<span class="text-[10px] text-slate-400">2h</span>
+</div>
+<div class="flex-1 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:border-primary/30 transition-all">
+<div class="flex justify-between items-start mb-1">
+<h3 class="text-base font-medium text-slate-800 dark:text-slate-200">Airport Transfer</h3>
+<span class="material-symbols-outlined text-primary text-lg">flight_takeoff</span>
+</div>
+<p class="text-sm text-slate-500 dark:text-slate-400 mb-3">Narita International Terminal 3</p>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded">Scheduled</span>
+</div>
+</div>
+</div>
+<!-- Task 2 -->
+<div class="flex gap-4 items-start group">
+<div class="flex flex-col items-center shrink-0 w-12 pt-1">
+<span class="text-sm font-semibold text-slate-900 dark:text-slate-100">19:30</span>
+<span class="text-[10px] text-slate-400">1h</span>
+</div>
+<div class="flex-1 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:border-primary/30 transition-all">
+<div class="flex justify-between items-start mb-1">
+<h3 class="text-base font-medium text-slate-800 dark:text-slate-200">Evening Gala Drop-off</h3>
+<span class="material-symbols-outlined text-primary text-lg">directions_car</span>
+</div>
+<p class="text-sm text-slate-500 dark:text-slate-400 mb-3">Imperial Hotel Main Entrance</p>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded">Waiting</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Secretary Section -->
+<section>
+<div class="flex items-center gap-2 mb-4">
+<div class="w-8 h-[1px] bg-primary/40"></div>
+<h2 class="text-xs uppercase tracking-[0.2em] font-bold text-slate-400">Secretary</h2>
+</div>
+<div class="space-y-4">
+<!-- Task 3 -->
+<div class="flex gap-4 items-start group">
+<div class="flex flex-col items-center shrink-0 w-12 pt-1">
+<span class="text-sm font-semibold text-slate-900 dark:text-slate-100">10:00</span>
+<span class="text-[10px] text-slate-400">1h</span>
+</div>
+<div class="flex-1 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:border-primary/30 transition-all">
+<div class="flex justify-between items-start mb-1">
+<h3 class="text-base font-medium text-slate-800 dark:text-slate-200">Review travel itinerary</h3>
+<span class="material-symbols-outlined text-primary text-lg">map</span>
+</div>
+<p class="text-sm text-slate-500 dark:text-slate-400 mb-3">Kyoto Autumn Season 2023</p>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 bg-primary text-white text-[10px] font-bold uppercase tracking-wider rounded">In Progress</span>
+</div>
+</div>
+</div>
+<!-- Task 4 -->
+<div class="flex gap-4 items-start group">
+<div class="flex flex-col items-center shrink-0 w-12 pt-1">
+<span class="text-sm font-semibold text-slate-900 dark:text-slate-100">16:30</span>
+<span class="text-[10px] text-slate-400">30m</span>
+</div>
+<div class="flex-1 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:border-primary/30 transition-all">
+<div class="flex justify-between items-start mb-1">
+<h3 class="text-base font-medium text-slate-800 dark:text-slate-200">Sign Q4 budget report</h3>
+<span class="material-symbols-outlined text-primary text-lg">draw</span>
+</div>
+<p class="text-sm text-slate-500 dark:text-slate-400 mb-3">Office Lounge / Remote</p>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded">Pending</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-background-dark/80 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 px-6 py-4">
+<div class="flex items-center justify-between max-w-md mx-auto">
+<a class="flex flex-col items-center gap-1 group" href="#">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors">home</span>
+<span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-primary transition-colors">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 group" href="#">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors">account_balance_wallet</span>
+<span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-primary transition-colors">Wealth</span>
+</a>
+<a class="flex flex-col items-center gap-1 group" href="#">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors">nest_eco_leaf</span>
+<span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-primary transition-colors">Ambiance</span>
+</a>
+<a class="flex flex-col items-center gap-1" href="#">
+<span class="material-symbols-outlined text-primary">calendar_today</span>
+<span class="text-[10px] font-bold uppercase tracking-widest text-primary">Agenda</span>
+<div class="w-1 h-1 bg-primary rounded-full"></div>
+</a>
+</div>
+</nav>
+</body></html>

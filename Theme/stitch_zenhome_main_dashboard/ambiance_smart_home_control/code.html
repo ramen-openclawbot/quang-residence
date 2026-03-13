@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ZenHome - Ambiance</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#56c91d",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#162111",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Manrope', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display transition-colors duration-300">
+<!-- Main Container -->
+<div class="relative flex min-h-screen w-full flex-col max-w-md mx-auto bg-background-light dark:bg-background-dark overflow-x-hidden">
+<!-- Header -->
+<header class="sticky top-0 z-10 flex items-center bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-4 py-4 justify-between border-b border-primary/10">
+<button class="flex size-10 items-center justify-center rounded-full hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-slate-900 dark:text-slate-100">arrow_back</span>
+</button>
+<h1 class="text-lg font-semibold tracking-tight">Ambiance</h1>
+<button class="flex size-10 items-center justify-center rounded-full hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-slate-900 dark:text-slate-100">notifications</span>
+</button>
+</header>
+<main class="flex-1 overflow-y-auto pb-24">
+<!-- Security Section -->
+<section class="px-4 py-6">
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-xl font-bold tracking-tight">Security</h2>
+<span class="text-sm font-medium text-primary flex items-center gap-1">
+<span class="size-2 rounded-full bg-primary"></span>
+                        Live
+                    </span>
+</div>
+<div class="relative group aspect-video rounded-xl overflow-hidden shadow-sm border border-primary/5">
+<img alt="Modern minimalist living room interior" class="w-full h-full object-cover" data-alt="Modern minimalist living room with garden view" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkeMrhxcy4tkQFNGHOxaTsvmR8lL96FArdho9kjlE7zW4ZPHcX7UfV2HPO0S3cCLjt7ALZi8FcarF9RIEKXxOFDOdd_9VBKd6kLajmHsftsTOwtvCzNCY_kfGQT5Mr1KqGzdDthf0IIOK5xcvabxfDc5s7R8Eo5kCD_r7TBKPFX5FkHC7GEU25MvqO60UgqxcmIpLOl5e3lhdf7a5488FNDpTnOte_743VXrKm4f22Y8lwdbD4wZZwgbZnHjzAPb8JitSCKlxUmQ"/>
+<div class="absolute inset-0 bg-black/10 flex items-center justify-center">
+<button class="flex size-14 items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-white border border-white/30 hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-3xl fill-1">play_arrow</span>
+</button>
+</div>
+<div class="absolute bottom-3 left-3 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+<p class="text-[10px] text-white font-medium tracking-wider uppercase">Living Room Camera</p>
+</div>
+</div>
+<div class="mt-4 flex items-center justify-between bg-white dark:bg-primary/5 p-4 rounded-xl border border-primary/10">
+<div class="flex items-center gap-3">
+<div class="flex items-center justify-center rounded-lg bg-primary/10 text-primary size-10">
+<span class="material-symbols-outlined">shield_with_heart</span>
+</div>
+<div>
+<p class="text-sm font-semibold">4 Cameras Active</p>
+<p class="text-xs text-slate-500">System armed &amp; secured</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-primary">check_circle</span>
+</div>
+</section>
+<!-- Lighting Section -->
+<section class="px-4 py-4">
+<h2 class="text-xl font-bold tracking-tight mb-4">Lighting</h2>
+<div class="grid grid-cols-3 gap-3 mb-6">
+<!-- Preset 1 -->
+<button class="flex flex-col items-center justify-center gap-2 p-4 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined">light_mode</span>
+<span class="text-xs font-medium">Soft Warm</span>
+</button>
+<!-- Preset 2 -->
+<button class="flex flex-col items-center justify-center gap-2 p-4 bg-white dark:bg-primary/5 rounded-xl border border-primary/10 hover:border-primary/40 transition-colors">
+<span class="material-symbols-outlined text-slate-600 dark:text-slate-400">wb_sunny</span>
+<span class="text-xs font-medium">Natural</span>
+</button>
+<!-- Preset 3 -->
+<button class="flex flex-col items-center justify-center gap-2 p-4 bg-white dark:bg-primary/5 rounded-xl border border-primary/10 hover:border-primary/40 transition-colors">
+<span class="material-symbols-outlined text-slate-600 dark:text-slate-400">nights_stay</span>
+<span class="text-xs font-medium">Dim</span>
+</button>
+</div>
+<div class="bg-white dark:bg-primary/5 p-5 rounded-xl border border-primary/10">
+<div class="flex justify-between items-center mb-4">
+<span class="text-sm font-semibold">Brightness</span>
+<span class="text-sm font-bold text-primary">80%</span>
+</div>
+<div class="relative w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full">
+<div class="absolute top-0 left-0 h-full bg-primary rounded-full" style="width: 80%;"></div>
+<div class="absolute top-1/2 left-[80%] -translate-y-1/2 -translate-x-1/2 size-5 bg-white border-2 border-primary rounded-full shadow-sm"></div>
+</div>
+</div>
+</section>
+<!-- Climate Section -->
+<section class="px-4 py-6">
+<h2 class="text-xl font-bold tracking-tight mb-4">Climate</h2>
+<div class="bg-white dark:bg-primary/5 rounded-2xl p-6 border border-primary/10 flex items-center justify-between">
+<div class="flex flex-col">
+<span class="text-slate-500 text-xs font-medium uppercase tracking-widest mb-1">Current</span>
+<span class="text-4xl font-light">24<span class="text-primary">°C</span></span>
+<span class="text-slate-400 text-xs mt-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">water_drop</span> 45% Humidity
+                        </span>
+</div>
+<div class="relative flex items-center justify-center size-28">
+<svg class="size-full -rotate-90" viewbox="0 0 100 100">
+<circle class="text-slate-100 dark:text-slate-800" cx="50" cy="50" fill="transparent" r="40" stroke="currentColor" stroke-width="6"></circle>
+<circle class="text-primary" cx="50" cy="50" fill="transparent" r="40" stroke="currentColor" stroke-dasharray="251.2" stroke-dashoffset="180" stroke-linecap="round" stroke-width="6"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-xs font-bold">22.5</span>
+<span class="text-[8px] uppercase tracking-tighter text-slate-400">Target</span>
+</div>
+<button class="absolute -top-1 left-1/2 -translate-x-1/2 bg-white dark:bg-background-dark border border-primary/20 shadow-sm rounded-full size-6 flex items-center justify-center">
+<span class="material-symbols-outlined text-xs">add</span>
+</button>
+<button class="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-white dark:bg-background-dark border border-primary/20 shadow-sm rounded-full size-6 flex items-center justify-center">
+<span class="material-symbols-outlined text-xs">remove</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Smart Devices Section -->
+<section class="px-4 py-4">
+<h2 class="text-xl font-bold tracking-tight mb-4">Smart Devices</h2>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-white dark:bg-primary/5 p-4 rounded-xl border border-primary/10 flex items-center gap-3">
+<div class="size-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500 flex items-center justify-center">
+<span class="material-symbols-outlined">air_purifier_gen</span>
+</div>
+<div class="flex-1">
+<p class="text-xs font-bold">Air Purifier</p>
+<p class="text-[10px] text-slate-500">Auto Mode</p>
+</div>
+<div class="w-8 h-4 bg-primary rounded-full relative">
+<div class="absolute right-0.5 top-0.5 size-3 bg-white rounded-full"></div>
+</div>
+</div>
+<div class="bg-white dark:bg-primary/5 p-4 rounded-xl border border-primary/10 flex items-center gap-3">
+<div class="size-10 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-500 flex items-center justify-center">
+<span class="material-symbols-outlined">blinds</span>
+</div>
+<div class="flex-1">
+<p class="text-xs font-bold">Smart Blinds</p>
+<p class="text-[10px] text-slate-500">Closed</p>
+</div>
+<div class="w-8 h-4 bg-slate-200 dark:bg-slate-700 rounded-full relative transition-colors">
+<div class="absolute left-0.5 top-0.5 size-3 bg-white rounded-full"></div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md border-t border-primary/10 bg-background-light dark:bg-background-dark/95 backdrop-blur-md px-4 pb-6 pt-2 flex justify-between items-center">
+<a class="flex flex-col items-center justify-center gap-1 flex-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 flex-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">shield</span>
+<span class="text-[10px] font-medium">Secure</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 flex-1 text-primary" href="#">
+<span class="material-symbols-outlined fill-1">auto_awesome</span>
+<span class="text-[10px] font-bold">Ambiance</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 flex-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-medium">Settings</span>
+</a>
+</nav>
+</div>
+</body></html>
