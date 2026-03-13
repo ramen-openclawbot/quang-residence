@@ -5,7 +5,6 @@ export const metadata = {
   title: "ZenHome",
   description: "Quản lý tài chính gia đình thông minh",
   manifest: "/manifest.json",
-  themeColor: "#56c91d",
 };
 
 export const viewport = {
@@ -13,6 +12,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: "#56c91d",
 };
 
 export default function RootLayout({ children }) {
