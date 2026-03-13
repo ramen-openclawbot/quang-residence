@@ -107,7 +107,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   assigned_to UUID REFERENCES profiles(id),
   created_by UUID REFERENCES profiles(id),
   completed_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- =============================================
@@ -337,6 +338,22 @@ CREATE POLICY "home_settings_update" ON home_settings FOR UPDATE USING (true);
 
 -- MONTHLY DATA: all can read
 CREATE POLICY "monthly_data_select" ON monthly_data FOR SELECT USING (true);
+
+-- =============================================
+-- AUTO-UPDATE updated_at on tasks
+-- =============================================
+CREATE OR REPLACE FUNCTION update_tasks_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS tasks_updated_at ON tasks;
+CREATE TRIGGER tasks_updated_at
+  BEFORE UPDATE ON tasks
+  FOR EACH ROW EXECUTE FUNCTION update_tasks_updated_at();
 
 -- =============================================
 -- INDEXES for performance

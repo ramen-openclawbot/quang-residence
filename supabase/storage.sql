@@ -82,8 +82,8 @@ CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at
 CREATE TABLE IF NOT EXISTS daily_reports (
   id          BIGSERIAL PRIMARY KEY,
   report_date DATE NOT NULL UNIQUE,
-  summary     TEXT,
-  data        JSONB,
+  report_type TEXT DEFAULT 'daily_expense',
+  content     JSONB,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
