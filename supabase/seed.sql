@@ -1,41 +1,36 @@
 -- =============================================
--- ZenHome Seed Data
--- Run AFTER schema.sql in Supabase SQL Editor
+-- ZenHome v2.0 — Seed Data
+-- Run AFTER schema.sql
 -- =============================================
 
--- Monthly Data
-INSERT INTO monthly_data (month, spend, budget) VALUES
-  ('Jan', 3200, 5000),
-  ('Feb', 3800, 5000),
-  ('Mar', 2600, 5000),
-  ('Apr', 4200, 5000),
-  ('May', 3400, 5000),
-  ('Jun', 2200, 5000)
+-- Categories
+INSERT INTO categories (name, name_vi, icon_name, color, fund_type, sort_order) VALUES
+  ('Food & Fruits', 'Thực phẩm & Trái cây', 'shopping', '#f97316', 'household', 1),
+  ('Utilities', 'Tiện ích (Điện/Nước/Gas)', 'zap', '#3b82f6', 'household', 2),
+  ('Household Items', 'Vật dụng gia đình', 'home', '#8b5cf6', 'household', 3),
+  ('Food Delivery', 'Đồ ăn gọi hàng', 'shopping', '#ef4444', 'household', 4),
+  ('Transport', 'Đi lại (Xăng/Cầu đường)', 'car', '#22c55e', 'cash', 5),
+  ('Entertainment & Gifts', 'Giải trí & Quà tặng', 'gift', '#ec4899', 'pr', 6),
+  ('Auctions & Collections', 'Đấu giá & Sưu tầm', 'auction', '#f59e0b', 'pr', 7),
+  ('Salary & HR', 'Lương & Nhân sự', 'users', '#6366f1', 'salary', 8),
+  ('PR & External', 'PR & Đối ngoại', 'globe', '#14b8a6', 'pr', 9),
+  ('Maintenance & Repair', 'Sửa chữa & Bảo trì', 'wrench', '#78716c', 'cash', 10),
+  ('Travel', 'Du lịch (Vé bay/Khách sạn)', 'plane', '#0ea5e9', 'pr', 11),
+  ('Kitchen', 'Chi bếp (Nguyên liệu)', 'kitchen', '#d97706', 'kitchen', 12),
+  ('Subscriptions', 'Đăng ký dịch vụ', 'wifi', '#8b5cf6', 'cash', 13),
+  ('Other', 'Khác', 'file', '#94a3b8', 'cash', 99)
 ON CONFLICT DO NOTHING;
 
--- Spending Items
-INSERT INTO spending_items (name, description, amount, color, bg_color, icon_name, sort_order) VALUES
-  ('Groceries', 'Weekly Restock', 1240.00, '#f97316', '#fff7ed', 'shopping', 1),
-  ('Bill Payments', 'Electricity & Water', 450.20, '#3b82f6', '#eff6ff', 'zap', 2),
-  ('Online Subscriptions', 'Netflix, Spotify, iCloud', 89.99, '#8b5cf6', '#f5f3ff', 'wifi', 3),
-  ('Travel', 'Weekend Retreat', 2800.00, '#22c55e', '#f0fdf4', 'plane', 4)
+-- Funds
+INSERT INTO funds (name, fund_type, current_balance, budget_monthly) VALUES
+  ('Quỹ PR', 'pr', 0, 50000000),
+  ('Quỹ tiền mặt', 'cash', 0, 30000000),
+  ('Quỹ lương', 'salary', 0, 20000000),
+  ('Chi gia đình', 'household', 0, 15000000),
+  ('Chi bếp', 'kitchen', 0, 10000000)
 ON CONFLICT DO NOTHING;
 
--- Agenda Tasks
-INSERT INTO agenda_tasks (time, duration, title, location, status, category, icon_name, task_date) VALUES
-  ('14:00', '2h', 'Airport Transfer', 'Narita International Terminal 3', 'scheduled', 'driver', 'plane', CURRENT_DATE),
-  ('19:30', '1h', 'Evening Gala Drop-off', 'Imperial Hotel Main Entrance', 'waiting', 'driver', 'car', CURRENT_DATE),
-  ('10:00', '1h', 'Review travel itinerary', 'Kyoto Autumn Season 2023', 'in-progress', 'secretary', 'map', CURRENT_DATE),
-  ('16:30', '30m', 'Sign Q4 budget report', 'Office Lounge / Remote', 'pending', 'secretary', 'edit', CURRENT_DATE)
-ON CONFLICT DO NOTHING;
-
--- Investments
-INSERT INTO investments (name, date_acquired, price, color) VALUES
-  ('Original Painting', 'Acquired: Jan 2024', '$12,500', '#f59e0b'),
-  ('Vintage Furniture', 'Acquired: Mar 2024', '$4,200', '#8b5cf6')
-ON CONFLICT DO NOTHING;
-
--- Home Settings
+-- Home Settings (giữ nguyên)
 INSERT INTO home_settings (setting_key, setting_value) VALUES
   ('lighting', '{"brightness": 80, "preset": "warm"}'),
   ('climate', '{"current_temp": 24, "target_temp": 22.5, "humidity": 45}'),
