@@ -1,10 +1,11 @@
 -- =============================================
 -- ZenHome v2.0 — Seed Data
--- Run AFTER schema.sql
+-- Safe to re-run after schema.sql / storage.sql
 -- =============================================
 
 -- Categories
-INSERT INTO categories (name, name_vi, icon_name, color, fund_type, sort_order) VALUES
+INSERT INTO public.categories (name, name_vi, icon_name, color, fund_type, sort_order)
+VALUES
   ('Food & Fruits', 'Thực phẩm & Trái cây', 'shopping', '#f97316', 'household', 1),
   ('Utilities', 'Tiện ích (Điện/Nước/Gas)', 'zap', '#3b82f6', 'household', 2),
   ('Household Items', 'Vật dụng gia đình', 'home', '#8b5cf6', 'household', 3),
@@ -22,7 +23,8 @@ INSERT INTO categories (name, name_vi, icon_name, color, fund_type, sort_order) 
 ON CONFLICT DO NOTHING;
 
 -- Funds
-INSERT INTO funds (name, fund_type, current_balance, budget_monthly) VALUES
+INSERT INTO public.funds (name, fund_type, current_balance, budget_monthly)
+VALUES
   ('Quỹ PR', 'pr', 0, 50000000),
   ('Quỹ tiền mặt', 'cash', 0, 30000000),
   ('Quỹ lương', 'salary', 0, 20000000),
@@ -30,11 +32,14 @@ INSERT INTO funds (name, fund_type, current_balance, budget_monthly) VALUES
   ('Chi bếp', 'kitchen', 0, 10000000)
 ON CONFLICT DO NOTHING;
 
--- Home Settings (giữ nguyên)
-INSERT INTO home_settings (setting_key, setting_value) VALUES
-  ('lighting', '{"brightness": 80, "preset": "warm"}'),
-  ('climate', '{"current_temp": 24, "target_temp": 22.5, "humidity": 45}'),
-  ('security', '{"cameras_active": 4, "armed": true}'),
-  ('air_purifier', '{"on": true, "mode": "auto"}'),
-  ('smart_blinds', '{"on": false}')
-ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value;
+-- Home settings used by current UI
+INSERT INTO public.home_settings (setting_key, setting_value)
+VALUES
+  ('lighting', '{"brightness": 80, "preset": "warm"}'::jsonb),
+  ('climate', '{"current_temp": 24, "target_temp": 22.5, "humidity": 45}'::jsonb),
+  ('security', '{"cameras_active": 4, "armed": true}'::jsonb),
+  ('air_purifier', '{"on": true, "mode": "auto"}'::jsonb),
+  ('smart_blinds', '{"on": false}'::jsonb)
+ON CONFLICT (setting_key) DO UPDATE
+SET setting_value = EXCLUDED.setting_value,
+    updated_at = NOW();
