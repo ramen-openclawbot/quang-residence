@@ -79,11 +79,26 @@ const panelBtn = {
   cursor: "pointer",
 };
 
+const inputStyle = {
+  width: "100%",
+  minHeight: 46,
+  borderRadius: 12,
+  border: `1px solid ${T.border}`,
+  background: "white",
+  padding: "0 14px",
+  fontSize: 14,
+  boxSizing: "border-box",
+};
+
 export default function OwnerPage() {
   const { profile, signOut } = useAuth();
   const [tab, setTab] = useState("home");
   const [loading, setLoading] = useState(true);
   const [activePanel, setActivePanel] = useState("");
+  const [accountLoading, setAccountLoading] = useState(false);
+  const [accountUsers, setAccountUsers] = useState([]);
+  const [accountMsg, setAccountMsg] = useState("");
+  const [inviteForm, setInviteForm] = useState({ email: "", full_name: "", role: "driver" });
   const [funds, setFunds] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -116,6 +131,65 @@ export default function OwnerPage() {
   async function handleLogout() {
     await signOut();
     window.location.href = "/login";
+  }
+
+  async function loadAccountUsers() {
+    setAccountLoading(true);
+    setAccountMsg("");
+    try {
+      const { data, error } = await supabase.from("profiles").select("id, full_name, role, created_at").order("created_at", { ascending: false });
+      if (error) throw error;
+      setAccountUsers(data || []);
+    } catch (error) {
+      console.error("loadAccountUsers error:", error);
+      setAccountMsg(error.message || "Không tải được danh sách user.");
+    } finally {
+      setAccountLoading(false);
+    }
+  }
+
+  async function handleCreateUser(e) {
+    e.preventDefault();
+    setAccountLoading(true);
+    setAccountMsg("");
+    try {
+      const res = await fetch("/api/admin/create-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(inviteForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Tạo user thất bại");
+      setAccountMsg(`Đã tạo ${inviteForm.email} • mật khẩu tạm: ${data.temporary_password}`);
+      setInviteForm({ email: "", full_name: "", role: "driver" });
+      await loadAccountUsers();
+    } catch (error) {
+      console.error("handleCreateUser error:", error);
+      setAccountMsg(error.message || "Tạo user thất bại");
+    } finally {
+      setAccountLoading(false);
+    }
+  }
+
+  async function handleRoleChange(userId, role) {
+    setAccountLoading(true);
+    setAccountMsg("");
+    try {
+      const res = await fetch("/api/admin/update-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, role }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Đổi role thất bại");
+      setAccountMsg(`Đã đổi role thành ${role}`);
+      await loadAccountUsers();
+    } catch (error) {
+      console.error("handleRoleChange error:", error);
+      setAccountMsg(error.message || "Đổi role thất bại");
+    } finally {
+      setAccountLoading(false);
+    }
   }
 
   const totalBalance = useMemo(() => funds.reduce((sum, fund) => sum + Number(fund.current_balance || 0), 0), [funds]);
@@ -428,7 +502,7 @@ export default function OwnerPage() {
                 { icon: "palette", label: "Display & Theme", sub: "Visual preferences", panel: "theme" },
                 { icon: "help_center", label: "Help Center", sub: "Support & documentation", panel: "help" },
               ].map((item, i) => (
-                <button key={i} onClick={() => setActivePanel(item.panel)} style={{ ...cardStyle, width: "100%", padding: 16, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", border: `1px solid ${T.border}`, textAlign: "left" }}>
+                <button key={i} onClick={() => { setActivePanel(item.panel); if (item.panel === "account") loadAccountUsers(); }} style={{ ...cardStyle, width: "100%", padding: 16, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", border: `1px solid ${T.border}`, textAlign: "left" }}>
                   <div style={{ width: 40, height: 40, borderRadius: 12, background: "#eef8e8", display: "flex", alignItems: "center", justifyContent: "center" }}><MIcon name={item.icon} size={20} color={T.primary} /></div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.label}</div>
@@ -461,10 +535,49 @@ export default function OwnerPage() {
               </div>
 
               {activePanel === "account" && (
-                <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Current owner</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{profile?.full_name || "Mr. Quang"}</div></div>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>User management</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Tạo/sửa user hiện đang nên làm qua Supabase hoặc flow admin hiện tại của app.</div></div>
-                  <button onClick={() => { setActivePanel(""); setTab("settings"); }} style={{ ...panelBtn }}>Đóng</button>
+                <div style={{ display: "grid", gap: 14 }}>
+                  <div style={{ ...softCard, padding: 14 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 10 }}>Tạo user mới</div>
+                    <form onSubmit={handleCreateUser} style={{ display: "grid", gap: 10 }}>
+                      <input value={inviteForm.full_name} onChange={(e) => setInviteForm({ ...inviteForm, full_name: e.target.value })} placeholder="Họ tên" required style={inputStyle} />
+                      <input value={inviteForm.email} onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} placeholder="Email" type="email" required style={inputStyle} />
+                      <select value={inviteForm.role} onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })} style={inputStyle}>
+                        <option value="owner">owner</option>
+                        <option value="secretary">secretary</option>
+                        <option value="housekeeper">housekeeper</option>
+                        <option value="driver">driver</option>
+                      </select>
+                      <button type="submit" disabled={accountLoading} style={{ ...panelBtn }}>{accountLoading ? "Đang tạo..." : "Tạo user"}</button>
+                    </form>
+                  </div>
+
+                  {accountMsg && <div style={{ ...softCard, padding: 14, fontSize: 12, color: T.text }}>{accountMsg}</div>}
+
+                  <div style={{ ...cardStyle, padding: 14 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Danh sách user</div>
+                      <button onClick={loadAccountUsers} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>Refresh</button>
+                    </div>
+                    <div style={{ display: "grid", gap: 10 }}>
+                      {accountUsers.map((u) => (
+                        <div key={u.id} style={{ ...softCard, padding: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{u.full_name || "No name"}</div>
+                              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>{u.id.slice(0, 8)} • {u.created_at ? fmtDate(u.created_at) : "n/a"}</div>
+                            </div>
+                            <select value={u.role} onChange={(e) => handleRoleChange(u.id, e.target.value)} style={{ ...inputStyle, width: 122, minHeight: 38, height: 38, padding: "0 10px" }}>
+                              <option value="owner">owner</option>
+                              <option value="secretary">secretary</option>
+                              <option value="housekeeper">housekeeper</option>
+                              <option value="driver">driver</option>
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                      {!accountLoading && accountUsers.length === 0 && <div style={{ fontSize: 12, color: T.textMuted }}>Chưa có user nào hiển thị.</div>}
+                    </div>
+                  </div>
                 </div>
               )}
 
