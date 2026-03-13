@@ -36,7 +36,7 @@ export default function Home() {
         }}>
           Z
         </div>
-        <div style={{ fontSize: 14, color: "#94a3b8" }}>Đang tải...</div>
+        <div style={{ fontSize: 14, color: "#94a3b8" }}>Loading...</div>
       </div>
     </div>
   );

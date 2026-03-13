@@ -4,86 +4,45 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "../../lib/supabase";
 import { T } from "../../lib/tokens";
 
-function BellIcon({ hasUnread }) {
-  return (
-    <div style={{ position: "relative", display: "inline-flex" }}>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-      </svg>
-      {hasUnread && (
-        <span style={{
-          position: "absolute", top: -4, right: -4,
-          width: 10, height: 10, borderRadius: "50%",
-          background: T.danger, border: "2px solid #fff",
-        }} />
-      )}
-    </div>
-  );
-}
-
 function NotifItem({ notif, onRead }) {
-  const typeIcon = {
-    report: "📊",
-    pending_approval: "⏳",
-    warning: "⚠️",
-    reminder: "🔔",
-    info: "ℹ️",
-  };
+  const typeIcon = { report: "bar_chart", pending_approval: "schedule", warning: "warning", reminder: "notifications", info: "info" };
+  const typeColor = { report: "#3b82f6", pending_approval: "#f59e0b", warning: "#ef4444", reminder: T.primary, info: "#64748b" };
 
   const timeAgo = (ts) => {
     const diff = Date.now() - new Date(ts).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "vừa xong";
-    if (mins < 60) return `${mins} phút trước`;
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
     const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs} giờ trước`;
-    return `${Math.floor(hrs / 24)} ngày trước`;
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
   };
 
   return (
-    <div
-      onClick={() => !notif.read_at && onRead(notif.id)}
-      style={{
-        padding: "12px 16px",
-        borderBottom: `1px solid ${T.bg}`,
-        background: notif.read_at ? "#fff" : "#f0fce8",
-        cursor: notif.read_at ? "default" : "pointer",
-        transition: "background 0.2s",
-      }}
-    >
-      <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-        <span style={{ fontSize: 18, lineHeight: 1 }}>
-          {typeIcon[notif.type] || "🔔"}
+    <div onClick={() => !notif.read_at && onRead(notif.id)} style={{
+      padding: "14px 16px", borderBottom: `1px solid ${T.border}`,
+      background: notif.read_at ? "#fff" : "#f8fdf5",
+      cursor: notif.read_at ? "default" : "pointer", transition: "background 0.2s",
+      display: "flex", gap: 12, alignItems: "flex-start",
+    }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+        background: `${typeColor[notif.type] || "#64748b"}15`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 18, color: typeColor[notif.type] || "#64748b" }}>
+          {typeIcon[notif.type] || "notifications"}
         </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            fontSize: 13, fontWeight: notif.read_at ? 400 : 600,
-            color: T.text, lineHeight: 1.4,
-          }}>
-            {notif.title}
-          </div>
-          {notif.body && (
-            <div style={{
-              fontSize: 12, color: T.textMuted, marginTop: 3,
-              whiteSpace: "pre-line", lineHeight: 1.4,
-              overflow: "hidden",
-              display: "-webkit-box",
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: "vertical",
-            }}>
-              {notif.body}
-            </div>
-          )}
-          <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>
-            {timeAgo(notif.created_at)}
-          </div>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+          <p style={{ fontSize: 14, fontWeight: notif.read_at ? 400 : 600, color: T.text, lineHeight: 1.3 }}>{notif.title}</p>
+          <span style={{ fontSize: 11, color: T.textMuted, flexShrink: 0 }}>{timeAgo(notif.created_at)}</span>
         </div>
-        {!notif.read_at && (
-          <div style={{
-            width: 8, height: 8, borderRadius: "50%",
-            background: T.primary, flexShrink: 0, marginTop: 5,
-          }} />
+        {notif.body && (
+          <p style={{ fontSize: 13, color: T.textMuted, marginTop: 3, lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+            {notif.body}
+          </p>
         )}
       </div>
     </div>
@@ -95,149 +54,92 @@ export default function NotificationCenter({ userId }) {
   const [notifs, setNotifs] = useState([]);
   const [loading, setLoading] = useState(false);
   const dropRef = useRef(null);
-
-  const unreadCount = notifs.filter((n) => !n.read_at).length;
+  const unread = notifs.filter((n) => !n.read_at).length;
 
   const fetchNotifs = async () => {
     if (!userId) return;
     setLoading(true);
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(30);
+    const { data } = await supabase.from("notifications").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(30);
     setNotifs(data || []);
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchNotifs();
-    // Poll every 60s for new notifications
-    const interval = setInterval(fetchNotifs, 60000);
-    return () => clearInterval(interval);
-  }, [userId]);
+  useEffect(() => { fetchNotifs(); const iv = setInterval(fetchNotifs, 60000); return () => clearInterval(iv); }, [userId]);
 
-  // Realtime subscription
   useEffect(() => {
     if (!userId) return;
-    const channel = supabase
-      .channel(`notifs-${userId}`)
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "notifications",
-        filter: `user_id=eq.${userId}`,
-      }, (payload) => {
-        setNotifs((prev) => [payload.new, ...prev]);
-      })
-      .subscribe();
-    return () => supabase.removeChannel(channel);
+    const ch = supabase.channel(`notifs-${userId}`).on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` }, (p) => setNotifs((prev) => [p.new, ...prev])).subscribe();
+    return () => supabase.removeChannel(ch);
   }, [userId]);
 
-  // Close on outside click
   useEffect(() => {
-    const handle = (e) => {
-      if (dropRef.current && !dropRef.current.contains(e.target)) {
-        setOpen(false);
-      }
-    };
-    if (open) document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
+    const h = (e) => { if (dropRef.current && !dropRef.current.contains(e.target)) setOpen(false); };
+    if (open) document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
   }, [open]);
 
   const markRead = async (id) => {
-    await supabase
-      .from("notifications")
-      .update({ read_at: new Date().toISOString() })
-      .eq("id", id);
-    setNotifs((prev) =>
-      prev.map((n) => n.id === id ? { ...n, read_at: new Date().toISOString() } : n)
-    );
+    const now = new Date().toISOString();
+    await supabase.from("notifications").update({ read_at: now }).eq("id", id);
+    setNotifs((p) => p.map((n) => n.id === id ? { ...n, read_at: now } : n));
   };
 
   const markAllRead = async () => {
-    await supabase
-      .from("notifications")
-      .update({ read_at: new Date().toISOString() })
-      .eq("user_id", userId)
-      .is("read_at", null);
-    setNotifs((prev) =>
-      prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() }))
-    );
+    const now = new Date().toISOString();
+    await supabase.from("notifications").update({ read_at: now }).eq("user_id", userId).is("read_at", null);
+    setNotifs((p) => p.map((n) => ({ ...n, read_at: n.read_at || now })));
+  };
+
+  // Group by date
+  const groupByDate = () => {
+    const today = new Date().toDateString();
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    const groups = {};
+    notifs.forEach((n) => {
+      const d = new Date(n.created_at).toDateString();
+      const label = d === today ? "Today" : d === yesterday ? "Yesterday" : new Date(n.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(n);
+    });
+    return groups;
   };
 
   return (
     <div ref={dropRef} style={{ position: "relative" }}>
-      {/* Bell button */}
-      <button
-        onClick={() => { setOpen((o) => !o); if (!open) fetchNotifs(); }}
-        style={{
-          background: "none", border: "none", cursor: "pointer",
-          color: T.text, padding: 6, borderRadius: 8,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}
-      >
-        <BellIcon hasUnread={unreadCount > 0} />
-        {unreadCount > 0 && (
-          <span style={{
-            marginLeft: 4, fontSize: 11, fontWeight: 700,
-            color: T.danger,
-          }}>
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
-        )}
+      <button onClick={() => { setOpen((o) => !o); if (!open) fetchNotifs(); }} style={{
+        width: 40, height: 40, borderRadius: "50%", background: "none", border: "none",
+        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+        position: "relative",
+      }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 24, color: T.text }}>notifications</span>
+        {unread > 0 && <span style={{ position: "absolute", top: 6, right: 6, width: 8, height: 8, borderRadius: "50%", background: T.primary, border: "2px solid #fff" }} />}
       </button>
 
-      {/* Dropdown */}
       {open && (
         <div style={{
-          position: "absolute", right: 0, top: "calc(100% + 8px)",
-          width: 320, maxHeight: 480,
-          background: "#fff",
-          borderRadius: 12,
-          boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
-          border: `1px solid ${T.bg}`,
-          zIndex: 1000,
-          overflow: "hidden",
-          display: "flex", flexDirection: "column",
+          position: "absolute", right: -8, top: "calc(100% + 8px)",
+          width: 340, maxHeight: 480, background: "#fff", borderRadius: 16,
+          boxShadow: "0 12px 40px rgba(0,0,0,0.15)", border: `1px solid ${T.border}`,
+          zIndex: 1000, overflow: "hidden", display: "flex", flexDirection: "column",
         }}>
-          {/* Header */}
-          <div style={{
-            padding: "12px 16px",
-            borderBottom: `1px solid ${T.bg}`,
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-          }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>
-              Thông báo {unreadCount > 0 && `(${unreadCount} chưa đọc)`}
-            </span>
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllRead}
-                style={{
-                  fontSize: 12, color: T.primary, background: "none",
-                  border: "none", cursor: "pointer", fontWeight: 600,
-                }}
-              >
-                Đọc tất cả
+          <div style={{ padding: "16px 16px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${T.border}` }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: T.text }}>Notifications</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {unread > 0 && <button onClick={markAllRead} style={{ fontSize: 12, color: T.primary, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Mark all read</button>}
+              <button style={{ width: 28, height: 28, borderRadius: "50%", background: `${T.primary}10`, border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 16, color: T.primary }}>settings</span>
               </button>
-            )}
+            </div>
           </div>
 
-          {/* List */}
           <div style={{ overflowY: "auto", flex: 1 }}>
-            {loading && notifs.length === 0 && (
-              <div style={{ padding: 24, textAlign: "center", color: T.textMuted, fontSize: 13 }}>
-                Đang tải...
+            {loading && notifs.length === 0 && <div style={{ padding: 24, textAlign: "center", color: T.textMuted, fontSize: 13 }}>Loading...</div>}
+            {!loading && notifs.length === 0 && <div style={{ padding: 32, textAlign: "center", color: T.textMuted, fontSize: 13 }}>No notifications</div>}
+            {Object.entries(groupByDate()).map(([label, items]) => (
+              <div key={label}>
+                <div style={{ padding: "10px 16px 6px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: T.textMuted }}>{label}</div>
+                {items.map((n) => <NotifItem key={n.id} notif={n} onRead={markRead} />)}
               </div>
-            )}
-            {!loading && notifs.length === 0 && (
-              <div style={{ padding: 32, textAlign: "center", color: T.textMuted, fontSize: 13 }}>
-                Không có thông báo
-              </div>
-            )}
-            {notifs.map((n) => (
-              <NotifItem key={n.id} notif={n} onRead={markRead} />
             ))}
           </div>
         </div>

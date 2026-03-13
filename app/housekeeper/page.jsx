@@ -1,29 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import StaffShell from "../../components/shared/StaffShell";
+import StaffShell, { MIcon } from "../../components/shared/StaffShell";
 import { supabase } from "../../lib/supabase";
 import { T, card, flexBetween, flexCenter, sectionLabel } from "../../lib/tokens";
 import { fmtVND, fmtDate, fmtRelative } from "../../lib/format";
-import {
-  ShoppingIcon,
-  HomeIcon as HouseIcon,
-  HeartIcon,
-  CalendarIcon,
-  PlusIcon,
-  WrenchIcon,
-  getIcon,
-} from "../../components/shared/Icons";
 import StatusBadge from "../../components/shared/StatusBadge";
 import Skeleton from "../../components/shared/Skeleton";
 import TransactionForm from "../../components/TransactionForm";
 import { useAuth } from "../../lib/auth";
 
 const TABS = [
-  { id: "expenses", label: "Chi tiêu", Ic: ShoppingIcon },
-  { id: "house", label: "Nhà cửa", Ic: HouseIcon },
-  { id: "family", label: "Gia đình", Ic: HeartIcon },
-  { id: "schedule", label: "Lịch", Ic: CalendarIcon },
+  { id: "expenses", label: "Expenses", icon: "receipt_long" },
+  { id: "house", label: "Home Care", icon: "home_repair_service" },
+  { id: "family", label: "Family", icon: "family_restroom" },
+  { id: "schedule", label: "Schedule", icon: "calendar_today" },
 ];
 
 const MAINTENANCE_STATUSES = ["reported", "scheduled", "in_progress", "completed"];
@@ -46,7 +37,7 @@ export default function HousekeeperPage() {
   const [familyFormData, setFamilyFormData] = useState({
     title: "",
     schedule_type: "school",
-    family_member: "Chuột",
+    family_member: "Member",
     event_date: "",
     event_time: "",
     notes: "",
@@ -101,7 +92,7 @@ export default function HousekeeperPage() {
   const handleMaintenanceSubmit = async (e) => {
     e.preventDefault();
     if (!maintenanceFormData.title || !maintenanceFormData.location_in_house) {
-      alert("Vui lòng điền tiêu đề và vị trí");
+      alert("Please fill in title and location");
       return;
     }
 
@@ -124,7 +115,7 @@ export default function HousekeeperPage() {
       fetchData();
     } catch (error) {
       console.error("Error creating maintenance report:", error);
-      alert("Lỗi khi tạo báo hỏng hóc");
+      alert("Error creating maintenance report");
     }
   };
 
@@ -148,7 +139,7 @@ export default function HousekeeperPage() {
   const handleFamilyScheduleSubmit = async (e) => {
     e.preventDefault();
     if (!familyFormData.title || !familyFormData.event_date) {
-      alert("Vui lòng điền tiêu đề và ngày");
+      alert("Please fill in title and date");
       return;
     }
 
@@ -170,7 +161,7 @@ export default function HousekeeperPage() {
       setFamilyFormData({
         title: "",
         schedule_type: "school",
-        family_member: "Chuột",
+        family_member: "Member",
         event_date: "",
         event_time: "",
         notes: "",
@@ -179,7 +170,7 @@ export default function HousekeeperPage() {
       fetchData();
     } catch (error) {
       console.error("Error creating family schedule:", error);
-      alert("Lỗi khi thêm lịch");
+      alert("Error creating schedule");
     }
   };
 
@@ -258,8 +249,8 @@ export default function HousekeeperPage() {
 
   if (!profile) {
     return (
-      <StaffShell role="housekeeper" title="Quản gia">
-        <div style={{ padding: 24 }}>Đang tải...</div>
+      <StaffShell role="housekeeper" title="Housekeeper">
+        <div style={{ padding: 24 }}>Loading...</div>
       </StaffShell>
     );
   }
@@ -275,7 +266,7 @@ export default function HousekeeperPage() {
             padding: 16,
           }}
         >
-          <div style={{ fontSize: 12, color: T.color.secondary }}>Hôm nay</div>
+          <div style={{ fontSize: 12, color: T.textMuted }}>Today</div>
           <div style={{ fontSize: 18, fontWeight: "bold", marginTop: 4 }}>
             {fmtVND(getTodayExpenses())}
           </div>
@@ -287,7 +278,7 @@ export default function HousekeeperPage() {
             padding: 16,
           }}
         >
-          <div style={{ fontSize: 12, color: T.color.secondary }}>Tháng này</div>
+          <div style={{ fontSize: 12, color: T.textMuted }}>This Month</div>
           <div style={{ fontSize: 18, fontWeight: "bold", marginTop: 4 }}>
             {fmtVND(getMonthExpenses())}
           </div>
@@ -295,30 +286,30 @@ export default function HousekeeperPage() {
       </div>
 
       {/* Transaction List */}
-      <div style={{ marginBottom: 24 }}>
-        <h3 style={sectionLabel}>Giao dịch gần đây</h3>
+      <div style={{ marginBottom: 80 }}>
+        <h3 style={sectionLabel}>Recent Transactions</h3>
         {loading ? (
           <Skeleton count={5} />
         ) : transactions.length === 0 ? (
-          <div style={{ padding: 16, color: T.color.secondary }}>
-            Chưa có giao dịch nào
+          <div style={{ padding: 16, color: T.textMuted }}>
+            No transactions yet
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {transactions.map((tx) => (
               <div key={tx.id} style={{ ...card, padding: 16, ...flexBetween }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                  <div style={{ ...flexCenter, width: 40, height: 40, borderRadius: "50%", backgroundColor: T.color.lightBg }}>
-                    <ShoppingIcon />
+                  <div style={{ ...flexCenter, width: 40, height: 40, borderRadius: "50%", backgroundColor: T.bg }}>
+                    <MIcon name="receipt_long" />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 500 }}>{tx.description || "Chi tiêu"}</div>
-                    <div style={{ fontSize: 12, color: T.color.secondary }}>
+                    <div style={{ fontWeight: 500 }}>{tx.description || "Expense"}</div>
+                    <div style={{ fontSize: 12, color: T.textMuted }}>
                       {fmtRelative(new Date(tx.created_at))}
                     </div>
                   </div>
                 </div>
-                <div style={{ fontWeight: 600, color: T.color.danger }}>-{fmtVND(tx.amount)}</div>
+                <div style={{ fontWeight: 600, color: "#ef4444" }}>-{fmtVND(tx.amount)}</div>
               </div>
             ))}
           </div>
@@ -330,21 +321,22 @@ export default function HousekeeperPage() {
         onClick={() => setShowTxForm(true)}
         style={{
           position: "fixed",
-          bottom: 24,
+          bottom: 100,
           right: 24,
           width: 56,
           height: 56,
           borderRadius: "50%",
-          backgroundColor: T.color.primary,
+          backgroundColor: T.primary,
           color: "white",
           border: "none",
           ...flexCenter,
           cursor: "pointer",
           fontSize: 18,
           boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          zIndex: 40,
         }}
       >
-        <PlusIcon />
+        <MIcon name="add" />
       </button>
 
       {showTxForm && (
@@ -368,7 +360,7 @@ export default function HousekeeperPage() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ marginTop: 0 }}>Thêm giao dịch</h2>
+            <h2 style={{ marginTop: 0 }}>Add Transaction</h2>
             <TransactionForm
               defaultFundId="chi-gia-dinh"
               onSuccess={() => {
@@ -382,13 +374,13 @@ export default function HousekeeperPage() {
                 marginTop: 16,
                 width: "100%",
                 padding: 16,
-                backgroundColor: T.color.lightBg,
+                backgroundColor: T.bg,
                 border: "none",
                 borderRadius: 8,
                 cursor: "pointer",
               }}
             >
-              Đóng
+              Close
             </button>
           </div>
         </div>
@@ -398,7 +390,7 @@ export default function HousekeeperPage() {
 
   const renderHouseTab = () => (
     <div>
-      <h3 style={sectionLabel}>Báo hỏng hóc</h3>
+      <h3 style={sectionLabel}>Maintenance Reports</h3>
 
       {/* Maintenance Form */}
       {!showMaintenanceForm ? (
@@ -408,7 +400,7 @@ export default function HousekeeperPage() {
             width: "100%",
             padding: 16,
             marginBottom: 24,
-            backgroundColor: T.color.primary,
+            backgroundColor: T.primary,
             color: "white",
             border: "none",
             borderRadius: 8,
@@ -419,7 +411,7 @@ export default function HousekeeperPage() {
             gap: 8,
           }}
         >
-          <PlusIcon /> Báo hỏng hóc mới
+          <MIcon name="add" /> New Report
         </button>
       ) : (
         <form
@@ -432,20 +424,20 @@ export default function HousekeeperPage() {
         >
           <input
             type="text"
-            placeholder="Tiêu đề"
+            placeholder="Title"
             value={maintenanceFormData.title}
             onChange={(e) => setMaintenanceFormData({ ...maintenanceFormData, title: e.target.value })}
             style={{
               width: "100%",
               padding: 8,
               marginBottom: 8,
-              border: `1px solid ${T.color.border}`,
+              border: `1px solid ${T.border}`,
               borderRadius: 8,
               fontSize: 14,
             }}
           />
           <textarea
-            placeholder="Mô tả"
+            placeholder="Description"
             value={maintenanceFormData.description}
             onChange={(e) =>
               setMaintenanceFormData({ ...maintenanceFormData, description: e.target.value })
@@ -454,7 +446,7 @@ export default function HousekeeperPage() {
               width: "100%",
               padding: 8,
               marginBottom: 8,
-              border: `1px solid ${T.color.border}`,
+              border: `1px solid ${T.border}`,
               borderRadius: 8,
               fontSize: 14,
               minHeight: 80,
@@ -463,7 +455,7 @@ export default function HousekeeperPage() {
           />
           <input
             type="text"
-            placeholder="Vị trí trong nhà"
+            placeholder="Location in house"
             value={maintenanceFormData.location_in_house}
             onChange={(e) =>
               setMaintenanceFormData({ ...maintenanceFormData, location_in_house: e.target.value })
@@ -472,7 +464,7 @@ export default function HousekeeperPage() {
               width: "100%",
               padding: 8,
               marginBottom: 16,
-              border: `1px solid ${T.color.border}`,
+              border: `1px solid ${T.border}`,
               borderRadius: 8,
               fontSize: 14,
             }}
@@ -483,14 +475,14 @@ export default function HousekeeperPage() {
               style={{
                 flex: 1,
                 padding: 16,
-                backgroundColor: T.color.primary,
+                backgroundColor: T.primary,
                 color: "white",
                 border: "none",
                 borderRadius: 8,
                 cursor: "pointer",
               }}
             >
-              Gửi
+              Submit
             </button>
             <button
               type="button"
@@ -498,13 +490,13 @@ export default function HousekeeperPage() {
               style={{
                 flex: 1,
                 padding: 16,
-                backgroundColor: T.color.lightBg,
+                backgroundColor: T.bg,
                 border: "none",
                 borderRadius: 8,
                 cursor: "pointer",
               }}
             >
-              Hủy
+              Cancel
             </button>
           </div>
         </form>
@@ -514,11 +506,11 @@ export default function HousekeeperPage() {
       {loading ? (
         <Skeleton count={5} />
       ) : maintenanceItems.length === 0 ? (
-        <div style={{ padding: 16, color: T.color.secondary }}>
-          Chưa có báo hỏng hóc nào
+        <div style={{ padding: 16, color: T.textMuted, marginBottom: 80 }}>
+          No reports yet
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 80 }}>
           {maintenanceItems.map((item) => (
             <div
               key={item.id}
@@ -535,14 +527,14 @@ export default function HousekeeperPage() {
                       width: 40,
                       height: 40,
                       borderRadius: "50%",
-                      backgroundColor: T.color.lightBg,
+                      backgroundColor: T.bg,
                     }}
                   >
-                    <WrenchIcon />
+                    <MIcon name="home_repair_service" />
                   </div>
                   <div>
                     <div style={{ fontWeight: 500 }}>{item.title}</div>
-                    <div style={{ fontSize: 12, color: T.color.secondary }}>
+                    <div style={{ fontSize: 12, color: T.textMuted }}>
                       {item.location_in_house}
                     </div>
                   </div>
@@ -552,7 +544,7 @@ export default function HousekeeperPage() {
                 <div
                   style={{
                     fontSize: 12,
-                    color: T.color.secondary,
+                    color: T.textMuted,
                     marginBottom: 8,
                   }}
                 >
@@ -592,7 +584,7 @@ export default function HousekeeperPage() {
             width: "100%",
             padding: 16,
             marginBottom: 24,
-            backgroundColor: T.color.primary,
+            backgroundColor: T.primary,
             color: "white",
             border: "none",
             borderRadius: 8,
@@ -603,7 +595,7 @@ export default function HousekeeperPage() {
             gap: 8,
           }}
         >
-          <PlusIcon /> Thêm lịch
+          <MIcon name="add" /> Add Event
         </button>
       ) : (
         <form
@@ -616,14 +608,14 @@ export default function HousekeeperPage() {
         >
           <input
             type="text"
-            placeholder="Tiêu đề"
+            placeholder="Title"
             value={familyFormData.title}
             onChange={(e) => setFamilyFormData({ ...familyFormData, title: e.target.value })}
             style={{
               width: "100%",
               padding: 8,
               marginBottom: 8,
-              border: `1px solid ${T.color.border}`,
+              border: `1px solid ${T.border}`,
               borderRadius: 8,
               fontSize: 14,
             }}
@@ -635,14 +627,14 @@ export default function HousekeeperPage() {
               width: "100%",
               padding: 8,
               marginBottom: 8,
-              border: `1px solid ${T.color.border}`,
+              border: `1px solid ${T.border}`,
               borderRadius: 8,
               fontSize: 14,
             }}
           >
-            <option value="school">Lịch học</option>
-            <option value="health">Sức khỏe</option>
-            <option value="activity">Hoạt động</option>
+            <option value="school">School</option>
+            <option value="health">Health</option>
+            <option value="activity">Activity</option>
           </select>
           <select
             value={familyFormData.family_member}
@@ -653,13 +645,13 @@ export default function HousekeeperPage() {
               width: "100%",
               padding: 8,
               marginBottom: 8,
-              border: `1px solid ${T.color.border}`,
+              border: `1px solid ${T.border}`,
               borderRadius: 8,
               fontSize: 14,
             }}
           >
-            <option value="Chuột">Chuột</option>
-            <option value="ChipTun">ChipTun</option>
+            <option value="Member">Member</option>
+            <option value="Parent">Parent</option>
           </select>
           <input
             type="date"
@@ -669,7 +661,7 @@ export default function HousekeeperPage() {
               width: "100%",
               padding: 8,
               marginBottom: 8,
-              border: `1px solid ${T.color.border}`,
+              border: `1px solid ${T.border}`,
               borderRadius: 8,
               fontSize: 14,
             }}
@@ -682,20 +674,20 @@ export default function HousekeeperPage() {
               width: "100%",
               padding: 8,
               marginBottom: 8,
-              border: `1px solid ${T.color.border}`,
+              border: `1px solid ${T.border}`,
               borderRadius: 8,
               fontSize: 14,
             }}
           />
           <textarea
-            placeholder="Ghi chú"
+            placeholder="Notes"
             value={familyFormData.notes}
             onChange={(e) => setFamilyFormData({ ...familyFormData, notes: e.target.value })}
             style={{
               width: "100%",
               padding: 8,
               marginBottom: 16,
-              border: `1px solid ${T.color.border}`,
+              border: `1px solid ${T.border}`,
               borderRadius: 8,
               fontSize: 14,
               minHeight: 60,
@@ -708,14 +700,14 @@ export default function HousekeeperPage() {
               style={{
                 flex: 1,
                 padding: 16,
-                backgroundColor: T.color.primary,
+                backgroundColor: T.primary,
                 color: "white",
                 border: "none",
                 borderRadius: 8,
                 cursor: "pointer",
               }}
             >
-              Thêm
+              Add
             </button>
             <button
               type="button"
@@ -723,13 +715,13 @@ export default function HousekeeperPage() {
               style={{
                 flex: 1,
                 padding: 16,
-                backgroundColor: T.color.lightBg,
+                backgroundColor: T.bg,
                 border: "none",
                 borderRadius: 8,
                 cursor: "pointer",
               }}
             >
-              Hủy
+              Cancel
             </button>
           </div>
         </form>
@@ -739,13 +731,13 @@ export default function HousekeeperPage() {
       {loading ? (
         <Skeleton count={5} />
       ) : familySchedule.length === 0 ? (
-        <div style={{ padding: 16, color: T.color.secondary }}>
-          Chưa có lịch nào
+        <div style={{ padding: 16, color: T.textMuted, marginBottom: 80 }}>
+          No events yet
         </div>
       ) : (
-        <>
+        <div style={{ marginBottom: 80 }}>
           {["school", "health", "activity"].map((type) => {
-            const typeLabel = type === "school" ? "Lịch học" : type === "health" ? "Sức khỏe" : "Hoạt động";
+            const typeLabel = type === "school" ? "School" : type === "health" ? "Health" : "Activities";
             const items = familySchedule.filter((item) => item.schedule_type === type);
 
             if (items.length === 0) return null;
@@ -758,11 +750,11 @@ export default function HousekeeperPage() {
                     <div key={item.id} style={{ ...card, padding: 16 }}>
                       <div style={{ ...flexBetween, marginBottom: 4 }}>
                         <div style={{ fontWeight: 500 }}>{item.title}</div>
-                        <div style={{ fontSize: 12, color: T.color.secondary }}>
+                        <div style={{ fontSize: 12, color: T.textMuted }}>
                           {item.family_member}
                         </div>
                       </div>
-                      <div style={{ fontSize: 12, color: T.color.secondary }}>
+                      <div style={{ fontSize: 12, color: T.textMuted }}>
                         {fmtDate(new Date(item.event_date))}
                         {item.event_time && ` - ${item.event_time}`}
                       </div>
@@ -770,7 +762,7 @@ export default function HousekeeperPage() {
                         <div
                           style={{
                             fontSize: 12,
-                            color: T.color.secondary,
+                            color: T.textMuted,
                             marginTop: 4,
                           }}
                         >
@@ -783,7 +775,7 @@ export default function HousekeeperPage() {
               </div>
             );
           })}
-        </>
+        </div>
       )}
     </div>
   );
@@ -794,15 +786,15 @@ export default function HousekeeperPage() {
 
     return (
       <div>
-        <h3 style={sectionLabel}>Lịch tuần tới</h3>
+        <h3 style={sectionLabel}>Next Week Schedule</h3>
         {loading ? (
           <Skeleton count={5} />
         ) : events.length === 0 ? (
-          <div style={{ padding: 16, color: T.color.secondary }}>
-            Không có sự kiện nào trong tuần tới
+          <div style={{ padding: 16, color: T.textMuted, marginBottom: 80 }}>
+            No events next week
           </div>
         ) : (
-          <div>
+          <div style={{ marginBottom: 80 }}>
             {Object.entries(groupedEvents).map(([dateKey, dayEvents]) => (
               <div key={dateKey} style={{ marginBottom: 24 }}>
                 <h4 style={{ ...sectionLabel, marginBottom: 16 }}>{dateKey}</h4>
@@ -815,17 +807,17 @@ export default function HousekeeperPage() {
                         padding: 16,
                         borderLeft: `4px solid ${
                           event.type === "expense"
-                            ? T.color.danger
+                            ? "#ef4444"
                             : event.type === "maintenance"
-                            ? T.color.warning
-                            : T.color.primary
+                            ? "#f59e0b"
+                            : T.primary
                         }`,
                       }}
                     >
                       <div style={{ ...flexBetween, marginBottom: 4 }}>
                         <div style={{ fontWeight: 500 }}>{event.title}</div>
                         {event.amount && (
-                          <div style={{ fontWeight: 600, color: T.color.danger }}>
+                          <div style={{ fontWeight: 600, color: "#ef4444" }}>
                             {event.amount}
                           </div>
                         )}
@@ -834,7 +826,7 @@ export default function HousekeeperPage() {
                         <StatusBadge status={event.status} />
                       )}
                       {event.member && (
-                        <div style={{ fontSize: 12, color: T.color.secondary }}>
+                        <div style={{ fontSize: 12, color: T.textMuted }}>
                           {event.member}
                         </div>
                       )}
@@ -850,43 +842,16 @@ export default function HousekeeperPage() {
   };
 
   return (
-    <StaffShell role="housekeeper" title="Quản gia">
-      <div style={{ padding: 24 }}>
-        {/* Tab Navigation */}
-        <div
-          style={{
-            display: "flex",
-            gap: 4,
-            marginBottom: 24,
-            borderBottom: `1px solid ${T.color.border}`,
-            overflowX: "auto",
-          }}
-        >
-          {TABS.map((t) => {
-            const Icon = t.Ic;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                  padding: `${16} ${24}`,
-                  backgroundColor: "transparent",
-                  border: "none",
-                  borderBottom: tab === t.id ? `2px solid ${T.color.primary}` : "none",
-                  cursor: "pointer",
-                  color: tab === t.id ? T.color.primary : T.color.secondary,
-                  fontWeight: tab === t.id ? 600 : 400,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <Icon />
-                {t.label}
-              </button>
-            );
-          })}
+    <StaffShell role="housekeeper" title="Housekeeper">
+      <div style={{ padding: 24, paddingBottom: 120 }}>
+        {/* Header */}
+        <div style={{ marginBottom: 32 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: T.text, margin: 0 }}>
+            Housekeeper Dashboard
+          </h1>
+          <p style={{ color: T.textMuted, fontSize: 14, marginTop: 4 }}>
+            Manage expenses, home care, family events, and schedules
+          </p>
         </div>
 
         {/* Tab Content */}
@@ -894,6 +859,55 @@ export default function HousekeeperPage() {
         {tab === "house" && renderHouseTab()}
         {tab === "family" && renderFamilyTab()}
         {tab === "schedule" && renderScheduleTab()}
+      </div>
+
+      {/* Bottom Navigation Bar */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          maxWidth: 430,
+          margin: "0 auto",
+          backgroundColor: T.bg,
+          backdropFilter: "blur(10px)",
+          borderTop: `1px solid ${T.border}`,
+          display: "flex",
+          justifyContent: "space-around",
+          padding: "12px 0",
+          zIndex: 30,
+        }}
+      >
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 4,
+              padding: "8px 16px",
+              backgroundColor: "transparent",
+              border: "none",
+              cursor: "pointer",
+              color: tab === t.id ? T.primary : T.textMuted,
+              fontSize: 12,
+              fontWeight: tab === t.id ? 600 : 400,
+              flex: 1,
+            }}
+          >
+            <MIcon
+              name={t.icon}
+              style={{
+                fontSize: 24,
+                color: "inherit",
+              }}
+            />
+            <span>{t.label}</span>
+          </button>
+        ))}
       </div>
     </StaffShell>
   );

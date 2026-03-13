@@ -3,7 +3,7 @@ import { AuthProvider } from "../lib/auth";
 
 export const metadata = {
   title: "ZenHome",
-  description: "Quản lý tài chính gia đình thông minh",
+  description: "Smart Household Management",
   manifest: "/manifest.json",
 };
 
@@ -17,13 +17,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="vi">
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en">
       <body>
         <AuthProvider>{children}</AuthProvider>
       </body>

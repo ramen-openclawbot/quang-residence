@@ -1,27 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import StaffShell from "../../components/shared/StaffShell";
+import StaffShell, { MIcon } from "../../components/shared/StaffShell";
 import { supabase } from "../../lib/supabase";
 import { T, card, flexBetween, flexCenter, sectionLabel } from "../../lib/tokens";
 import { fmtVND, fmtDate, fmtRelative } from "../../lib/format";
-import {
-  CarIcon,
-  ShoppingIcon,
-  ClipboardIcon,
-  PlusIcon,
-  MapIcon,
-  getIcon,
-} from "../../components/shared/Icons";
 import StatusBadge from "../../components/shared/StatusBadge";
 import Skeleton from "../../components/shared/Skeleton";
 import TransactionForm from "../../components/TransactionForm";
 import { useAuth } from "../../lib/auth";
 
 const TABS = [
-  { id: "trips", label: "Lịch xe", Ic: CarIcon },
-  { id: "kitchen", label: "Chi bếp", Ic: ShoppingIcon },
-  { id: "tasks", label: "Nhiệm vụ", Ic: ClipboardIcon },
+  { id: "trips", label: "Trips", icon: "directions_car" },
+  { id: "kitchen", label: "Kitchen", icon: "restaurant" },
+  { id: "tasks", label: "Tasks", icon: "task_alt" },
 ];
 
 export default function DriverPage() {
@@ -146,10 +138,10 @@ export default function DriverPage() {
   };
 
   const renderTripsTab = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-      {/* Hôm nay */}
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", paddingBottom: "6rem" }}>
+      {/* Today */}
       <div>
-        <h3 style={sectionLabel}>Hôm nay</h3>
+        <h3 style={sectionLabel}>Today</h3>
         {loading ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             {[1, 2].map((i) => (
@@ -157,8 +149,8 @@ export default function DriverPage() {
             ))}
           </div>
         ) : getTodayTrips().length === 0 ? (
-          <p style={{ color: T.textTertiary, fontSize: "0.875rem" }}>
-            Không có chuyến xe hôm nay
+          <p style={{ color: T.textMuted, fontSize: "0.875rem" }}>
+            No trips scheduled for today
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
@@ -166,12 +158,12 @@ export default function DriverPage() {
               <div key={trip.id} style={card}>
                 <div style={flexBetween}>
                   <div>
-                    <h4 style={{ margin: "0 0 0.5rem 0", fontSize: T.fsBody }}>
+                    <h4 style={{ margin: "0 0 0.5rem 0", fontSize: T.fsBody, color: T.text }}>
                       {trip.title}
                     </h4>
-                    <div style={{ fontSize: "0.875rem", color: T.textSecondary }}>
+                    <div style={{ fontSize: "0.875rem", color: T.textMuted }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <MapIcon size={14} />
+                        <MIcon symbol="location_on" size={14} />
                         {trip.pickup_location} → {trip.dropoff_location}
                       </div>
                       <div style={{ marginTop: "0.25rem" }}>
@@ -202,7 +194,7 @@ export default function DriverPage() {
                         fontSize: "0.875rem",
                       }}
                     >
-                      Bắt đầu
+                      Start
                     </button>
                   )}
                   {trip.status === "in_progress" && (
@@ -210,7 +202,7 @@ export default function DriverPage() {
                       onClick={() => updateTripStatus(trip.id, "completed")}
                       style={{
                         padding: "0.5rem 1rem",
-                        background: T.success,
+                        background: T.primary,
                         color: "white",
                         border: "none",
                         borderRadius: "0.375rem",
@@ -218,7 +210,7 @@ export default function DriverPage() {
                         fontSize: "0.875rem",
                       }}
                     >
-                      Hoàn thành
+                      Complete
                     </button>
                   )}
                 </div>
@@ -228,9 +220,9 @@ export default function DriverPage() {
         )}
       </div>
 
-      {/* Sắp tới */}
+      {/* Upcoming */}
       <div>
-        <h3 style={sectionLabel}>Sắp tới</h3>
+        <h3 style={sectionLabel}>Upcoming</h3>
         {loading ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             {[1, 2].map((i) => (
@@ -238,8 +230,8 @@ export default function DriverPage() {
             ))}
           </div>
         ) : getFutureTrips().length === 0 ? (
-          <p style={{ color: T.textTertiary, fontSize: "0.875rem" }}>
-            Không có chuyến xe sắp tới
+          <p style={{ color: T.textMuted, fontSize: "0.875rem" }}>
+            No upcoming trips
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
@@ -247,12 +239,12 @@ export default function DriverPage() {
               <div key={trip.id} style={card}>
                 <div style={flexBetween}>
                   <div>
-                    <h4 style={{ margin: "0 0 0.5rem 0", fontSize: T.fsBody }}>
+                    <h4 style={{ margin: "0 0 0.5rem 0", fontSize: T.fsBody, color: T.text }}>
                       {trip.title}
                     </h4>
-                    <div style={{ fontSize: "0.875rem", color: T.textSecondary }}>
+                    <div style={{ fontSize: "0.875rem", color: T.textMuted }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <MapIcon size={14} />
+                        <MIcon symbol="location_on" size={14} />
                         {trip.pickup_location} → {trip.dropoff_location}
                       </div>
                       <div style={{ marginTop: "0.25rem" }}>
@@ -271,12 +263,12 @@ export default function DriverPage() {
   );
 
   const renderKitchenTab = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", paddingBottom: "6rem" }}>
       {/* Summary */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
         <div style={card}>
-          <div style={{ fontSize: "0.875rem", color: T.textSecondary }}>
-            Chi bếp hôm nay
+          <div style={{ fontSize: "0.875rem", color: T.textMuted }}>
+            Today's Spending
           </div>
           <div
             style={{
@@ -292,8 +284,8 @@ export default function DriverPage() {
           </div>
         </div>
         <div style={card}>
-          <div style={{ fontSize: "0.875rem", color: T.textSecondary }}>
-            Chi bếp tháng này
+          <div style={{ fontSize: "0.875rem", color: T.textMuted }}>
+            This Month
           </div>
           <div
             style={{
@@ -318,8 +310,8 @@ export default function DriverPage() {
           ))}
         </div>
       ) : transactions.length === 0 ? (
-        <p style={{ color: T.textTertiary, fontSize: "0.875rem" }}>
-          Chưa có giao dịch
+        <p style={{ color: T.textMuted, fontSize: "0.875rem" }}>
+          No transactions yet
         </p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
@@ -327,20 +319,15 @@ export default function DriverPage() {
             <div key={tx.id} style={card}>
               <div style={flexBetween}>
                 <div>
-                  <h4 style={{ margin: "0 0 0.25rem 0", fontSize: T.fsBody }}>
+                  <h4 style={{ margin: "0 0 0.25rem 0", fontSize: T.fsBody, color: T.text }}>
                     {tx.description}
                   </h4>
-                  <div
-                    style={{
-                      fontSize: "0.75rem",
-                      color: T.textTertiary,
-                    }}
-                  >
+                  <div style={{ fontSize: "0.75rem", color: T.textMuted }}>
                     {fmtRelative(tx.created_at)}
                   </div>
                 </div>
-                <div style={{ fontWeight: 600, color: T.danger }}>
-                  -{fmtVND(tx.amount)}
+                <div style={{ fontWeight: 600, color: T.primary }}>
+                  {fmtVND(tx.amount)}
                 </div>
               </div>
             </div>
@@ -353,7 +340,7 @@ export default function DriverPage() {
         onClick={() => setShowTxForm(!showTxForm)}
         style={{
           position: "fixed",
-          bottom: "2rem",
+          bottom: "5.5rem",
           right: "2rem",
           width: "3.5rem",
           height: "3.5rem",
@@ -362,13 +349,14 @@ export default function DriverPage() {
           color: "white",
           border: "none",
           cursor: "pointer",
-          display: flexCenter.display,
-          justifyContent: flexCenter.justifyContent,
-          alignItems: flexCenter.alignItems,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
           boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          zIndex: 40,
         }}
       >
-        <PlusIcon size={20} />
+        <MIcon symbol="add" size={24} />
       </button>
 
       {showTxForm && (
@@ -377,9 +365,9 @@ export default function DriverPage() {
             position: "fixed",
             inset: 0,
             background: "rgba(0, 0, 0, 0.5)",
-            display: flexCenter.display,
-            justifyContent: flexCenter.justifyContent,
-            alignItems: flexCenter.alignItems,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
             zIndex: 50,
           }}
           onClick={() => setShowTxForm(false)}
@@ -400,20 +388,20 @@ export default function DriverPage() {
   );
 
   const renderTasksTab = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", paddingBottom: "6rem" }}>
       {/* Unfinished count badge */}
       {getUncompletedTasksCount() > 0 && (
         <div
           style={{
             padding: "0.75rem 1rem",
-            background: T.warningLight || "#fff3cd",
-            border: `1px solid ${T.warning || "#ffc107"}`,
+            background: "#fef3c7",
+            border: `1px solid #fcd34d`,
             borderRadius: "0.375rem",
             fontSize: "0.875rem",
-            color: T.textPrimary,
+            color: T.text,
           }}
         >
-          Chưa xử lý: <strong>{getUncompletedTasksCount()}</strong> nhiệm vụ
+          Incomplete: <strong>{getUncompletedTasksCount()}</strong> task{getUncompletedTasksCount() !== 1 ? "s" : ""}
         </div>
       )}
 
@@ -425,8 +413,8 @@ export default function DriverPage() {
           ))}
         </div>
       ) : tasks.length === 0 ? (
-        <p style={{ color: T.textTertiary, fontSize: "0.875rem" }}>
-          Không có nhiệm vụ nào
+        <p style={{ color: T.textMuted, fontSize: "0.875rem" }}>
+          No tasks assigned
         </p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
@@ -443,7 +431,7 @@ export default function DriverPage() {
             >
               <div style={flexBetween}>
                 <div style={{ flex: 1 }}>
-                  <h4 style={{ margin: "0 0 0.5rem 0", fontSize: T.fsBody }}>
+                  <h4 style={{ margin: "0 0 0.5rem 0", fontSize: T.fsBody, color: T.text }}>
                     {task.title}
                   </h4>
                   {task.description && (
@@ -451,7 +439,7 @@ export default function DriverPage() {
                       style={{
                         margin: "0 0 0.5rem 0",
                         fontSize: "0.875rem",
-                        color: T.textSecondary,
+                        color: T.textMuted,
                       }}
                     >
                       {task.description}
@@ -466,8 +454,8 @@ export default function DriverPage() {
                     }}
                   >
                     {task.priority && <StatusBadge status={task.priority} />}
-                    <span style={{ color: T.textTertiary }}>
-                      Hạn: {fmtDate(task.due_date)}
+                    <span style={{ color: T.textMuted }}>
+                      Due: {fmtDate(task.due_date)}
                     </span>
                   </div>
                 </div>
@@ -494,8 +482,60 @@ export default function DriverPage() {
   };
 
   return (
-    <StaffShell role="driver" title="Lái xe" tabs={TABS} activeTab={tab} onTabChange={setTab}>
-      {renderTab()}
+    <StaffShell role="driver">
+      {/* Header */}
+      <div style={{ padding: "1.5rem 1rem", background: T.bg, borderBottom: `1px solid ${T.border}` }}>
+        <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 600, color: T.text }}>
+          Driver Dashboard
+        </h1>
+      </div>
+
+      {/* Content */}
+      <div style={{ maxWidth: "430px", margin: "0 auto", padding: "1rem", flex: 1 }}>
+        {renderTab()}
+      </div>
+
+      {/* Bottom Navigation */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          maxWidth: "430px",
+          margin: "0 auto",
+          background: `linear-gradient(to bottom, rgba(246, 248, 246, 0.95), rgba(246, 248, 246, 0.98))`,
+          backdropFilter: "blur(10px)",
+          borderTop: `1px solid ${T.border}`,
+          display: "flex",
+          height: "4rem",
+          zIndex: 30,
+        }}
+      >
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            style={{
+              flex: 1,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.25rem",
+              color: tab === t.id ? T.primary : T.textMuted,
+              fontSize: "0.75rem",
+              transition: "color 0.2s ease",
+            }}
+          >
+            <MIcon symbol={t.icon} size={24} />
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
     </StaffShell>
   );
 }
