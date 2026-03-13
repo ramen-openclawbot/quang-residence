@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth, getHomeRoute } from "../../lib/auth";
+import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
 import { T } from "../../lib/tokens";
 
@@ -12,6 +13,26 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { user, profile, signInWithEmail } = useAuth();
   const router = useRouter();
+
+  // Consume Supabase magic-link tokens from URL hash and create a session.
+  useEffect(() => {
+    const hash = window.location.hash?.substring(1);
+    if (!hash) return;
+
+    const params = new URLSearchParams(hash);
+    const access_token = params.get("access_token");
+    const refresh_token = params.get("refresh_token");
+
+    if (access_token && refresh_token) {
+      supabase.auth.setSession({ access_token, refresh_token }).then(({ error }) => {
+        if (error) {
+          setError("Không thể tạo session từ magic link.");
+          return;
+        }
+        window.history.replaceState({}, document.title, "/login");
+      });
+    }
+  }, []);
 
   // Redirect if already logged in
   useEffect(() => {
