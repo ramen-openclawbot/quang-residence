@@ -86,7 +86,7 @@ export default function OwnerPage() {
         supabase.from("tasks").select("*, profiles!assigned_to(full_name)").order("created_at", { ascending: false }),
         supabase.from("funds").select("*").order("id"),
         supabase.from("home_settings").select("*"),
-        supabase.from("profiles").select("id, full_name, role, email, created_at").neq("role", "owner").order("created_at"),
+        supabase.from("profiles").select("id, full_name, role, created_at").neq("role", "owner").order("created_at"),
       ]);
 
       setTransactions(txnRes.data || []);

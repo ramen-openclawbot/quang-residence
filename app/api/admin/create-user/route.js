@@ -26,10 +26,13 @@ export async function POST(request) {
       return NextResponse.json({ error: `role must be one of: ${VALID_ROLES.join(", ")}` }, { status: 400 });
     }
 
-    // Invite user by email (sends magic link email)
-    const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      data: { full_name, role },
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || "https://quang-residence.vercel.app"}/login`,
+    // Create a real auth user immediately so magic-link login can find it.
+    // This app uses signInWithOtp(... shouldCreateUser: false), so invite-only
+    // users can fail to log in cleanly until they complete the invite flow.
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      user_metadata: { full_name, role },
     });
 
     if (error) {
@@ -37,15 +40,19 @@ export async function POST(request) {
     }
 
     // Upsert profile (trigger handles creation, but upsert ensures role is set)
-    await supabaseAdmin.from("profiles").upsert({
+    const { error: profileError } = await supabaseAdmin.from("profiles").upsert({
       id: data.user.id,
       full_name,
       role,
     }, { onConflict: "id" });
 
+    if (profileError) {
+      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Đã gửi email mời đến ${email}. User có thể đăng nhập ngay sau khi nhấn link.`,
+      message: `Đã tạo user ${email}. User có thể đăng nhập bằng magic link ngay bây giờ.`,
       user_id: data.user.id,
     });
   } catch (err) {
