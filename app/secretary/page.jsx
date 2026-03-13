@@ -1,53 +1,97 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import StaffShell, { MIcon } from "../../components/shared/StaffShell";
-import { supabase } from "../../lib/supabase";
-import { fmtVND, fmtDate, fmtRelative } from "../../lib/format";
-import StatusBadge from "../../components/shared/StatusBadge";
-import Skeleton from "../../components/shared/Skeleton";
-import TransactionForm from "../../components/TransactionForm";
 import { useAuth } from "../../lib/auth";
+import { supabase } from "../../lib/supabase";
+import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
+import TransactionForm from "../../components/TransactionForm";
 
-const DESIGN_TOKENS = {
+const T = {
   primary: "#56c91d",
   bg: "#f6f8f6",
-  text: "#1a2e1a",
-  textMuted: "#94a3b8",
-  textSec: "#4a5544",
-  border: "#e2e8e2",
   card: "#ffffff",
-  font: "'Manrope', sans-serif",
+  text: "#1a2e1a",
+  textMuted: "#7c8b7a",
+  border: "#e6ede4",
   success: "#10b981",
   danger: "#ef4444",
-};
-
-const CARD_STYLE = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #56c91d0d",
-  borderRadius: 12,
-  padding: 20,
-  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-};
-
-const SECTION_LABEL_STYLE = {
-  fontSize: 12,
-  fontWeight: 700,
-  textTransform: "uppercase",
-  letterSpacing: "0.12em",
-  color: "#94a3b8",
+  amber: "#f59e0b",
 };
 
 const TABS = [
-  { id: "funds", label: "Funds", icon: "account_balance" },
-  { id: "tasks", label: "Tasks", icon: "task_alt" },
-  { id: "transactions", label: "Transactions", icon: "receipt_long" },
-  { id: "calendar", label: "Calendar", icon: "calendar_month" },
+  { id: "home", label: "Home", icon: "home" },
+  { id: "transactions", label: "Giao dịch", icon: "receipt_long" },
+  { id: "tasks", label: "Việc", icon: "task_alt" },
+  { id: "calendar", label: "Lịch", icon: "calendar_month" },
 ];
 
+const cardStyle = {
+  background: T.card,
+  border: `1px solid ${T.border}`,
+  borderRadius: 18,
+  boxShadow: "0 8px 30px rgba(16,24,16,0.04)",
+};
+
+function Avatar({ name }) {
+  const letter = (name || "S").trim().charAt(0).toUpperCase();
+  return (
+    <div style={{
+      width: 44,
+      height: 44,
+      borderRadius: "50%",
+      background: "linear-gradient(135deg, #7ed957, #56c91d)",
+      color: "white",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 18,
+      fontWeight: 800,
+      boxShadow: "0 8px 20px rgba(86,201,29,0.28)",
+      flexShrink: 0,
+    }}>{letter}</div>
+  );
+}
+
+function QuickAction({ icon, label, sub, onClick, primary }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        ...cardStyle,
+        width: "100%",
+        padding: 16,
+        textAlign: "left",
+        cursor: "pointer",
+        background: primary ? "linear-gradient(135deg,#69d834,#56c91d)" : T.card,
+        color: primary ? "white" : T.text,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{
+          width: 42,
+          height: 42,
+          borderRadius: 12,
+          background: primary ? "rgba(255,255,255,0.18)" : "#eef8e8",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}>
+          <MIcon name={icon} size={22} color={primary ? "white" : T.primary} />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{label}</div>
+          <div style={{ fontSize: 12, color: primary ? "rgba(255,255,255,0.85)" : T.textMuted }}>{sub}</div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
 export default function SecretaryPage() {
-  const { profile } = useAuth();
-  const [tab, setTab] = useState("funds");
+  const { profile, signOut } = useAuth();
+  const [tab, setTab] = useState("home");
   const [loading, setLoading] = useState(true);
   const [showTxForm, setShowTxForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -55,896 +99,276 @@ export default function SecretaryPage() {
   const [funds, setFunds] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [tasks, setTasks] = useState([]);
-  const [categories, setCategories] = useState([]);
-
-  // New task form state
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
     priority: "medium",
     due_date: "",
-    assigned_to: "",
   });
 
-  // Load all data on mount
   useEffect(() => {
     if (!profile?.id) return;
     loadData();
   }, [profile?.id]);
 
-  const loadData = async () => {
+  async function loadData() {
     try {
       setLoading(true);
-
-      // Load funds
-      const { data: fundsData } = await supabase
-        .from("funds")
-        .select("*")
-        .order("created_at", { ascending: false });
-      setFunds(fundsData || []);
-
-      // Load transactions (last 50)
-      const { data: txData } = await supabase
-        .from("transactions")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50);
-      setTransactions(txData || []);
-
-      // Load tasks
-      const { data: tasksData } = await supabase
-        .from("tasks")
-        .select("*")
-        .order("due_date", { ascending: true });
-      setTasks(tasksData || []);
-
-      // Load categories
-      const { data: catsData } = await supabase
-        .from("categories")
-        .select("*");
-      setCategories(catsData || []);
-    } catch (error) {
-      console.error("Error loading data:", error);
+      const [fundsRes, txRes, tasksRes] = await Promise.all([
+        supabase.from("funds").select("*").order("id"),
+        supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(50),
+        supabase.from("tasks").select("*").order("due_date", { ascending: true }),
+      ]);
+      setFunds(fundsRes.data || []);
+      setTransactions(txRes.data || []);
+      setTasks(tasksRes.data || []);
+    } catch (err) {
+      console.error("Secretary loadData error:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleCreateTask = async (e) => {
+  async function handleCreateTask(e) {
     e.preventDefault();
     if (!newTask.title.trim() || !profile?.id) return;
-
-    try {
-      const { error } = await supabase.from("tasks").insert({
-        title: newTask.title,
-        description: newTask.description,
-        priority: newTask.priority,
-        due_date: newTask.due_date || null,
-        assigned_to: newTask.assigned_to || null,
-        created_by: profile.id,
-        status: "pending",
-      });
-
-      if (error) throw error;
-
-      setNewTask({
-        title: "",
-        description: "",
-        priority: "medium",
-        due_date: "",
-        assigned_to: "",
-      });
-      setShowTaskForm(false);
-      loadData();
-    } catch (error) {
-      console.error("Error creating task:", error);
+    const { error } = await supabase.from("tasks").insert({
+      title: newTask.title,
+      description: newTask.description || null,
+      priority: newTask.priority,
+      due_date: newTask.due_date || null,
+      created_by: profile.id,
+      status: "pending",
+    });
+    if (error) {
+      console.error(error);
+      return;
     }
-  };
-
-  const handleToggleTaskStatus = async (taskId, currentStatus) => {
-    const statusCycle = { pending: "in_progress", in_progress: "done", done: "pending" };
-    const nextStatus = statusCycle[currentStatus] || "pending";
-
-    try {
-      const { error } = await supabase
-        .from("tasks")
-        .update({ status: nextStatus })
-        .eq("id", taskId);
-
-      if (error) throw error;
-      loadData();
-    } catch (error) {
-      console.error("Error updating task:", error);
-    }
-  };
-
-  const handleTransactionCreated = () => {
-    setShowTxForm(false);
+    setNewTask({ title: "", description: "", priority: "medium", due_date: "" });
+    setShowTaskForm(false);
     loadData();
-  };
+  }
 
-  // Filter transactions by type
-  const [txFilter, setTxFilter] = useState("all");
-  const filteredTransactions = transactions.filter((tx) => {
-    if (txFilter === "income") return tx.amount > 0;
-    if (txFilter === "expense") return tx.amount < 0;
-    return true;
-  });
+  async function toggleTaskStatus(task) {
+    const next = task.status === "pending" ? "in_progress" : task.status === "in_progress" ? "done" : "pending";
+    const { error } = await supabase.from("tasks").update({ status: next }).eq("id", task.id);
+    if (!error) loadData();
+  }
 
-  // Get today's tasks
-  const today = new Date().toISOString().split("T")[0];
-  const todayTasks = tasks.filter((t) => t.due_date && t.due_date.startsWith(today));
-
-  // Get upcoming calendar items
-  const upcomingItems = [
-    ...tasks.map((t) => ({
-      date: t.due_date,
-      title: t.title,
-      type: "task",
-      obj: t,
-    })),
-  ].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  const totalBalance = useMemo(() => funds.reduce((s, f) => s + Number(f.current_balance || 0), 0), [funds]);
+  const pendingTx = useMemo(() => transactions.filter((t) => t.status === "pending"), [transactions]);
+  const today = new Date().toISOString().slice(0, 10);
+  const todayTasks = useMemo(() => tasks.filter((t) => (t.due_date || "").startsWith(today)), [tasks, today]);
+  const overdueTasks = useMemo(() => tasks.filter((t) => t.status !== "done" && t.due_date && t.due_date.slice(0, 10) < today), [tasks, today]);
+  const recentTransactions = useMemo(() => transactions.slice(0, 8), [transactions]);
+  const upcomingItems = useMemo(() => tasks.filter((t) => t.due_date).slice().sort((a, b) => (a.due_date || "").localeCompare(b.due_date || "")), [tasks]);
 
   return (
     <StaffShell role="secretary">
-      <div style={{ maxWidth: 430, margin: "0 auto", paddingBottom: 100, backgroundColor: DESIGN_TOKENS.bg, minHeight: "100vh", fontFamily: DESIGN_TOKENS.font }}>
-        {/* Header */}
-        <div style={{
-          paddingTop: 20,
-          paddingBottom: 20,
-          paddingLeft: 20,
-          paddingRight: 20,
-          borderBottom: `1px solid ${DESIGN_TOKENS.border}`,
-          backgroundColor: DESIGN_TOKENS.card,
-        }}>
-          <h1 style={{
-            fontSize: 28,
-            fontWeight: 700,
-            color: DESIGN_TOKENS.text,
-            margin: 0,
-            fontFamily: DESIGN_TOKENS.font,
-          }}>Secretary</h1>
-        </div>
-
-        {/* Content Container */}
-        <div style={{ paddingLeft: 20, paddingRight: 20, paddingTop: 24, paddingBottom: 24 }}>
-          {loading && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} height={140} />
-              ))}
-            </div>
-          )}
-
-          {/* FUNDS TAB */}
-          {tab === "funds" && !loading && (
-            <div>
-              {/* Fund cards grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 32 }}>
-                {funds.map((fund) => {
-                  const usage = fund.budget_monthly ? (fund.current_balance / fund.budget_monthly) * 100 : 0;
-                  const isOverBudget = fund.current_balance > (fund.budget_monthly || 0);
-                  return (
-                    <div key={fund.id} style={{ ...CARD_STYLE, padding: 16 }}>
-                      <div style={{
-                        fontSize: 13,
-                        color: DESIGN_TOKENS.textMuted,
-                        marginBottom: 12,
-                        fontWeight: 500,
-                      }}>
-                        {fund.name}
-                      </div>
-                      <div style={{
-                        fontSize: 20,
-                        fontWeight: 700,
-                        marginBottom: 12,
-                        color: DESIGN_TOKENS.text,
-                      }}>
-                        {fmtVND(fund.current_balance)}
-                      </div>
-                      <div style={{
-                        fontSize: 12,
-                        color: DESIGN_TOKENS.textSec,
-                        marginBottom: 12,
-                      }}>
-                        Budget: {fmtVND(fund.budget_monthly || 0)}
-                      </div>
-                      <div style={{
-                        height: 6,
-                        backgroundColor: "#e5e7eb",
-                        borderRadius: 3,
-                        overflow: "hidden",
-                      }}>
-                        <div
-                          style={{
-                            height: "100%",
-                            width: `${Math.min(usage, 100)}%`,
-                            backgroundColor: isOverBudget ? DESIGN_TOKENS.danger : DESIGN_TOKENS.primary,
-                            transition: "width 0.3s",
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+      <div style={{ background: T.bg, minHeight: "100vh", paddingBottom: 100 }}>
+        <div style={{ padding: "22px 18px 18px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Avatar name={profile?.full_name || "Secretary"} />
+              <div>
+                <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Secretary Dashboard</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Thư ký"}</div>
               </div>
+            </div>
+            <button onClick={signOut} style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}>
+              <MIcon name="logout" size={22} color={T.textMuted} />
+            </button>
+          </div>
 
-              {/* Recent transactions */}
-              <div style={{ ...SECTION_LABEL_STYLE, marginBottom: 16 }}>Recent Transactions</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {transactions.slice(0, 8).map((tx) => (
-                  <div key={tx.id} style={{
-                    ...CARD_STYLE,
-                    padding: 16,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}>
-                    <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      flex: 1,
-                    }}>
-                      <div style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 8,
-                        backgroundColor: DESIGN_TOKENS.bg,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}>
-                        <MIcon style={{ fontSize: 20, color: DESIGN_TOKENS.primary }}>receipt</MIcon>
+          {loading ? (
+            <div style={{ fontSize: 13, color: T.textMuted }}>Đang tải dữ liệu...</div>
+          ) : (
+            <>
+              {tab === "home" && (
+                <div>
+                  <div style={{ ...cardStyle, padding: 18, marginBottom: 16, background: "linear-gradient(135deg,#1f331b,#294a21)", color: "white" }}>
+                    <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>Tổng quan hôm nay</div>
+                    <div style={{ fontSize: 28, fontWeight: 800, marginBottom: 16 }}>{fmtVND(totalBalance)}</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 11, opacity: 0.75 }}>Chờ duyệt</div>
+                        <div style={{ fontSize: 18, fontWeight: 700 }}>{pendingTx.length}</div>
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{
-                          fontSize: 14,
-                          fontWeight: 500,
-                          color: DESIGN_TOKENS.text,
-                        }}>
-                          {tx.description}
-                        </div>
-                        <div style={{
-                          fontSize: 12,
-                          color: DESIGN_TOKENS.textMuted,
-                          marginTop: 2,
-                        }}>
-                          {fmtRelative(tx.created_at)}
-                        </div>
+                      <div>
+                        <div style={{ fontSize: 11, opacity: 0.75 }}>Việc hôm nay</div>
+                        <div style={{ fontSize: 18, fontWeight: 700 }}>{todayTasks.length}</div>
                       </div>
-                    </div>
-                    <div style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: tx.amount > 0 ? DESIGN_TOKENS.success : DESIGN_TOKENS.danger,
-                    }}>
-                      {tx.amount > 0 ? "+" : ""}{fmtVND(tx.amount)}
+                      <div>
+                        <div style={{ fontSize: 11, opacity: 0.75 }}>Quá hạn</div>
+                        <div style={{ fontSize: 18, fontWeight: 700 }}>{overdueTasks.length}</div>
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
 
-          {/* TASKS TAB */}
-          {tab === "tasks" && !loading && (
-            <div>
-              {/* Today's tasks */}
-              <div style={{ ...SECTION_LABEL_STYLE, marginBottom: 16 }}>Today's Tasks</div>
-              {todayTasks.length === 0 ? (
-                <div style={{
-                  padding: 32,
-                  color: DESIGN_TOKENS.textMuted,
-                  textAlign: "center",
-                  marginBottom: 32,
-                }}>
-                  <MIcon style={{ fontSize: 32, display: "block", marginBottom: 8, opacity: 0.5 }}>inbox</MIcon>
-                  No tasks today
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 32 }}>
-                  {todayTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      onClick={() => handleToggleTaskStatus(task.id, task.status)}
-                      style={{
-                        ...CARD_STYLE,
-                        padding: 16,
-                        cursor: "pointer",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        gap: 12,
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div style={{
-                          fontSize: 14,
-                          fontWeight: 600,
-                          color: DESIGN_TOKENS.text,
-                        }}>
-                          {task.title}
-                        </div>
-                        {task.description && (
-                          <div style={{
-                            fontSize: 13,
-                            color: DESIGN_TOKENS.textMuted,
-                            marginTop: 4,
-                          }}>
-                            {task.description}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
+                    <QuickAction icon="upload_file" label="Upload bank slip" sub="Quét biên lai & tạo giao dịch" onClick={() => setShowTxForm(true)} primary />
+                    <QuickAction icon="task_alt" label="Tạo công việc" sub="Giao việc nhanh trong ngày" onClick={() => setShowTaskForm(true)} />
+                  </div>
+
+                  <div style={{ ...cardStyle, padding: 16, marginBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Các quỹ</div>
+                      <button onClick={() => setTab("transactions")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Xem giao dịch</button>
+                    </div>
+                    <div style={{ display: "grid", gap: 10 }}>
+                      {funds.slice(0, 4).map((fund) => (
+                        <div key={fund.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{fund.name}</div>
+                            <div style={{ fontSize: 12, color: T.textMuted }}>Budget: {fmtVND(fund.budget_monthly || 0)}</div>
                           </div>
-                        )}
-                      </div>
-                      <div style={{
-                        padding: "6px 10px",
-                        backgroundColor: task.status === "done" ? "#d1fae5" : "#fef3c7",
-                        color: task.status === "done" ? "#065f46" : "#92400e",
-                        borderRadius: 6,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        whiteSpace: "nowrap",
-                      }}>
-                        {task.status === "pending" ? "Pending" : task.status === "in_progress" ? "In Progress" : "Done"}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* All tasks */}
-              <div style={{ ...SECTION_LABEL_STYLE, marginBottom: 16 }}>All Tasks</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 80 }}>
-                {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    onClick={() => handleToggleTaskStatus(task.id, task.status)}
-                    style={{
-                      ...CARD_STYLE,
-                      padding: 16,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <div style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      marginBottom: 8,
-                      gap: 12,
-                    }}>
-                      <div style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: DESIGN_TOKENS.text,
-                      }}>
-                        {task.title}
-                      </div>
-                      <div style={{
-                        padding: "6px 10px",
-                        backgroundColor: task.status === "done" ? "#d1fae5" : "#fef3c7",
-                        color: task.status === "done" ? "#065f46" : "#92400e",
-                        borderRadius: 6,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        whiteSpace: "nowrap",
-                      }}>
-                        {task.status === "pending" ? "Pending" : task.status === "in_progress" ? "In Progress" : "Done"}
-                      </div>
-                    </div>
-                    {task.description && (
-                      <div style={{
-                        fontSize: 13,
-                        color: DESIGN_TOKENS.textMuted,
-                        marginBottom: 8,
-                      }}>
-                        {task.description}
-                      </div>
-                    )}
-                    <div style={{
-                      fontSize: 12,
-                      color: DESIGN_TOKENS.textSec,
-                      display: "flex",
-                      gap: 16,
-                      flexWrap: "wrap",
-                    }}>
-                      {task.due_date && (
-                        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                          <MIcon style={{ fontSize: 14 }}>event</MIcon>
-                          {fmtDate(task.due_date)}
-                        </span>
-                      )}
-                      {task.assigned_to && (
-                        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                          <MIcon style={{ fontSize: 14 }}>person</MIcon>
-                          {task.assigned_to}
-                        </span>
-                      )}
+                          <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{fmtVND(fund.current_balance || 0)}</div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
 
-              {/* Floating action button */}
-              {!showTaskForm && (
-                <button
-                  onClick={() => setShowTaskForm(true)}
-                  style={{
-                    position: "fixed",
-                    bottom: 90,
-                    right: 20,
-                    width: 56,
-                    height: 56,
-                    borderRadius: 12,
-                    backgroundColor: DESIGN_TOKENS.primary,
-                    border: "none",
-                    color: "white",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 24,
-                    boxShadow: "0 8px 24px rgba(86, 201, 29, 0.3)",
-                  }}
-                >
-                  <MIcon style={{ fontSize: 28 }}>add</MIcon>
-                </button>
-              )}
-
-              {/* Task form modal */}
-              {showTaskForm && (
-                <div style={{
-                  position: "fixed",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: "rgba(0,0,0,0.4)",
-                  display: "flex",
-                  alignItems: "flex-end",
-                  zIndex: 1000,
-                }}>
-                  <div style={{
-                    width: "100%",
-                    maxWidth: 430,
-                    margin: "0 auto",
-                    backgroundColor: DESIGN_TOKENS.card,
-                    borderRadius: "16px 16px 0 0",
-                    padding: 20,
-                    maxHeight: "90vh",
-                    overflowY: "auto",
-                  }}>
-                    <div style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 20,
-                    }}>
-                      <h2 style={{
-                        fontSize: 18,
-                        fontWeight: 700,
-                        color: DESIGN_TOKENS.text,
-                        margin: 0,
-                      }}>Create Task</h2>
-                      <button
-                        onClick={() => setShowTaskForm(false)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          fontSize: 24,
-                          cursor: "pointer",
-                          color: DESIGN_TOKENS.textMuted,
-                          padding: 0,
-                        }}
-                      >
-                        <MIcon>close</MIcon>
-                      </button>
+                  <div style={{ ...cardStyle, padding: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Giao dịch gần đây</div>
+                      <button onClick={() => setTab("transactions")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở tab</button>
                     </div>
-                    <form onSubmit={handleCreateTask}>
-                      <input
-                        type="text"
-                        placeholder="Task title"
-                        value={newTask.title}
-                        onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                        style={{
-                          width: "100%",
-                          padding: "12px 16px",
-                          marginBottom: 16,
-                          border: `1px solid ${DESIGN_TOKENS.border}`,
-                          borderRadius: 8,
-                          fontSize: 14,
-                          fontFamily: DESIGN_TOKENS.font,
-                          boxSizing: "border-box",
-                        }}
-                        required
-                      />
-                      <textarea
-                        placeholder="Description (optional)"
-                        value={newTask.description}
-                        onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                        style={{
-                          width: "100%",
-                          padding: "12px 16px",
-                          marginBottom: 16,
-                          border: `1px solid ${DESIGN_TOKENS.border}`,
-                          borderRadius: 8,
-                          fontSize: 14,
-                          fontFamily: DESIGN_TOKENS.font,
-                          minHeight: 80,
-                          resize: "none",
-                          boxSizing: "border-box",
-                        }}
-                      />
-                      <select
-                        value={newTask.priority}
-                        onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
-                        style={{
-                          width: "100%",
-                          padding: "12px 16px",
-                          marginBottom: 16,
-                          border: `1px solid ${DESIGN_TOKENS.border}`,
-                          borderRadius: 8,
-                          fontSize: 14,
-                          fontFamily: DESIGN_TOKENS.font,
-                          boxSizing: "border-box",
-                        }}
-                      >
-                        <option value="low">Low Priority</option>
-                        <option value="medium">Medium Priority</option>
-                        <option value="high">High Priority</option>
-                      </select>
-                      <input
-                        type="date"
-                        value={newTask.due_date}
-                        onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
-                        style={{
-                          width: "100%",
-                          padding: "12px 16px",
-                          marginBottom: 16,
-                          border: `1px solid ${DESIGN_TOKENS.border}`,
-                          borderRadius: 8,
-                          fontSize: 14,
-                          fontFamily: DESIGN_TOKENS.font,
-                          boxSizing: "border-box",
-                        }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Assigned to (optional)"
-                        value={newTask.assigned_to}
-                        onChange={(e) => setNewTask({ ...newTask, assigned_to: e.target.value })}
-                        style={{
-                          width: "100%",
-                          padding: "12px 16px",
-                          marginBottom: 20,
-                          border: `1px solid ${DESIGN_TOKENS.border}`,
-                          borderRadius: 8,
-                          fontSize: 14,
-                          fontFamily: DESIGN_TOKENS.font,
-                          boxSizing: "border-box",
-                        }}
-                      />
-                      <div style={{ display: "flex", gap: 12 }}>
-                        <button
-                          type="submit"
-                          style={{
-                            flex: 1,
-                            padding: "12px 16px",
-                            backgroundColor: DESIGN_TOKENS.primary,
-                            color: "white",
-                            border: "none",
-                            borderRadius: 8,
-                            cursor: "pointer",
-                            fontWeight: 600,
-                            fontSize: 14,
-                            fontFamily: DESIGN_TOKENS.font,
-                          }}
-                        >
-                          Create
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowTaskForm(false)}
-                          style={{
-                            flex: 1,
-                            padding: "12px 16px",
-                            backgroundColor: DESIGN_TOKENS.bg,
-                            color: DESIGN_TOKENS.text,
-                            border: `1px solid ${DESIGN_TOKENS.border}`,
-                            borderRadius: 8,
-                            cursor: "pointer",
-                            fontWeight: 600,
-                            fontSize: 14,
-                            fontFamily: DESIGN_TOKENS.font,
-                          }}
-                        >
-                          Cancel
-                        </button>
+                    {recentTransactions.length === 0 ? (
+                      <div style={{ fontSize: 13, color: T.textMuted }}>Chưa có giao dịch nào.</div>
+                    ) : recentTransactions.slice(0, 5).map((tx) => (
+                      <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tx.description || tx.recipient_name || "Giao dịch"}</div>
+                          <div style={{ fontSize: 12, color: T.textMuted }}>{fmtRelative(tx.created_at)}</div>
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: tx.type === "income" ? T.success : T.danger }}>{tx.type === "income" ? "+" : "-"}{fmtVND(Math.abs(Number(tx.amount || 0)))}</div>
                       </div>
-                    </form>
+                    ))}
                   </div>
                 </div>
               )}
-            </div>
-          )}
 
-          {/* TRANSACTIONS TAB */}
-          {tab === "transactions" && !loading && (
-            <div>
-              {/* Filter buttons */}
-              <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-                {["all", "income", "expense"].map((filter) => (
-                  <button
-                    key={filter}
-                    onClick={() => setTxFilter(filter)}
-                    style={{
-                      padding: "8px 14px",
-                      backgroundColor: txFilter === filter ? DESIGN_TOKENS.primary : DESIGN_TOKENS.bg,
-                      color: txFilter === filter ? "white" : DESIGN_TOKENS.text,
-                      border: txFilter === filter ? "none" : `1px solid ${DESIGN_TOKENS.border}`,
-                      borderRadius: 8,
-                      cursor: "pointer",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    {filter === "all" && "All"}
-                    {filter === "income" && "Income"}
-                    {filter === "expense" && "Expense"}
-                  </button>
-                ))}
-              </div>
-
-              {/* Transaction list */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 80 }}>
-                {filteredTransactions.length === 0 ? (
-                  <div style={{
-                    padding: 32,
-                    color: DESIGN_TOKENS.textMuted,
-                    textAlign: "center",
-                  }}>
-                    <MIcon style={{ fontSize: 32, display: "block", marginBottom: 8, opacity: 0.5 }}>receipt_long</MIcon>
-                    No transactions
+              {tab === "transactions" && (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Transactions</div>
+                    <button onClick={() => setShowTxForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                      + Upload slip
+                    </button>
                   </div>
-                ) : (
-                  filteredTransactions.map((tx) => (
-                    <div key={tx.id} style={{ ...CARD_STYLE, padding: 16 }}>
-                      <div style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        marginBottom: 12,
-                      }}>
-                        <div style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                          flex: 1,
-                        }}>
-                          <div style={{
-                            width: 44,
-                            height: 44,
-                            borderRadius: 8,
-                            backgroundColor: DESIGN_TOKENS.bg,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}>
-                            <MIcon style={{ fontSize: 20, color: DESIGN_TOKENS.primary }}>attach_money</MIcon>
+                  {transactions.length === 0 ? (
+                    <div style={{ ...cardStyle, padding: 24, textAlign: "center", color: T.textMuted }}>
+                      Chưa có giao dịch. Bấm <strong>Upload slip</strong> để tạo giao dịch đầu tiên.
+                    </div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {transactions.map((tx) => (
+                        <div key={tx.id} style={{ ...cardStyle, padding: 16 }}>
+                          <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 12 }}>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{tx.description || tx.recipient_name || "Giao dịch"}</div>
+                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(tx.transaction_date || tx.created_at)}{tx.bank_name ? ` • ${tx.bank_name}` : ""}</div>
+                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Trạng thái: {tx.status || "pending"}</div>
+                            </div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: tx.type === "income" ? T.success : T.danger }}>{tx.type === "income" ? "+" : "-"}{fmtVND(Math.abs(Number(tx.amount || 0)))}</div>
                           </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{
-                              fontSize: 14,
-                              fontWeight: 600,
-                              color: DESIGN_TOKENS.text,
-                            }}>
-                              {tx.description}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {tab === "tasks" && (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Tasks</div>
+                    <button onClick={() => setShowTaskForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                      + Tạo việc
+                    </button>
+                  </div>
+                  {tasks.length === 0 ? (
+                    <div style={{ ...cardStyle, padding: 24, textAlign: "center", color: T.textMuted }}>Chưa có task nào.</div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {tasks.map((task) => (
+                        <button key={task.id} onClick={() => toggleTaskStatus(task)} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
+                          <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 12 }}>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
+                              {task.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description}</div>}
+                              {task.due_date && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>Hạn: {fmtDate(task.due_date)}</div>}
                             </div>
                             <div style={{
-                              fontSize: 12,
-                              color: DESIGN_TOKENS.textMuted,
-                              marginTop: 2,
-                            }}>
-                              {tx.recipient_name && <span>{tx.recipient_name}</span>}
-                              {tx.bank_name && <span> • {tx.bank_name}</span>}
-                            </div>
+                              fontSize: 11,
+                              fontWeight: 800,
+                              color: task.status === "done" ? T.success : task.status === "in_progress" ? T.amber : T.textMuted,
+                              background: task.status === "done" ? "#e9fff5" : task.status === "in_progress" ? "#fff7e6" : "#f2f4f1",
+                              padding: "6px 10px",
+                              borderRadius: 999,
+                              whiteSpace: "nowrap",
+                            }}>{task.status}</div>
                           </div>
-                        </div>
-                        <div style={{
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: tx.amount > 0 ? DESIGN_TOKENS.success : DESIGN_TOKENS.danger,
-                        }}>
-                          {tx.amount > 0 ? "+" : ""}{fmtVND(tx.amount)}
-                        </div>
-                      </div>
-                      <div style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        paddingTop: 12,
-                        borderTop: `1px solid ${DESIGN_TOKENS.border}`,
-                      }}>
-                        <div style={{
-                          fontSize: 12,
-                          color: DESIGN_TOKENS.textSec,
-                        }}>
-                          {fmtDate(tx.transaction_date || tx.created_at)}
-                        </div>
-                        <div style={{
-                          padding: "4px 10px",
-                          backgroundColor: tx.status === "completed" ? "#d1fae5" : "#fee2e2",
-                          color: tx.status === "completed" ? "#065f46" : "#7f1d1d",
-                          borderRadius: 6,
-                          fontSize: 11,
-                          fontWeight: 600,
-                        }}>
-                          {tx.status === "completed" ? "Completed" : "Pending"}
-                        </div>
-                      </div>
+                        </button>
+                      ))}
                     </div>
-                  ))
-                )}
-              </div>
-
-              {/* Floating action button */}
-              {!showTxForm && (
-                <button
-                  onClick={() => setShowTxForm(true)}
-                  style={{
-                    position: "fixed",
-                    bottom: 90,
-                    right: 20,
-                    width: 56,
-                    height: 56,
-                    borderRadius: 12,
-                    backgroundColor: DESIGN_TOKENS.primary,
-                    border: "none",
-                    color: "white",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 24,
-                    boxShadow: "0 8px 24px rgba(86, 201, 29, 0.3)",
-                  }}
-                >
-                  <MIcon style={{ fontSize: 28 }}>add</MIcon>
-                </button>
-              )}
-
-              {/* Transaction form modal */}
-              {showTxForm && (
-                <div style={{
-                  position: "fixed",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: "rgba(0,0,0,0.4)",
-                  display: "flex",
-                  alignItems: "flex-end",
-                  zIndex: 1000,
-                }}>
-                  <div style={{
-                    width: "100%",
-                    maxWidth: 430,
-                    margin: "0 auto",
-                    backgroundColor: DESIGN_TOKENS.card,
-                    borderRadius: "16px 16px 0 0",
-                    padding: 20,
-                    maxHeight: "90vh",
-                    overflowY: "auto",
-                  }}>
-                    <div style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 20,
-                    }}>
-                      <h2 style={{
-                        fontSize: 18,
-                        fontWeight: 700,
-                        color: DESIGN_TOKENS.text,
-                        margin: 0,
-                      }}>Add Transaction</h2>
-                      <button
-                        onClick={() => setShowTxForm(false)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          fontSize: 24,
-                          cursor: "pointer",
-                          color: DESIGN_TOKENS.textMuted,
-                          padding: 0,
-                        }}
-                      >
-                        <MIcon>close</MIcon>
-                      </button>
-                    </div>
-                    <TransactionForm onSuccess={handleTransactionCreated} />
-                  </div>
+                  )}
                 </div>
               )}
-            </div>
-          )}
 
-          {/* CALENDAR TAB */}
-          {tab === "calendar" && !loading && (
-            <div>
-              {/* Month header */}
-              <div style={{
-                fontSize: 18,
-                fontWeight: 700,
-                marginBottom: 24,
-                textAlign: "center",
-                color: DESIGN_TOKENS.text,
-              }}>
-                {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-              </div>
-
-              {/* Upcoming events */}
-              <div style={{ ...SECTION_LABEL_STYLE, marginBottom: 16 }}>Upcoming Events</div>
-              {upcomingItems.length === 0 ? (
-                <div style={{
-                  padding: 32,
-                  color: DESIGN_TOKENS.textMuted,
-                  textAlign: "center",
-                }}>
-                  <MIcon style={{ fontSize: 32, display: "block", marginBottom: 8, opacity: 0.5 }}>calendar_month</MIcon>
-                  No upcoming events
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 80 }}>
-                  {upcomingItems.map((item, idx) => (
-                    <div key={idx} style={{ ...CARD_STYLE, padding: 16 }}>
-                      <div style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        gap: 12,
-                      }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{
-                            fontSize: 14,
-                            fontWeight: 600,
-                            color: DESIGN_TOKENS.text,
-                          }}>
-                            {item.title}
-                          </div>
-                          <div style={{
-                            fontSize: 13,
-                            color: DESIGN_TOKENS.textMuted,
-                            marginTop: 4,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                          }}>
-                            <MIcon style={{ fontSize: 14 }}>event</MIcon>
-                            {item.date && fmtDate(item.date)}
-                          </div>
+              {tab === "calendar" && (
+                <div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 14 }}>Upcoming</div>
+                  {upcomingItems.length === 0 ? (
+                    <div style={{ ...cardStyle, padding: 24, textAlign: "center", color: T.textMuted }}>Chưa có lịch / task sắp tới.</div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {upcomingItems.map((item) => (
+                        <div key={item.id} style={{ ...cardStyle, padding: 16 }}>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
+                          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{fmtDate(item.due_date)}</div>
                         </div>
-                        <div style={{
-                          padding: "6px 12px",
-                          backgroundColor: DESIGN_TOKENS.primary + "15",
-                          color: DESIGN_TOKENS.primary,
-                          borderRadius: 6,
-                          fontSize: 11,
-                          fontWeight: 600,
-                          whiteSpace: "nowrap",
-                        }}>
-                          {item.type === "task" ? "Task" : "Event"}
-                        </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
-            </div>
+            </>
           )}
         </div>
 
-        {/* Fixed bottom navigation */}
+        {showTxForm && <TransactionForm onClose={() => setShowTxForm(false)} onSuccess={() => { setShowTxForm(false); loadData(); }} />}
+
+        {showTaskForm && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 200, display: "flex", alignItems: "flex-end" }}>
+            <div style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Tạo công việc</div>
+                <button onClick={() => setShowTaskForm(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
+                  <MIcon name="close" size={22} color={T.textMuted} />
+                </button>
+              </div>
+              <form onSubmit={handleCreateTask}>
+                <input value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="Tiêu đề công việc" required style={inputStyle} />
+                <textarea value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} placeholder="Mô tả thêm" style={{ ...inputStyle, minHeight: 90, resize: "none", marginTop: 10 }} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
+                  <select value={newTask.priority} onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })} style={inputStyle}>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                  <input type="date" value={newTask.due_date} onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })} style={inputStyle} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
+                  <button type="button" onClick={() => setShowTaskForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Huỷ</button>
+                  <button type="submit" style={{ height: 46, borderRadius: 12, border: "none", background: T.primary, color: "white", cursor: "pointer", fontWeight: 800 }}>Tạo việc</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         <div style={{
           position: "fixed",
           bottom: 0,
@@ -952,52 +376,35 @@ export default function SecretaryPage() {
           transform: "translateX(-50%)",
           width: "100%",
           maxWidth: 430,
-          display: "flex",
-          gap: 0,
-          paddingTop: 12,
-          paddingBottom: 12,
-          paddingLeft: 20,
-          paddingRight: 20,
-          backgroundColor: DESIGN_TOKENS.card,
-          borderTop: `1px solid ${DESIGN_TOKENS.border}`,
+          background: "rgba(255,255,255,0.92)",
           backdropFilter: "blur(10px)",
-          zIndex: 100,
+          borderTop: `1px solid ${T.border}`,
+          display: "flex",
+          padding: "10px 12px 18px",
+          zIndex: 120,
         }}>
-          {TABS.map(({ id, label, icon }) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 6,
-                padding: "8px 4px",
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
-                color: tab === id ? DESIGN_TOKENS.primary : DESIGN_TOKENS.textMuted,
-                transition: "color 0.2s",
-              }}
-            >
-              <MIcon style={{
-                fontSize: 24,
-                color: "inherit",
-              }}>
-                {icon}
-              </MIcon>
-              <span style={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: "inherit",
-              }}>
-                {label}
-              </span>
-            </button>
-          ))}
+          {TABS.map((item) => {
+            const active = tab === item.id;
+            return (
+              <button key={item.id} onClick={() => setTab(item.id)} style={{ flex: 1, border: "none", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, color: active ? T.primary : T.textMuted }}>
+                <MIcon name={item.icon} size={22} color={active ? T.primary : T.textMuted} />
+                <span style={{ fontSize: 10, fontWeight: 800 }}>{item.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </StaffShell>
   );
 }
+
+const inputStyle = {
+  width: "100%",
+  height: 46,
+  borderRadius: 12,
+  border: `1px solid ${T.border}`,
+  background: "white",
+  padding: "0 14px",
+  fontSize: 14,
+  boxSizing: "border-box",
+};
