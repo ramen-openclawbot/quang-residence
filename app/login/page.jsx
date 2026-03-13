@@ -2,37 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { useAuth, getHomeRoute } from "../../lib/auth";
-import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
 import { T } from "../../lib/tokens";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { user, profile, signInWithEmail } = useAuth();
   const router = useRouter();
-
-  // Consume Supabase magic-link tokens from URL hash and create a session.
-  useEffect(() => {
-    const hash = window.location.hash?.substring(1);
-    if (!hash) return;
-
-    const params = new URLSearchParams(hash);
-    const access_token = params.get("access_token");
-    const refresh_token = params.get("refresh_token");
-
-    if (access_token && refresh_token) {
-      supabase.auth.setSession({ access_token, refresh_token }).then(({ error }) => {
-        if (error) {
-          setError("Không thể tạo session từ magic link.");
-          return;
-        }
-        window.history.replaceState({}, document.title, "/login");
-      });
-    }
-  }, []);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -46,14 +25,14 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const { error: err } = await signInWithEmail(email);
+    const { error: err } = await signInWithEmail(email, password);
     if (err) {
-      setError(err.message === "Signups not allowed for otp"
-        ? "Email chưa được đăng ký trong hệ thống. Vui lòng liên hệ Mr. Quang."
+      setError(err.message === "Invalid login credentials"
+        ? "Sai email hoặc mật khẩu."
         : err.message
       );
     } else {
-      setSent(true);
+      router.replace("/");
     }
     setLoading(false);
   };
@@ -89,8 +68,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {!sent ? (
-          <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit}>
             <div style={{
               backgroundColor: T.card,
               borderRadius: 16,
@@ -120,6 +98,28 @@ export default function LoginPage() {
                 }}
               />
 
+              <label style={{
+                display: "block",
+                fontSize: 12, fontWeight: 700, textTransform: "uppercase",
+                letterSpacing: "0.12em", color: T.textLabel, marginTop: 16, marginBottom: 8,
+              }}>
+                Mật khẩu
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Nhập mật khẩu"
+                required
+                style={{
+                  width: "100%", padding: "14px 16px", fontSize: 16,
+                  border: `1px solid ${T.border}`, borderRadius: 10,
+                  outline: "none", backgroundColor: T.bg,
+                  fontFamily: T.font, color: T.text,
+                  boxSizing: "border-box",
+                }}
+              />
+
               {error && (
                 <div style={{
                   marginTop: 12, padding: "10px 14px",
@@ -132,7 +132,7 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={loading || !email}
+                disabled={loading || !email || !password}
                 style={{
                   width: "100%", marginTop: 20, padding: "14px 0",
                   backgroundColor: loading ? T.textMuted : T.primary,
@@ -142,51 +142,13 @@ export default function LoginPage() {
                   fontFamily: T.font,
                 }}
               >
-                {loading ? "Đang gửi..." : "Gửi link đăng nhập"}
+                {loading ? "Đang đăng nhập..." : "Đăng nhập"}
               </button>
             </div>
           </form>
-        ) : (
-          <div style={{
-            backgroundColor: T.card,
-            borderRadius: 16,
-            padding: 32,
-            boxShadow: T.shadowMd,
-            border: `1px solid ${T.borderLight}`,
-            textAlign: "center",
-          }}>
-            <div style={{
-              width: 56, height: 56, borderRadius: "50%",
-              backgroundColor: T.greenBg, display: "flex",
-              alignItems: "center", justifyContent: "center",
-              margin: "0 auto 16px", fontSize: 28,
-            }}>
-              ✓
-            </div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: T.text, marginBottom: 8 }}>
-              Kiểm tra email
-            </h2>
-            <p style={{ fontSize: 14, color: T.textMuted, lineHeight: 1.6 }}>
-              Đã gửi link đăng nhập đến <strong style={{ color: T.text }}>{email}</strong>.
-              Nhấn vào link trong email để vào app.
-            </p>
-            <button
-              onClick={() => { setSent(false); setEmail(""); }}
-              style={{
-                marginTop: 20, padding: "10px 20px",
-                backgroundColor: "transparent", color: T.primary,
-                border: `1px solid ${T.primaryBg2}`, borderRadius: 8,
-                fontSize: 13, fontWeight: 600, cursor: "pointer",
-                fontFamily: T.font,
-              }}
-            >
-              Dùng email khác
-            </button>
-          </div>
-        )}
 
         <p style={{ textAlign: "center", marginTop: 24, fontSize: 12, color: T.textMuted }}>
-          Chỉ các tài khoản đã được đăng ký mới có thể đăng nhập
+          Dùng email và mật khẩu do quản trị viên cấp
         </p>
       </div>
     </div>

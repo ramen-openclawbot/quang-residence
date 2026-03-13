@@ -143,7 +143,7 @@ export default function OwnerPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        setInviteMsg({ type: "success", text: `Đã gửi lời mời đến ${inviteEmail}` });
+        setInviteMsg({ type: "success", text: `Đã tạo tài khoản ${inviteEmail}. Mật khẩu tạm: ${data.temporary_password}` });
         setInviteEmail(""); setInviteName("");
         fetchData();
       } else {

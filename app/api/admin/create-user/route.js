@@ -9,14 +9,14 @@ const supabaseAdmin = createClient(
 
 const VALID_ROLES = ["owner", "secretary", "housekeeper", "driver"];
 
+function generateTemporaryPassword() {
+  const rand = Math.random().toString(36).slice(-6);
+  return `Zen@${rand}9`;
+}
+
 export async function POST(request) {
   try {
-    const { email, full_name, role, secret } = await request.json();
-
-    // Simple secret check — prevents random people from creating users
-    if (secret !== process.env.ADMIN_SECRET) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { email, full_name, role } = await request.json();
 
     if (!email || !full_name || !role) {
       return NextResponse.json({ error: "email, full_name, role are required" }, { status: 400 });
@@ -26,11 +26,11 @@ export async function POST(request) {
       return NextResponse.json({ error: `role must be one of: ${VALID_ROLES.join(", ")}` }, { status: 400 });
     }
 
-    // Create a real auth user immediately so magic-link login can find it.
-    // This app uses signInWithOtp(... shouldCreateUser: false), so invite-only
-    // users can fail to log in cleanly until they complete the invite flow.
+    const temporaryPassword = generateTemporaryPassword();
+
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email,
+      password: temporaryPassword,
       email_confirm: true,
       user_metadata: { full_name, role },
     });
@@ -52,8 +52,9 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
-      message: `Đã tạo user ${email}. User có thể đăng nhập bằng magic link ngay bây giờ.`,
+      message: `Đã tạo user ${email} với mật khẩu tạm.`,
       user_id: data.user.id,
+      temporary_password: temporaryPassword,
     });
   } catch (err) {
     console.error("Create user error:", err);
