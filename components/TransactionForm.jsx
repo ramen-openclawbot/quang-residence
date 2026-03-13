@@ -25,6 +25,8 @@ export default function TransactionForm({ onClose, onSuccess, defaultFundId, def
   const [slipImage, setSlipImage] = useState(null);
   const [slipPreview, setSlipPreview] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [ocrResult, setOcrResult] = useState(null);
   const [error, setError] = useState("");
 
   // Data lists
@@ -41,11 +43,89 @@ export default function TransactionForm({ onClose, onSuccess, defaultFundId, def
     });
   }, []);
 
-  const handleImageSelect = (e) => {
+  // Convert file to base64
+  const fileToBase64 = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  // Category name → id mapping
+  const CATEGORY_MAP = {
+    food: "Thực phẩm",
+    utilities: "Tiện ích",
+    household: "Vật dụng",
+    delivery: "Đồ ăn gọi",
+    transport: "Đi lại",
+    entertainment: "Giải trí",
+    salary: "Lương",
+    pr: "PR",
+    maintenance: "Sửa chữa",
+    travel: "Du lịch",
+    kitchen: "Chi bếp",
+    subscription: "Đăng ký",
+    other: "Khác",
+  };
+
+  const handleImageSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setSlipImage(file);
     setSlipPreview(URL.createObjectURL(file));
+
+    // Auto-trigger OCR
+    setScanning(true);
+    setError("");
+    try {
+      const base64 = await fileToBase64(file);
+      const res = await fetch("/api/ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageBase64: base64,
+          imageMimeType: file.type || "image/jpeg",
+        }),
+      });
+
+      const result = await res.json();
+
+      if (result.success && result.data) {
+        const d = result.data;
+        setOcrResult(d);
+
+        // Auto-fill fields
+        if (d.amount) setAmount(String(d.amount));
+        if (d.recipient_name) setRecipientName(d.recipient_name);
+        if (d.description) setDescription(d.description);
+        if (d.bank_name) setBankName(d.bank_name);
+        if (d.transaction_code) setTransactionCode(d.transaction_code);
+        if (d.transaction_date) {
+          // Try to parse ISO date
+          const parsed = d.transaction_date.match(/\d{4}-\d{2}-\d{2}/);
+          if (parsed) setTransactionDate(parsed[0]);
+        }
+
+        // Auto-select category from OCR suggestion
+        if (d.suggested_category && categories.length > 0) {
+          const catName = CATEGORY_MAP[d.suggested_category];
+          if (catName) {
+            const match = categories.find(
+              (c) => c.name_vi.includes(catName) || c.name.toLowerCase().includes(d.suggested_category)
+            );
+            if (match) setCategoryId(String(match.id));
+          }
+        }
+      } else {
+        console.warn("OCR returned no data:", result);
+      }
+    } catch (err) {
+      console.error("OCR error:", err);
+      // Non-blocking — user can still fill manually
+    } finally {
+      setScanning(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -120,6 +200,8 @@ export default function TransactionForm({ onClose, onSuccess, defaultFundId, def
   };
 
   return (
+    <>
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     <div style={{
       position: "fixed", inset: 0, zIndex: 100,
       backgroundColor: T.bg, fontFamily: T.font,
@@ -157,7 +239,31 @@ export default function TransactionForm({ onClose, onSuccess, defaultFundId, def
           {slipPreview ? (
             <div style={{ position: "relative" }}>
               <img src={slipPreview} alt="Bank slip" style={{ width: "100%", borderRadius: 12, border: `1px solid ${T.border}` }} />
-              <button onClick={() => { setSlipImage(null); setSlipPreview(null); }} style={{
+              {scanning && (
+                <div style={{
+                  position: "absolute", inset: 0, borderRadius: 12,
+                  backgroundColor: "rgba(0,0,0,0.6)", display: "flex",
+                  flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10,
+                }}>
+                  <div style={{
+                    width: 40, height: 40, border: "3px solid rgba(255,255,255,0.3)",
+                    borderTopColor: T.primary, borderRadius: "50%",
+                    animation: "spin 0.8s linear infinite",
+                  }} />
+                  <span style={{ color: "white", fontSize: 13, fontWeight: 600 }}>Đang quét bank slip...</span>
+                </div>
+              )}
+              {ocrResult && !scanning && (
+                <div style={{
+                  position: "absolute", bottom: 8, left: 8, right: 8,
+                  backgroundColor: "rgba(86,201,29,0.9)", borderRadius: 8,
+                  padding: "6px 12px", display: "flex", alignItems: "center", gap: 6,
+                }}>
+                  <span style={{ fontSize: 14 }}>✓</span>
+                  <span style={{ color: "white", fontSize: 11, fontWeight: 600 }}>Đã quét thành công — kiểm tra thông tin bên dưới</span>
+                </div>
+              )}
+              <button onClick={() => { setSlipImage(null); setSlipPreview(null); setOcrResult(null); }} style={{
                 position: "absolute", top: 8, right: 8, width: 28, height: 28,
                 borderRadius: "50%", backgroundColor: "rgba(0,0,0,0.5)", border: "none",
                 color: "white", fontSize: 16, cursor: "pointer", display: "flex",
@@ -275,5 +381,6 @@ export default function TransactionForm({ onClose, onSuccess, defaultFundId, def
         </button>
       </div>
     </div>
+    </>
   );
 }
