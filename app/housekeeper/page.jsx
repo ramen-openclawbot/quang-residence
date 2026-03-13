@@ -1,39 +1,137 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import StaffShell, { MIcon } from "../../components/shared/StaffShell";
-import { supabase } from "../../lib/supabase";
-import { T, card, flexBetween, flexCenter, sectionLabel } from "../../lib/tokens";
-import { fmtVND, fmtDate, fmtRelative } from "../../lib/format";
-import StatusBadge from "../../components/shared/StatusBadge";
-import Skeleton from "../../components/shared/Skeleton";
-import TransactionForm from "../../components/TransactionForm";
 import { useAuth } from "../../lib/auth";
+import { supabase } from "../../lib/supabase";
+import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
+import TransactionForm from "../../components/TransactionForm";
+
+const T = {
+  primary: "#56c91d",
+  bg: "#f6f8f6",
+  card: "#ffffff",
+  text: "#1a2e1a",
+  textMuted: "#7c8b7a",
+  border: "#e6ede4",
+  success: "#10b981",
+  danger: "#ef4444",
+  amber: "#f59e0b",
+  pink: "#ec4899",
+};
 
 const TABS = [
-  { id: "expenses", label: "Expenses", icon: "receipt_long" },
-  { id: "house", label: "Home Care", icon: "home_repair_service" },
-  { id: "family", label: "Family", icon: "family_restroom" },
-  { id: "schedule", label: "Schedule", icon: "calendar_today" },
+  { id: "home", label: "Home", icon: "home" },
+  { id: "expenses", label: "Chi tiêu", icon: "receipt_long" },
+  { id: "care", label: "Nhà cửa", icon: "home_repair_service" },
+  { id: "family", label: "Gia đình", icon: "family_restroom" },
 ];
 
 const MAINTENANCE_STATUSES = ["reported", "scheduled", "in_progress", "completed"];
 
+const cardStyle = {
+  background: T.card,
+  border: `1px solid ${T.border}`,
+  borderRadius: 18,
+  boxShadow: "0 8px 30px rgba(16,24,16,0.04)",
+};
+
+const softCard = {
+  ...cardStyle,
+  background: "linear-gradient(180deg,#ffffff 0%, #fbfdf9 100%)",
+};
+
+function Avatar({ name }) {
+  const letter = (name || "H").trim().charAt(0).toUpperCase();
+  return (
+    <div style={{
+      width: 44,
+      height: 44,
+      borderRadius: "50%",
+      background: "linear-gradient(135deg,#f59e0b,#ec4899)",
+      color: "white",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 18,
+      fontWeight: 800,
+      boxShadow: "0 8px 20px rgba(236,72,153,0.22)",
+      flexShrink: 0,
+    }}>{letter}</div>
+  );
+}
+
+function StatCard({ label, value, sub, color }) {
+  return (
+    <div style={{ ...softCard, padding: 14 }}>
+      <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 800, color: color || T.text, marginTop: 6 }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function ActionCard({ icon, label, sub, onClick, primary }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        ...cardStyle,
+        width: "100%",
+        padding: 16,
+        textAlign: "left",
+        cursor: "pointer",
+        background: primary ? "linear-gradient(135deg,#69d834,#56c91d)" : T.card,
+        color: primary ? "white" : T.text,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{
+          width: 42,
+          height: 42,
+          borderRadius: 12,
+          background: primary ? "rgba(255,255,255,0.18)" : "#eef8e8",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}>
+          <MIcon name={icon} size={22} color={primary ? "white" : T.primary} />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{label}</div>
+          <div style={{ fontSize: 12, color: primary ? "rgba(255,255,255,0.85)" : T.textMuted }}>{sub}</div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function tone(status) {
+  if (status === "completed") return { bg: "#e9fff5", color: T.success };
+  if (status === "in_progress") return { bg: "#fff7e6", color: T.amber };
+  if (status === "scheduled") return { bg: "#eef4ff", color: "#3b82f6" };
+  return { bg: "#fff1f1", color: T.pink };
+}
+
 export default function HousekeeperPage() {
-  const { profile } = useAuth();
-  const [tab, setTab] = useState("expenses");
+  const { profile, signOut } = useAuth();
+  const [tab, setTab] = useState("home");
   const [loading, setLoading] = useState(true);
   const [showTxForm, setShowTxForm] = useState(false);
+  const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
+  const [showFamilyForm, setShowFamilyForm] = useState(false);
+
   const [transactions, setTransactions] = useState([]);
   const [maintenanceItems, setMaintenanceItems] = useState([]);
   const [familySchedule, setFamilySchedule] = useState([]);
-  const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
+
   const [maintenanceFormData, setMaintenanceFormData] = useState({
     title: "",
     description: "",
     location_in_house: "",
   });
-  const [showFamilyForm, setShowFamilyForm] = useState(false);
+
   const [familyFormData, setFamilyFormData] = useState({
     title: "",
     schedule_type: "school",
@@ -44,871 +142,362 @@ export default function HousekeeperPage() {
   });
 
   useEffect(() => {
-    if (profile?.id) {
-      fetchData();
-    }
+    if (!profile?.id) return;
+    fetchData();
   }, [profile?.id]);
 
-  const fetchData = async () => {
+  async function fetchData() {
     if (!profile?.id) return;
     setLoading(true);
     try {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      // Fetch transactions
-      const { data: txData } = await supabase
-        .from("transactions")
-        .select("*")
-        .eq("created_by", profile.id)
-        .gte("created_at", thirtyDaysAgo.toISOString())
-        .order("created_at", { ascending: false })
-        .limit(30);
+      const [txData, maintenanceData, scheduleData] = await Promise.all([
+        supabase.from("transactions").select("*").eq("created_by", profile.id).gte("created_at", thirtyDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(30),
+        supabase.from("home_maintenance").select("*").order("created_at", { ascending: false }),
+        supabase.from("family_schedule").select("*").order("event_date", { ascending: true }),
+      ]);
 
-      setTransactions(txData || []);
-
-      // Fetch home maintenance items
-      const { data: maintenanceData } = await supabase
-        .from("home_maintenance")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      setMaintenanceItems(maintenanceData || []);
-
-      // Fetch family schedule
-      const { data: scheduleData } = await supabase
-        .from("family_schedule")
-        .select("*")
-        .order("event_date", { ascending: true });
-
-      setFamilySchedule(scheduleData || []);
+      setTransactions(txData.data || []);
+      setMaintenanceItems(maintenanceData.data || []);
+      setFamilySchedule(scheduleData.data || []);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Housekeeper fetchData error:", error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleMaintenanceSubmit = async (e) => {
-    e.preventDefault();
-    if (!maintenanceFormData.title || !maintenanceFormData.location_in_house) {
-      alert("Please fill in title and location");
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from("home_maintenance").insert([
-        {
-          title: maintenanceFormData.title,
-          description: maintenanceFormData.description,
-          location_in_house: maintenanceFormData.location_in_house,
-          reported_by: profile.id,
-          status: "reported",
-          created_at: new Date().toISOString(),
-        },
-      ]);
-
-      if (error) throw error;
-
-      setMaintenanceFormData({ title: "", description: "", location_in_house: "" });
-      setShowMaintenanceForm(false);
-      fetchData();
-    } catch (error) {
-      console.error("Error creating maintenance report:", error);
-      alert("Error creating maintenance report");
-    }
-  };
-
-  const handleMaintenanceStatusChange = async (itemId, currentStatus) => {
-    const currentIndex = MAINTENANCE_STATUSES.indexOf(currentStatus);
-    const nextStatus = MAINTENANCE_STATUSES[(currentIndex + 1) % MAINTENANCE_STATUSES.length];
-
-    try {
-      const { error } = await supabase
-        .from("home_maintenance")
-        .update({ status: nextStatus })
-        .eq("id", itemId);
-
-      if (error) throw error;
-      fetchData();
-    } catch (error) {
-      console.error("Error updating maintenance status:", error);
-    }
-  };
-
-  const handleFamilyScheduleSubmit = async (e) => {
-    e.preventDefault();
-    if (!familyFormData.title || !familyFormData.event_date) {
-      alert("Please fill in title and date");
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from("family_schedule").insert([
-        {
-          title: familyFormData.title,
-          schedule_type: familyFormData.schedule_type,
-          family_member: familyFormData.family_member,
-          event_date: familyFormData.event_date,
-          event_time: familyFormData.event_time || null,
-          notes: familyFormData.notes || null,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-
-      if (error) throw error;
-
-      setFamilyFormData({
-        title: "",
-        schedule_type: "school",
-        family_member: "Member",
-        event_date: "",
-        event_time: "",
-        notes: "",
-      });
-      setShowFamilyForm(false);
-      fetchData();
-    } catch (error) {
-      console.error("Error creating family schedule:", error);
-      alert("Error creating schedule");
-    }
-  };
-
-  const getTodayExpenses = () => {
-    const today = new Date().toDateString();
-    return transactions
-      .filter((tx) => new Date(tx.created_at).toDateString() === today)
-      .reduce((sum, tx) => sum + (tx.amount || 0), 0);
-  };
-
-  const getMonthExpenses = () => {
-    return transactions.reduce((sum, tx) => sum + (tx.amount || 0), 0);
-  };
-
-  const getWeeklyEvents = () => {
-    const today = new Date();
-    const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const events = [];
-
-    transactions
-      .filter((tx) => {
-        const txDate = new Date(tx.created_at);
-        return txDate >= today && txDate <= nextWeek;
-      })
-      .forEach((tx) => {
-        events.push({
-          date: tx.created_at,
-          type: "expense",
-          title: tx.description || "Chi tiêu",
-          amount: fmtVND(tx.amount),
-        });
-      });
-
-    maintenanceItems
-      .filter((item) => {
-        const itemDate = item.created_at ? new Date(item.created_at) : null;
-        return itemDate && itemDate >= today && itemDate <= nextWeek;
-      })
-      .forEach((item) => {
-        events.push({
-          date: item.created_at,
-          type: "maintenance",
-          title: item.title,
-          status: item.status,
-        });
-      });
-
-    familySchedule
-      .filter((sched) => {
-        const schedDate = new Date(sched.event_date);
-        return schedDate >= today && schedDate <= nextWeek;
-      })
-      .forEach((sched) => {
-        events.push({
-          date: sched.event_date,
-          type: "family",
-          title: sched.title,
-          member: sched.family_member,
-        });
-      });
-
-    return events.sort((a, b) => new Date(a.date) - new Date(b.date));
-  };
-
-  const groupEventsByDate = (events) => {
-    const grouped = {};
-    events.forEach((event) => {
-      const dateKey = fmtDate(new Date(event.date));
-      if (!grouped[dateKey]) {
-        grouped[dateKey] = [];
-      }
-      grouped[dateKey].push(event);
-    });
-    return grouped;
-  };
-
-  if (!profile) {
-    return (
-      <StaffShell role="housekeeper" title="Housekeeper">
-        <div style={{ padding: 24 }}>Loading...</div>
-      </StaffShell>
-    );
   }
 
-  const renderExpensesTab = () => (
-    <div>
-      {/* Summary Cards */}
-      <div style={{ display: "flex", gap: 16, marginBottom: 24 }}>
-        <div
-          style={{
-            ...card,
-            flex: 1,
-            padding: 16,
-          }}
-        >
-          <div style={{ fontSize: 12, color: T.textMuted }}>Today</div>
-          <div style={{ fontSize: 18, fontWeight: "bold", marginTop: 4 }}>
-            {fmtVND(getTodayExpenses())}
-          </div>
-        </div>
-        <div
-          style={{
-            ...card,
-            flex: 1,
-            padding: 16,
-          }}
-        >
-          <div style={{ fontSize: 12, color: T.textMuted }}>This Month</div>
-          <div style={{ fontSize: 18, fontWeight: "bold", marginTop: 4 }}>
-            {fmtVND(getMonthExpenses())}
-          </div>
-        </div>
-      </div>
+  async function handleMaintenanceSubmit(e) {
+    e.preventDefault();
+    if (!maintenanceFormData.title || !maintenanceFormData.location_in_house) return;
 
-      {/* Transaction List */}
-      <div style={{ marginBottom: 80 }}>
-        <h3 style={sectionLabel}>Recent Transactions</h3>
-        {loading ? (
-          <Skeleton count={5} />
-        ) : transactions.length === 0 ? (
-          <div style={{ padding: 16, color: T.textMuted }}>
-            No transactions yet
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {transactions.map((tx) => (
-              <div key={tx.id} style={{ ...card, padding: 16, ...flexBetween }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                  <div style={{ ...flexCenter, width: 40, height: 40, borderRadius: "50%", backgroundColor: T.bg }}>
-                    <MIcon name="receipt_long" />
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 500 }}>{tx.description || "Expense"}</div>
-                    <div style={{ fontSize: 12, color: T.textMuted }}>
-                      {fmtRelative(new Date(tx.created_at))}
-                    </div>
-                  </div>
-                </div>
-                <div style={{ fontWeight: 600, color: "#ef4444" }}>-{fmtVND(tx.amount)}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+    const { error } = await supabase.from("home_maintenance").insert([{ 
+      title: maintenanceFormData.title,
+      description: maintenanceFormData.description || null,
+      location_in_house: maintenanceFormData.location_in_house,
+      reported_by: profile.id,
+      status: "reported",
+      created_at: new Date().toISOString(),
+    }]);
 
-      {/* Floating Button & Form */}
-      <button
-        onClick={() => setShowTxForm(true)}
-        style={{
-          position: "fixed",
-          bottom: 100,
-          right: 24,
-          width: 56,
-          height: 56,
-          borderRadius: "50%",
-          backgroundColor: T.primary,
-          color: "white",
-          border: "none",
-          ...flexCenter,
-          cursor: "pointer",
-          fontSize: 18,
-          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          zIndex: 40,
-        }}
-      >
-        <MIcon name="add" />
-      </button>
+    if (error) {
+      console.error(error);
+      return;
+    }
 
-      {showTxForm && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            ...flexCenter,
-            zIndex: 50,
-          }}
-          onClick={() => setShowTxForm(false)}
-        >
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: 12,
-              padding: 24,
-              maxWidth: 500,
-              width: "90%",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 style={{ marginTop: 0 }}>Add Transaction</h2>
-            <TransactionForm
-              defaultFundId="chi-gia-dinh"
-              onSuccess={() => {
-                setShowTxForm(false);
-                fetchData();
-              }}
-            />
-            <button
-              onClick={() => setShowTxForm(false)}
-              style={{
-                marginTop: 16,
-                width: "100%",
-                padding: 16,
-                backgroundColor: T.bg,
-                border: "none",
-                borderRadius: 8,
-                cursor: "pointer",
-              }}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+    setMaintenanceFormData({ title: "", description: "", location_in_house: "" });
+    setShowMaintenanceForm(false);
+    fetchData();
+  }
 
-  const renderHouseTab = () => (
-    <div>
-      <h3 style={sectionLabel}>Maintenance Reports</h3>
+  async function handleMaintenanceStatusChange(item) {
+    const currentIndex = MAINTENANCE_STATUSES.indexOf(item.status);
+    const nextStatus = MAINTENANCE_STATUSES[(currentIndex + 1) % MAINTENANCE_STATUSES.length];
+    const { error } = await supabase.from("home_maintenance").update({ status: nextStatus }).eq("id", item.id);
+    if (!error) fetchData();
+  }
 
-      {/* Maintenance Form */}
-      {!showMaintenanceForm ? (
-        <button
-          onClick={() => setShowMaintenanceForm(true)}
-          style={{
-            width: "100%",
-            padding: 16,
-            marginBottom: 24,
-            backgroundColor: T.primary,
-            color: "white",
-            border: "none",
-            borderRadius: 8,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-          }}
-        >
-          <MIcon name="add" /> New Report
-        </button>
-      ) : (
-        <form
-          onSubmit={handleMaintenanceSubmit}
-          style={{
-            ...card,
-            padding: 16,
-            marginBottom: 24,
-          }}
-        >
-          <input
-            type="text"
-            placeholder="Title"
-            value={maintenanceFormData.title}
-            onChange={(e) => setMaintenanceFormData({ ...maintenanceFormData, title: e.target.value })}
-            style={{
-              width: "100%",
-              padding: 8,
-              marginBottom: 8,
-              border: `1px solid ${T.border}`,
-              borderRadius: 8,
-              fontSize: 14,
-            }}
-          />
-          <textarea
-            placeholder="Description"
-            value={maintenanceFormData.description}
-            onChange={(e) =>
-              setMaintenanceFormData({ ...maintenanceFormData, description: e.target.value })
-            }
-            style={{
-              width: "100%",
-              padding: 8,
-              marginBottom: 8,
-              border: `1px solid ${T.border}`,
-              borderRadius: 8,
-              fontSize: 14,
-              minHeight: 80,
-              fontFamily: "inherit",
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Location in house"
-            value={maintenanceFormData.location_in_house}
-            onChange={(e) =>
-              setMaintenanceFormData({ ...maintenanceFormData, location_in_house: e.target.value })
-            }
-            style={{
-              width: "100%",
-              padding: 8,
-              marginBottom: 16,
-              border: `1px solid ${T.border}`,
-              borderRadius: 8,
-              fontSize: 14,
-            }}
-          />
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="submit"
-              style={{
-                flex: 1,
-                padding: 16,
-                backgroundColor: T.primary,
-                color: "white",
-                border: "none",
-                borderRadius: 8,
-                cursor: "pointer",
-              }}
-            >
-              Submit
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowMaintenanceForm(false)}
-              style={{
-                flex: 1,
-                padding: 16,
-                backgroundColor: T.bg,
-                border: "none",
-                borderRadius: 8,
-                cursor: "pointer",
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+  async function handleFamilyScheduleSubmit(e) {
+    e.preventDefault();
+    if (!familyFormData.title || !familyFormData.event_date) return;
 
-      {/* Maintenance List */}
-      {loading ? (
-        <Skeleton count={5} />
-      ) : maintenanceItems.length === 0 ? (
-        <div style={{ padding: 16, color: T.textMuted, marginBottom: 80 }}>
-          No reports yet
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 80 }}>
-          {maintenanceItems.map((item) => (
-            <div
-              key={item.id}
-              style={{
-                ...card,
-                padding: 16,
-              }}
-            >
-              <div style={{ ...flexBetween, marginBottom: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 16, flex: 1 }}>
-                  <div
-                    style={{
-                      ...flexCenter,
-                      width: 40,
-                      height: 40,
-                      borderRadius: "50%",
-                      backgroundColor: T.bg,
-                    }}
-                  >
-                    <MIcon name="home_repair_service" />
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 500 }}>{item.title}</div>
-                    <div style={{ fontSize: 12, color: T.textMuted }}>
-                      {item.location_in_house}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {item.description && (
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: T.textMuted,
-                    marginBottom: 8,
-                  }}
-                >
-                  {item.description}
-                </div>
-              )}
-              <div style={{ ...flexBetween }}>
-                <button
-                  onClick={() => handleMaintenanceStatusChange(item.id, item.status)}
-                  style={{
-                    backgroundColor: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                >
-                  <StatusBadge status={item.status} />
-                </button>
-                {item.estimated_cost && (
-                  <div style={{ fontWeight: 600 }}>{fmtVND(item.estimated_cost)}</div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+    const { error } = await supabase.from("family_schedule").insert([{
+      title: familyFormData.title,
+      schedule_type: familyFormData.schedule_type,
+      family_member: familyFormData.family_member,
+      event_date: familyFormData.event_date,
+      event_time: familyFormData.event_time || null,
+      notes: familyFormData.notes || null,
+      created_at: new Date().toISOString(),
+    }]);
 
-  const renderFamilyTab = () => (
-    <div>
-      {/* Add Schedule Form */}
-      {!showFamilyForm ? (
-        <button
-          onClick={() => setShowFamilyForm(true)}
-          style={{
-            width: "100%",
-            padding: 16,
-            marginBottom: 24,
-            backgroundColor: T.primary,
-            color: "white",
-            border: "none",
-            borderRadius: 8,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-          }}
-        >
-          <MIcon name="add" /> Add Event
-        </button>
-      ) : (
-        <form
-          onSubmit={handleFamilyScheduleSubmit}
-          style={{
-            ...card,
-            padding: 16,
-            marginBottom: 24,
-          }}
-        >
-          <input
-            type="text"
-            placeholder="Title"
-            value={familyFormData.title}
-            onChange={(e) => setFamilyFormData({ ...familyFormData, title: e.target.value })}
-            style={{
-              width: "100%",
-              padding: 8,
-              marginBottom: 8,
-              border: `1px solid ${T.border}`,
-              borderRadius: 8,
-              fontSize: 14,
-            }}
-          />
-          <select
-            value={familyFormData.schedule_type}
-            onChange={(e) => setFamilyFormData({ ...familyFormData, schedule_type: e.target.value })}
-            style={{
-              width: "100%",
-              padding: 8,
-              marginBottom: 8,
-              border: `1px solid ${T.border}`,
-              borderRadius: 8,
-              fontSize: 14,
-            }}
-          >
-            <option value="school">School</option>
-            <option value="health">Health</option>
-            <option value="activity">Activity</option>
-          </select>
-          <select
-            value={familyFormData.family_member}
-            onChange={(e) =>
-              setFamilyFormData({ ...familyFormData, family_member: e.target.value })
-            }
-            style={{
-              width: "100%",
-              padding: 8,
-              marginBottom: 8,
-              border: `1px solid ${T.border}`,
-              borderRadius: 8,
-              fontSize: 14,
-            }}
-          >
-            <option value="Member">Member</option>
-            <option value="Parent">Parent</option>
-          </select>
-          <input
-            type="date"
-            value={familyFormData.event_date}
-            onChange={(e) => setFamilyFormData({ ...familyFormData, event_date: e.target.value })}
-            style={{
-              width: "100%",
-              padding: 8,
-              marginBottom: 8,
-              border: `1px solid ${T.border}`,
-              borderRadius: 8,
-              fontSize: 14,
-            }}
-          />
-          <input
-            type="time"
-            value={familyFormData.event_time}
-            onChange={(e) => setFamilyFormData({ ...familyFormData, event_time: e.target.value })}
-            style={{
-              width: "100%",
-              padding: 8,
-              marginBottom: 8,
-              border: `1px solid ${T.border}`,
-              borderRadius: 8,
-              fontSize: 14,
-            }}
-          />
-          <textarea
-            placeholder="Notes"
-            value={familyFormData.notes}
-            onChange={(e) => setFamilyFormData({ ...familyFormData, notes: e.target.value })}
-            style={{
-              width: "100%",
-              padding: 8,
-              marginBottom: 16,
-              border: `1px solid ${T.border}`,
-              borderRadius: 8,
-              fontSize: 14,
-              minHeight: 60,
-              fontFamily: "inherit",
-            }}
-          />
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="submit"
-              style={{
-                flex: 1,
-                padding: 16,
-                backgroundColor: T.primary,
-                color: "white",
-                border: "none",
-                borderRadius: 8,
-                cursor: "pointer",
-              }}
-            >
-              Add
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowFamilyForm(false)}
-              style={{
-                flex: 1,
-                padding: 16,
-                backgroundColor: T.bg,
-                border: "none",
-                borderRadius: 8,
-                cursor: "pointer",
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+    if (error) {
+      console.error(error);
+      return;
+    }
 
-      {/* Schedule Items by Type */}
-      {loading ? (
-        <Skeleton count={5} />
-      ) : familySchedule.length === 0 ? (
-        <div style={{ padding: 16, color: T.textMuted, marginBottom: 80 }}>
-          No events yet
-        </div>
-      ) : (
-        <div style={{ marginBottom: 80 }}>
-          {["school", "health", "activity"].map((type) => {
-            const typeLabel = type === "school" ? "School" : type === "health" ? "Health" : "Activities";
-            const items = familySchedule.filter((item) => item.schedule_type === type);
+    setFamilyFormData({ title: "", schedule_type: "school", family_member: "Member", event_date: "", event_time: "", notes: "" });
+    setShowFamilyForm(false);
+    fetchData();
+  }
 
-            if (items.length === 0) return null;
-
-            return (
-              <div key={type} style={{ marginBottom: 24 }}>
-                <h4 style={sectionLabel}>{typeLabel}</h4>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {items.map((item) => (
-                    <div key={item.id} style={{ ...card, padding: 16 }}>
-                      <div style={{ ...flexBetween, marginBottom: 4 }}>
-                        <div style={{ fontWeight: 500 }}>{item.title}</div>
-                        <div style={{ fontSize: 12, color: T.textMuted }}>
-                          {item.family_member}
-                        </div>
-                      </div>
-                      <div style={{ fontSize: 12, color: T.textMuted }}>
-                        {fmtDate(new Date(item.event_date))}
-                        {item.event_time && ` - ${item.event_time}`}
-                      </div>
-                      {item.notes && (
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: T.textMuted,
-                            marginTop: 4,
-                          }}
-                        >
-                          {item.notes}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderScheduleTab = () => {
-    const events = getWeeklyEvents();
-    const groupedEvents = groupEventsByDate(events);
-
-    return (
-      <div>
-        <h3 style={sectionLabel}>Next Week Schedule</h3>
-        {loading ? (
-          <Skeleton count={5} />
-        ) : events.length === 0 ? (
-          <div style={{ padding: 16, color: T.textMuted, marginBottom: 80 }}>
-            No events next week
-          </div>
-        ) : (
-          <div style={{ marginBottom: 80 }}>
-            {Object.entries(groupedEvents).map(([dateKey, dayEvents]) => (
-              <div key={dateKey} style={{ marginBottom: 24 }}>
-                <h4 style={{ ...sectionLabel, marginBottom: 16 }}>{dateKey}</h4>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {dayEvents.map((event, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        ...card,
-                        padding: 16,
-                        borderLeft: `4px solid ${
-                          event.type === "expense"
-                            ? "#ef4444"
-                            : event.type === "maintenance"
-                            ? "#f59e0b"
-                            : T.primary
-                        }`,
-                      }}
-                    >
-                      <div style={{ ...flexBetween, marginBottom: 4 }}>
-                        <div style={{ fontWeight: 500 }}>{event.title}</div>
-                        {event.amount && (
-                          <div style={{ fontWeight: 600, color: "#ef4444" }}>
-                            {event.amount}
-                          </div>
-                        )}
-                      </div>
-                      {event.status && (
-                        <StatusBadge status={event.status} />
-                      )}
-                      {event.member && (
-                        <div style={{ fontSize: 12, color: T.textMuted }}>
-                          {event.member}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
+  const today = new Date().toISOString().slice(0, 10);
+  const todayExpense = useMemo(() => transactions.filter((tx) => (tx.transaction_date || tx.created_at || "").slice(0, 10) === today).reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [transactions, today]);
+  const monthExpense = useMemo(() => transactions.reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [transactions]);
+  const openMaintenance = useMemo(() => maintenanceItems.filter((m) => m.status !== "completed"), [maintenanceItems]);
+  const upcomingFamily = useMemo(() => familySchedule.filter((s) => s.event_date && s.event_date >= today), [familySchedule, today]);
 
   return (
-    <StaffShell role="housekeeper" title="Housekeeper">
-      <div style={{ padding: 24, paddingBottom: 120 }}>
-        {/* Header */}
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: T.text, margin: 0 }}>
-            Housekeeper Dashboard
-          </h1>
-          <p style={{ color: T.textMuted, fontSize: 14, marginTop: 4 }}>
-            Manage expenses, home care, family events, and schedules
-          </p>
+    <StaffShell role="housekeeper">
+      <div style={{ background: T.bg, minHeight: "100vh", paddingBottom: 100 }}>
+        <div style={{ padding: "22px 18px 18px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Avatar name={profile?.full_name || "Housekeeper"} />
+              <div>
+                <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Housekeeper Console</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Quản gia"}</div>
+              </div>
+            </div>
+            <button onClick={signOut} style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}>
+              <MIcon name="logout" size={22} color={T.textMuted} />
+            </button>
+          </div>
+
+          {loading ? (
+            <div style={{ fontSize: 13, color: T.textMuted }}>Đang tải dữ liệu...</div>
+          ) : (
+            <>
+              {tab === "home" && (
+                <div>
+                  <div style={{ ...cardStyle, padding: 18, marginBottom: 14, background: "linear-gradient(135deg,#5a2d14 0%, #8a4a1f 52%, #b45309 100%)", color: "white", overflow: "hidden", position: "relative" }}>
+                    <div style={{ position: "absolute", right: -22, top: -22, width: 110, height: 110, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                    <div style={{ position: "relative", zIndex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                        <div>
+                          <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Home operations</div>
+                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Nhà cửa & gia đình</div>
+                        </div>
+                        <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Housekeeper</div>
+                      </div>
+                      <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Theo dõi chi tiêu, việc nhà và lịch gia đình</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Chi hôm nay</div><div style={{ fontSize: 18, fontWeight: 800 }}>{fmtVND(todayExpense)}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Việc nhà mở</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openMaintenance.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Lịch sắp tới</div><div style={{ fontSize: 18, fontWeight: 800 }}>{upcomingFamily.length}</div></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+                    <StatCard label="Chi hôm nay" value={fmtVND(todayExpense)} color={T.danger} />
+                    <StatCard label="Chi tháng này" value={fmtVND(monthExpense)} color={T.text} />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
+                    <ActionCard icon="upload_file" label="Ghi chi tiêu" sub="Upload bill / hóa đơn" onClick={() => setShowTxForm(true)} primary />
+                    <ActionCard icon="home_repair_service" label="Báo việc nhà" sub="Thêm vấn đề cần xử lý" onClick={() => setShowMaintenanceForm(true)} />
+                  </div>
+
+                  <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Việc nhà cần chú ý</div>
+                      <button onClick={() => setTab("care")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở tab</button>
+                    </div>
+                    {openMaintenance.length === 0 ? (
+                      <div style={{ fontSize: 13, color: T.textMuted }}>Không có đầu việc nhà nào đang mở.</div>
+                    ) : openMaintenance.slice(0, 4).map((item) => {
+                      const s = tone(item.status);
+                      return (
+                        <button key={item.id} onClick={() => handleMaintenanceStatusChange(item)} style={{ width: "100%", textAlign: "left", border: "none", background: "transparent", padding: "12px 0", borderBottom: `1px solid ${T.border}`, cursor: "pointer" }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
+                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{item.location_in_house || "Không rõ vị trí"}</div>
+                            </div>
+                            <div style={{ padding: "6px 10px", borderRadius: 999, background: s.bg, color: s.color, fontSize: 11, fontWeight: 800 }}>{item.status}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ ...cardStyle, padding: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Lịch gia đình sắp tới</div>
+                      <button onClick={() => setTab("family")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở tab</button>
+                    </div>
+                    {upcomingFamily.length === 0 ? (
+                      <div style={{ fontSize: 13, color: T.textMuted }}>Chưa có sự kiện sắp tới.</div>
+                    ) : upcomingFamily.slice(0, 4).map((item) => (
+                      <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
+                          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(item.event_date)}{item.event_time ? ` • ${item.event_time}` : ""}</div>
+                        </div>
+                        <div style={{ fontSize: 12, color: T.textMuted }}>{item.family_member}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {tab === "expenses" && (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Chi tiêu</div>
+                    <button onClick={() => setShowTxForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Ghi chi</button>
+                  </div>
+                  {transactions.length === 0 ? (
+                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có giao dịch nào.</div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {transactions.map((tx) => (
+                        <div key={tx.id} style={{ ...cardStyle, padding: 16 }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{tx.description || "Expense"}</div>
+                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{fmtRelative(tx.created_at)}</div>
+                            </div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: T.danger }}>-{fmtVND(Math.abs(Number(tx.amount || 0)))}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {tab === "care" && (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Home care</div>
+                    <button onClick={() => setShowMaintenanceForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Báo việc</button>
+                  </div>
+                  {maintenanceItems.length === 0 ? (
+                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có báo cáo việc nhà nào.</div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {maintenanceItems.map((item) => {
+                        const s = tone(item.status);
+                        return (
+                          <button key={item.id} onClick={() => handleMaintenanceStatusChange(item)} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
+                            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                              <div>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
+                                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{item.location_in_house}</div>
+                                {item.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{item.description}</div>}
+                              </div>
+                              <div style={{ padding: "6px 10px", borderRadius: 999, background: s.bg, color: s.color, fontSize: 11, fontWeight: 800 }}>{item.status}</div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {tab === "family" && (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Gia đình / lịch</div>
+                    <button onClick={() => setShowFamilyForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Thêm lịch</button>
+                  </div>
+                  {familySchedule.length === 0 ? (
+                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có lịch nào.</div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {familySchedule.map((item) => (
+                        <div key={item.id} style={{ ...cardStyle, padding: 16 }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
+                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(item.event_date)}{item.event_time ? ` • ${item.event_time}` : ""}</div>
+                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{item.schedule_type} • {item.family_member}</div>
+                              {item.notes && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{item.notes}</div>}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
-        {/* Tab Content */}
-        {tab === "expenses" && renderExpensesTab()}
-        {tab === "house" && renderHouseTab()}
-        {tab === "family" && renderFamilyTab()}
-        {tab === "schedule" && renderScheduleTab()}
-      </div>
+        {showTxForm && <TransactionForm onClose={() => setShowTxForm(false)} onSuccess={() => { setShowTxForm(false); fetchData(); }} />}
 
-      {/* Bottom Navigation Bar */}
-      <div
-        style={{
+        {showMaintenanceForm && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 200, display: "flex", alignItems: "flex-end" }}>
+            <div style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Báo việc nhà</div>
+                <button onClick={() => setShowMaintenanceForm(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}><MIcon name="close" size={22} color={T.textMuted} /></button>
+              </div>
+              <form onSubmit={handleMaintenanceSubmit}>
+                <input value={maintenanceFormData.title} onChange={(e) => setMaintenanceFormData({ ...maintenanceFormData, title: e.target.value })} placeholder="Tiêu đề" required style={inputStyle} />
+                <input value={maintenanceFormData.location_in_house} onChange={(e) => setMaintenanceFormData({ ...maintenanceFormData, location_in_house: e.target.value })} placeholder="Vị trí trong nhà" required style={{ ...inputStyle, marginTop: 10 }} />
+                <textarea value={maintenanceFormData.description} onChange={(e) => setMaintenanceFormData({ ...maintenanceFormData, description: e.target.value })} placeholder="Mô tả thêm" style={{ ...inputStyle, minHeight: 90, resize: "none", marginTop: 10 }} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
+                  <button type="button" onClick={() => setShowMaintenanceForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Huỷ</button>
+                  <button type="submit" style={{ height: 46, borderRadius: 12, border: "none", background: T.primary, color: "white", cursor: "pointer", fontWeight: 800 }}>Tạo báo cáo</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {showFamilyForm && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 200, display: "flex", alignItems: "flex-end" }}>
+            <div style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Thêm lịch gia đình</div>
+                <button onClick={() => setShowFamilyForm(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}><MIcon name="close" size={22} color={T.textMuted} /></button>
+              </div>
+              <form onSubmit={handleFamilyScheduleSubmit}>
+                <input value={familyFormData.title} onChange={(e) => setFamilyFormData({ ...familyFormData, title: e.target.value })} placeholder="Tiêu đề" required style={inputStyle} />
+                <select value={familyFormData.schedule_type} onChange={(e) => setFamilyFormData({ ...familyFormData, schedule_type: e.target.value })} style={{ ...inputStyle, marginTop: 10 }}>
+                  <option value="school">School</option>
+                  <option value="health">Health</option>
+                  <option value="activity">Activity</option>
+                  <option value="other">Other</option>
+                </select>
+                <input value={familyFormData.family_member} onChange={(e) => setFamilyFormData({ ...familyFormData, family_member: e.target.value })} placeholder="Thành viên" style={{ ...inputStyle, marginTop: 10 }} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
+                  <input type="date" value={familyFormData.event_date} onChange={(e) => setFamilyFormData({ ...familyFormData, event_date: e.target.value })} required style={inputStyle} />
+                  <input type="time" value={familyFormData.event_time} onChange={(e) => setFamilyFormData({ ...familyFormData, event_time: e.target.value })} style={inputStyle} />
+                </div>
+                <textarea value={familyFormData.notes} onChange={(e) => setFamilyFormData({ ...familyFormData, notes: e.target.value })} placeholder="Ghi chú" style={{ ...inputStyle, minHeight: 90, resize: "none", marginTop: 10 }} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
+                  <button type="button" onClick={() => setShowFamilyForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Huỷ</button>
+                  <button type="submit" style={{ height: 46, borderRadius: 12, border: "none", background: T.primary, color: "white", cursor: "pointer", fontWeight: 800 }}>Lưu lịch</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        <div style={{
           position: "fixed",
           bottom: 0,
-          left: 0,
-          right: 0,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "100%",
           maxWidth: 430,
-          margin: "0 auto",
-          backgroundColor: T.bg,
+          background: "rgba(255,255,255,0.92)",
           backdropFilter: "blur(10px)",
           borderTop: `1px solid ${T.border}`,
           display: "flex",
-          justifyContent: "space-around",
-          padding: "12px 0",
-          zIndex: 30,
-        }}
-      >
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 4,
-              padding: "8px 16px",
-              backgroundColor: "transparent",
-              border: "none",
-              cursor: "pointer",
-              color: tab === t.id ? T.primary : T.textMuted,
-              fontSize: 12,
-              fontWeight: tab === t.id ? 600 : 400,
-              flex: 1,
-            }}
-          >
-            <MIcon
-              name={t.icon}
-              style={{
-                fontSize: 24,
-                color: "inherit",
-              }}
-            />
-            <span>{t.label}</span>
-          </button>
-        ))}
+          padding: "10px 12px 18px",
+          zIndex: 120,
+        }}>
+          {TABS.map((item) => {
+            const active = tab === item.id;
+            return (
+              <button key={item.id} onClick={() => setTab(item.id)} style={{ flex: 1, border: "none", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, color: active ? T.primary : T.textMuted }}>
+                <MIcon name={item.icon} size={22} color={active ? T.primary : T.textMuted} />
+                <span style={{ fontSize: 10, fontWeight: 800 }}>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </StaffShell>
   );
 }
+
+const inputStyle = {
+  width: "100%",
+  minHeight: 46,
+  borderRadius: 12,
+  border: `1px solid ${T.border}`,
+  background: "white",
+  padding: "0 14px",
+  fontSize: 14,
+  boxSizing: "border-box",
+};
