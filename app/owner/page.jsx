@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import StaffShell, { MIcon } from "../../components/shared/StaffShell";
+import NotificationCenter from "../../components/shared/NotificationCenter";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtVND } from "../../lib/format";
@@ -68,10 +69,21 @@ function SmallStat({ label, value, color }) {
   );
 }
 
+const panelBtn = {
+  height: 46,
+  borderRadius: 12,
+  border: "none",
+  background: T.primary,
+  color: "white",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
 export default function OwnerPage() {
   const { profile, signOut } = useAuth();
   const [tab, setTab] = useState("home");
   const [loading, setLoading] = useState(true);
+  const [activePanel, setActivePanel] = useState("");
   const [funds, setFunds] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -135,9 +147,7 @@ export default function OwnerPage() {
                     <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Mr. Quang"}</div>
                   </div>
                 </div>
-                <button style={{ width: 40, height: 40, borderRadius: "50%", border: "none", background: "transparent", cursor: "pointer" }}>
-                  <MIcon name="notifications" size={22} color={T.textMuted} />
-                </button>
+                <NotificationCenter userId={profile?.id} />
               </div>
 
               {loading ? (
@@ -319,7 +329,7 @@ export default function OwnerPage() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <button onClick={() => setTab("home")} style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${T.border}`, background: "white", cursor: "pointer" }}><MIcon name="arrow_back" size={20} color={T.text} /></button>
               <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Ambiance</div>
-              <button style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${T.border}`, background: "white", cursor: "pointer" }}><MIcon name="notifications" size={20} color={T.textMuted} /></button>
+              <NotificationCenter userId={profile?.id} />
             </div>
 
             <div style={{ display: "grid", gap: 16 }}>
@@ -372,7 +382,7 @@ export default function OwnerPage() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <button onClick={() => setTab("home")} style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${T.border}`, background: "white", cursor: "pointer" }}><MIcon name="arrow_back" size={20} color={T.text} /></button>
               <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Agenda</div>
-              <button style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${T.border}`, background: "white", cursor: "pointer" }}><MIcon name="calendar_today" size={20} color={T.textMuted} /></button>
+              <button onClick={() => setActivePanel("agenda-help")} style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${T.border}`, background: "white", cursor: "pointer" }}><MIcon name="calendar_today" size={20} color={T.textMuted} /></button>
             </div>
 
             <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
@@ -412,26 +422,87 @@ export default function OwnerPage() {
 
             <div style={{ display: "grid", gap: 10, marginTop: 24 }}>
               {[
-                { icon: "person", label: "Account Management", sub: "User roles & owner profile" },
-                { icon: "fingerprint", label: "Security & Biometrics", sub: "Session & authentication" },
-                { icon: "notifications_active", label: "Notifications", sub: "Smart alerts & approvals" },
-                { icon: "palette", label: "Display & Theme", sub: "Visual preferences" },
-                { icon: "help_center", label: "Help Center", sub: "Support & documentation" },
+                { icon: "person", label: "Account Management", sub: "User roles & owner profile", panel: "account" },
+                { icon: "fingerprint", label: "Security & Biometrics", sub: "Session & authentication", panel: "security" },
+                { icon: "notifications_active", label: "Notifications", sub: "Smart alerts & approvals", panel: "notifications" },
+                { icon: "palette", label: "Display & Theme", sub: "Visual preferences", panel: "theme" },
+                { icon: "help_center", label: "Help Center", sub: "Support & documentation", panel: "help" },
               ].map((item, i) => (
-                <div key={i} style={{ ...cardStyle, padding: 16, display: "flex", alignItems: "center", gap: 12 }}>
+                <button key={i} onClick={() => setActivePanel(item.panel)} style={{ ...cardStyle, width: "100%", padding: 16, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", border: `1px solid ${T.border}`, textAlign: "left" }}>
                   <div style={{ width: 40, height: 40, borderRadius: 12, background: "#eef8e8", display: "flex", alignItems: "center", justifyContent: "center" }}><MIcon name={item.icon} size={20} color={T.primary} /></div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.label}</div>
                     <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{item.sub}</div>
                   </div>
                   <MIcon name="chevron_right" size={20} color={T.textMuted} />
-                </div>
+                </button>
               ))}
             </div>
 
             <button onClick={handleLogout} style={{ marginTop: 24, width: "100%", height: 48, borderRadius: 14, border: `1px solid #fecaca`, background: "#fff5f5", color: T.danger, fontWeight: 800, cursor: "pointer" }}>
               Logout
             </button>
+          </div>
+        )}
+
+        {activePanel && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 140, display: "flex", justifyContent: "center", alignItems: "flex-end" }} onClick={() => setActivePanel("")}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, background: T.card, borderRadius: "22px 22px 0 0", padding: 18, maxHeight: "78vh", overflowY: "auto" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>
+                  {activePanel === "account" && "Account Management"}
+                  {activePanel === "security" && "Security & Biometrics"}
+                  {activePanel === "notifications" && "Notifications"}
+                  {activePanel === "theme" && "Display & Theme"}
+                  {activePanel === "help" && "Help Center"}
+                  {activePanel === "agenda-help" && "Agenda Tips"}
+                </div>
+                <button onClick={() => setActivePanel("")} style={{ border: "none", background: "transparent", cursor: "pointer" }}><MIcon name="close" size={22} color={T.textMuted} /></button>
+              </div>
+
+              {activePanel === "account" && (
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Current owner</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{profile?.full_name || "Mr. Quang"}</div></div>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>User management</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Tạo/sửa user hiện đang nên làm qua Supabase hoặc flow admin hiện tại của app.</div></div>
+                  <button onClick={() => { setActivePanel(""); setTab("settings"); }} style={{ ...panelBtn }}>Đóng</button>
+                </div>
+              )}
+
+              {activePanel === "security" && (
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Auth mode</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Email + password login đang được dùng thay cho magic link.</div></div>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Recommendation</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Nên bổ sung reset password và harden create-user route ở vòng tiếp theo.</div></div>
+                </div>
+              )}
+
+              {activePanel === "notifications" && (
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Notification center</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Dùng icon chuông ở header để xem và đánh dấu đã đọc realtime.</div></div>
+                  <button onClick={() => setActivePanel("")} style={{ ...panelBtn }}>Đã hiểu</button>
+                </div>
+              )}
+
+              {activePanel === "theme" && (
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Current theme</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>ZenHome green visual system đang được áp dụng đồng bộ cho 4 role.</div></div>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Next option</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Có thể làm thêm theme toggle / density controls ở vòng sau.</div></div>
+                </div>
+              )}
+
+              {activePanel === "help" && (
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick help</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Home: overview tổng thể\n• Wealth: quỹ và chi tiêu\n• Ambiance: trạng thái nhà thông minh\n• Agenda: việc sắp tới\n• Settings: tuỳ chọn hệ thống</div></div>
+                  <button onClick={() => { setActivePanel(""); setTab("home"); }} style={{ ...panelBtn }}>Về Home</button>
+                </div>
+              )}
+
+              {activePanel === "agenda-help" && (
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Agenda view</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Tab Agenda đang lấy từ tasks hiện có trong hệ thống để owner nhìn nhanh các việc gần nhất.</div></div>
+                  <button onClick={() => { setActivePanel(""); setTab("agenda"); }} style={{ ...panelBtn }}>Mở Agenda</button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
