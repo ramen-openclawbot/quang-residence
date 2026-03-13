@@ -5,9 +5,6 @@ import StaffShell, { MIcon } from "../../components/shared/StaffShell";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { T, card, flexBetween, sectionLabel } from "../../lib/tokens";
-import { fmtVND, fmtShort, fmtDate } from "../../lib/format";
-import StatusBadge from "../../components/shared/StatusBadge";
-import NotificationCenter from "../../components/shared/NotificationCenter";
 
 const NAV_TABS = [
   { id: "home", label: "Home", icon: "home" },
@@ -17,360 +14,540 @@ const NAV_TABS = [
   { id: "settings", label: "Settings", icon: "settings" },
 ];
 
-const ROLE_LABELS = { secretary: "Secretary", housekeeper: "Housekeeper", driver: "Driver" };
-
 export default function OwnerPage() {
   const { profile, signOut } = useAuth();
   const [tab, setTab] = useState("home");
-  const [loading, setLoading] = useState(true);
-  const [transactions, setTransactions] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [funds, setFunds] = useState([]);
-  const [homeSettings, setHomeSettings] = useState({});
-  const [staffList, setStaffList] = useState([]);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("secretary");
-  const [inviteName, setInviteName] = useState("");
-  const [inviting, setInviting] = useState(false);
-  const [inviteMsg, setInviteMsg] = useState(null);
-  const router = (typeof window !== "undefined") ? require("next/navigation") : null;
-
-  useEffect(() => { fetchData(); }, []);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [txnRes, taskRes, fundRes, settingsRes, staffRes] = await Promise.all([
-        supabase.from("transactions").select("*, funds(name), categories(name_vi), profiles!created_by(full_name)").order("transaction_date", { ascending: false }).limit(50),
-        supabase.from("tasks").select("*, profiles!assigned_to(full_name)").order("created_at", { ascending: false }),
-        supabase.from("funds").select("*").order("id"),
-        supabase.from("home_settings").select("*"),
-        supabase.from("profiles").select("id, full_name, role, created_at").neq("role", "owner").order("created_at"),
-      ]);
-      setTransactions(txnRes.data || []);
-      setTasks(taskRes.data || []);
-      setFunds(fundRes.data || []);
-      setStaffList(staffRes.data || []);
-      if (settingsRes.data) {
-        const map = {};
-        settingsRes.data.forEach((s) => { let v = s.setting_value; try { v = JSON.parse(v); } catch {} map[s.setting_key] = v; });
-        setHomeSettings(map);
-      }
-    } catch (err) { console.error("fetchData:", err); }
-    finally { setLoading(false); }
-  };
-
-  const handleApproval = async (txId, status) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("transactions").update({ status, approved_by: user?.id }).eq("id", txId);
-    setTransactions((p) => p.map((t) => t.id === txId ? { ...t, status } : t));
-  };
-
-  const handleSetting = async (key, value) => {
-    const { data: ex } = await supabase.from("home_settings").select("id").eq("setting_key", key).single();
-    const sv = typeof value === "string" ? value : JSON.stringify(value);
-    if (ex) await supabase.from("home_settings").update({ setting_value: sv }).eq("id", ex.id);
-    else await supabase.from("home_settings").insert({ setting_key: key, setting_value: sv });
-    setHomeSettings((p) => ({ ...p, [key]: value }));
-  };
-
-  const handleInvite = async () => {
-    if (!inviteEmail || !inviteName) { setInviteMsg({ ok: false, text: "Please fill all fields." }); return; }
-    setInviting(true); setInviteMsg(null);
-    try {
-      const res = await fetch("/api/admin/create-user", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail, full_name: inviteName, role: inviteRole }) });
-      const data = await res.json();
-      if (res.ok) { setInviteMsg({ ok: true, text: `Created ${inviteEmail}. Temp password: ${data.temporary_password}` }); setInviteEmail(""); setInviteName(""); fetchData(); }
-      else setInviteMsg({ ok: false, text: data.error || "Failed" });
-    } catch { setInviteMsg({ ok: false, text: "Server error" }); }
-    finally { setInviting(false); }
-  };
 
   const handleLogout = async () => { await signOut(); window.location.href = "/login"; };
-
-  const mo = new Date().toISOString().substring(0, 7);
-  const totalExp = transactions.filter((t) => t.type === "expense" && t.transaction_date?.startsWith(mo)).reduce((s, t) => s + (t.amount || 0), 0);
-  const pending = transactions.filter((t) => t.status === "pending");
-
-  const weekDays = (() => {
-    const today = new Date(); const dow = today.getDay();
-    const mon = new Date(today); mon.setDate(today.getDate() - dow + 1);
-    return Array.from({ length: 6 }, (_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return d; });
-  })();
-
-  const dn = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
     <StaffShell role="owner">
       <div style={{ maxWidth: 430, margin: "0 auto" }}>
 
-        {/* ════════ HOME ════════ */}
+        {/* ════════ TAB 1: HOME ════════ */}
         {tab === "home" && (<>
           <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "32px 24px 16px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: "50%", background: `${T.primary}10`, border: `1px solid ${T.primary}20`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 16, color: T.primary }}>Q</div>
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: `${T.primary}10`, border: `1px solid ${T.primary}20`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGmyE-3dyCKlh1adLXn5e7UyrjgO0tWTGCQw8KwLk04d7PRw4Tu9icxPfldEkoJpRhFcOFo0-6440ii_mDApyGKxmwAydSCc05m4_5AKySSrhSld4Yi2irzKZtqSicvfb9rUgXp7V9uxQ70m_h-CsxDtliMhBf21QQUjUB2TPRstzXiPn95d57BGvGhaZ0ajorIrJ95FEPLkDSzPO-o5JsHz00un61VjYOwYAx_p9iUAtRohSJ1ABB-eXFnNEiQYEWQiK3nWmQnw" alt="Mr. Quang" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
               <div>
                 <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", color: T.textMuted, fontWeight: 600 }}>Welcome back</p>
-                <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: T.text }}>Mr. Quang</h1>
+                <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: T.text, margin: 0 }}>Mr. Quang</h1>
               </div>
             </div>
-            <NotificationCenter userId={profile?.id} />
+            <button style={{ width: 40, height: 40, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "none", border: "none", padding: 0 }}>
+              <MIcon name="notifications" size={24} color={T.text} />
+            </button>
           </header>
 
-          <div style={{ padding: "0 24px 24px" }}>
-            {/* Wealth */}
-            <section style={{ marginBottom: 32 }}>
+          <main style={{ padding: "0 24px 120px", display: "flex", flexDirection: "column", gap: 32 }}>
+            {/* WEALTH */}
+            <section>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <h2 style={{ ...sectionLabel, marginBottom: 0 }}>Wealth</h2>
-                <button onClick={() => setTab("wealth")} style={{ fontSize: 12, color: T.primary, fontWeight: 500, background: "none", border: "none", cursor: "pointer" }}>View Report</button>
+                <h2 style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted }}>Wealth</h2>
+                <span style={{ fontSize: 12, color: T.primary, fontWeight: 500, cursor: "pointer" }}>View Report</span>
               </div>
-              <div style={{ ...card, padding: 20 }}>
+              <div style={{ ...card, padding: 20, background: "#fff", borderRadius: 12 }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 16 }}>
-                  <span style={{ fontSize: 30, fontWeight: 300, color: T.text }}>{loading ? "..." : fmtVND(totalExp)}</span>
+                  <span style={{ fontSize: 30, fontWeight: 300, color: T.text }}>$4,250</span>
                   <span style={{ fontSize: 14, color: T.textMuted }}>this month</span>
                 </div>
-                {!loading && funds.length > 0 && (<div style={{ marginBottom: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
-                    <span style={{ color: T.textMuted }}>{funds[0]?.name}</span>
-                    <span style={{ fontWeight: 600 }}>{fmtVND(funds[0]?.current_balance)}</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
+                      <span style={{ color: T.textMuted }}>Investments</span>
+                      <span style={{ fontWeight: 600 }}>$2,500</span>
+                    </div>
+                    <div style={{ height: 4, background: "#f1f5f9", borderRadius: 99, overflow: "hidden" }}>
+                      <div style={{ height: "100%", background: T.primary, borderRadius: 99, width: "58%" }} />
+                    </div>
                   </div>
-                  <div style={{ height: 4, background: "#f1f5f9", borderRadius: 99, overflow: "hidden" }}>
-                    <div style={{ height: "100%", background: T.primary, borderRadius: 99, width: `${Math.min(100, ((funds[0]?.current_balance || 0) / (funds[0]?.budget_monthly || 1)) * 100)}%` }} />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div>
+                      <p style={{ fontSize: 10, textTransform: "uppercase", fontWeight: 700, color: T.textMuted, marginBottom: 4 }}>Groceries</p>
+                      <p style={{ fontSize: 14, fontWeight: 600 }}>$800</p>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 10, textTransform: "uppercase", fontWeight: 700, color: T.textMuted, marginBottom: 4 }}>Utilities</p>
+                      <p style={{ fontSize: 14, fontWeight: 600 }}>$950</p>
+                    </div>
                   </div>
-                </div>)}
-                {!loading && <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  {funds.slice(1, 3).map((f) => (<div key={f.id}><p style={{ fontSize: 10, textTransform: "uppercase", fontWeight: 700, color: T.textMuted, marginBottom: 4 }}>{f.name}</p><p style={{ fontSize: 14, fontWeight: 600 }}>{fmtShort(f.current_balance)}</p></div>))}
-                </div>}
+                </div>
               </div>
             </section>
 
-            {/* Ambiance */}
-            <section style={{ marginBottom: 32 }}>
-              <h2 style={{ ...sectionLabel }}>Ambiance</h2>
+            {/* AMBIANCE */}
+            <section>
+              <h2 style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 16 }}>Ambiance</h2>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <div style={{ ...card, padding: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <MIcon name="videocam" size={22} color={T.primary} />
+                <div style={{ ...card, padding: 16, background: "#fff", borderRadius: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <MIcon name="videocam" size={24} color={T.primary} />
                     <div style={{ width: 8, height: 8, borderRadius: "50%", background: T.primary }} />
                   </div>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Security</p>
-                  <p style={{ fontSize: 10, textTransform: "uppercase", color: T.textMuted }}>4 Cameras Active</p>
-                </div>
-                <div style={{ ...card, padding: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <MIcon name="light_group" size={22} color={T.primary} />
-                    <span style={{ fontSize: 10, fontWeight: 700, color: T.primary, padding: "2px 8px", background: `${T.primary}10`, borderRadius: 99 }}>{homeSettings.brightness || 60}%</span>
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>Security</p>
+                    <p style={{ fontSize: 10, textTransform: "uppercase", color: T.textMuted, margin: 0 }}>4 Cameras Active</p>
                   </div>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Lighting</p>
-                  <p style={{ fontSize: 10, textTransform: "uppercase", color: T.textMuted }}>{homeSettings.lighting_preset === "natural" ? "Natural Preset" : homeSettings.lighting_preset === "dim" ? "Dim Preset" : "Soft Warm Preset"}</p>
+                </div>
+                <div style={{ ...card, padding: 16, background: "#fff", borderRadius: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <MIcon name="light_group" size={24} color={T.primary} />
+                    <span style={{ fontSize: 10, fontWeight: 700, color: T.primary, padding: "2px 8px", background: `${T.primary}10`, borderRadius: 99 }}>60%</span>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>Lighting</p>
+                    <p style={{ fontSize: 10, textTransform: "uppercase", color: T.textMuted, margin: 0 }}>Soft Warm Preset</p>
+                  </div>
                 </div>
               </div>
             </section>
 
-            {/* Agenda */}
+            {/* AGENDA */}
             <section>
-              <h2 style={{ ...sectionLabel }}>Agenda</h2>
-              <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-                {!loading && tasks.length === 0 && <div style={{ padding: 24, textAlign: "center", color: T.textMuted, fontSize: 13 }}>No tasks scheduled</div>}
-                {tasks.slice(0, 3).map((t, i) => (
-                  <div key={t.id} style={{ padding: 16, display: "flex", alignItems: "center", gap: 16, borderBottom: i < Math.min(tasks.length, 3) - 1 ? `1px solid ${T.border}` : "none" }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 8, background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <MIcon name="article" size={20} color={T.textMuted} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 12, textTransform: "uppercase", fontWeight: 700, color: T.textMuted }}>{t.profiles?.full_name || "Staff"}</p>
-                      <p style={{ fontSize: 14, fontWeight: 500, color: T.text }}>{t.title}</p>
-                    </div>
-                    <span style={{ fontSize: 10, color: T.textMuted }}>{t.due_date ? fmtDate(t.due_date) : ""}</span>
+              <h2 style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 16 }}>Agenda</h2>
+              <div style={{ ...card, padding: 0, overflow: "hidden", background: "#fff", borderRadius: 12 }}>
+                <div style={{ padding: 16, display: "flex", alignItems: "center", gap: 16, borderBottom: `1px solid ${T.border}` }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <MIcon name="directions_car" size={20} color={T.textMuted} />
                   </div>
-                ))}
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 12, textTransform: "uppercase", fontWeight: 700, color: T.textMuted, margin: 0 }}>Driver</p>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: T.text, margin: 0 }}>Airport Transfer at 14:00</p>
+                  </div>
+                  <span style={{ fontSize: 10, color: T.textMuted }}>2h left</span>
+                </div>
+                <div style={{ padding: 16, display: "flex", alignItems: "center", gap: 16 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <MIcon name="article" size={20} color={T.textMuted} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 12, textTransform: "uppercase", fontWeight: 700, color: T.textMuted, margin: 0 }}>Secretary</p>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: T.text, margin: 0 }}>Sign Q4 budget report</p>
+                  </div>
+                  <span style={{ fontSize: 10, color: T.textMuted }}>16:30</span>
+                </div>
               </div>
             </section>
-          </div>
+          </main>
         </>)}
 
-        {/* ════════ WEALTH ════════ */}
+        {/* ════════ TAB 2: WEALTH ════════ */}
         {tab === "wealth" && (<>
           <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 24px 16px" }}>
-            <button onClick={() => setTab("home")} style={{ width: 40, height: 40, borderRadius: "50%", background: "#fff", border: `1px solid ${T.primary}10`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: T.shadow }}>
+            <button onClick={() => setTab("home")} style={{ width: 40, height: 40, borderRadius: "50%", background: "#fff", border: `1px solid ${T.primary}10`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
               <MIcon name="arrow_back" size={20} color={T.text} />
             </button>
             <h1 style={{ fontSize: 18, fontWeight: 700, color: T.text }}>Wealth Analytics</h1>
-            <button style={{ width: 40, height: 40, borderRadius: "50%", background: "#fff", border: `1px solid ${T.primary}10`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: T.shadow }}>
+            <button style={{ width: 40, height: 40, borderRadius: "50%", background: "#fff", border: `1px solid ${T.primary}10`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
               <MIcon name="search" size={20} color={T.text} />
             </button>
           </header>
 
-          <div style={{ padding: "0 24px 24px" }}>
-            <div style={{ textAlign: "center", marginBottom: 32 }}>
-              <p style={{ fontSize: 12, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: T.textMuted, marginBottom: 4 }}>Total Net Worth</p>
-              <h2 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.02em", color: T.text, marginBottom: 8 }}>{loading ? "..." : fmtVND(funds.reduce((s, f) => s + (f.current_balance || 0), 0))}</h2>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, color: T.primary }}>
-                <MIcon name="trending_up" size={16} color={T.primary} /><span style={{ fontSize: 14, fontWeight: 700 }}>+2.4% vs last month</span>
+          <main style={{ padding: "0 24px 120px", display: "flex", flexDirection: "column", gap: 32 }}>
+            {/* Month/Year Toggle */}
+            <div style={{ display: "flex", height: 48, background: `${T.primary}08`, borderRadius: 12, padding: 4, border: `1px solid ${T.primary}10` }}>
+              <label style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, background: "#fff", fontWeight: 500, fontSize: 14, cursor: "pointer", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+                <input type="radio" defaultChecked style={{ display: "none" }} />
+                <span>Month</span>
+              </label>
+              <label style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 500, fontSize: 14, color: T.textMuted, cursor: "pointer" }}>
+                <input type="radio" style={{ display: "none" }} />
+                <span>Year</span>
+              </label>
+            </div>
+
+            {/* Total Net Worth */}
+            <div style={{ textAlign: "center" }}>
+              <p style={{ fontSize: 12, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: T.textMuted, marginBottom: 8 }}>Total Net Worth</p>
+              <h2 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.02em", color: T.text, margin: "0 0 8px" }}>$1,240,500.00</h2>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, color: T.primary }}>
+                <MIcon name="trending_up" size={16} color={T.primary} />
+                <span style={{ fontSize: 14, fontWeight: 700 }}>+2.4% vs last month</span>
               </div>
             </div>
 
-            {pending.length > 0 && <section style={{ marginBottom: 24 }}>
-              <h3 style={{ fontWeight: 700, color: T.text, marginBottom: 12 }}>Pending Approvals ({pending.length})</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {pending.map((tx) => (
-                  <div key={tx.id} style={{ ...card, padding: 16 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                      <div><p style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{tx.description || "Transaction"}</p><p style={{ fontSize: 12, color: T.textMuted }}>{tx.profiles?.full_name} &middot; {tx.funds?.name}</p></div>
-                      <p style={{ fontSize: 15, fontWeight: 700, color: T.danger }}>-{fmtVND(tx.amount)}</p>
-                    </div>
-                    {tx.slip_image_url && <img src={tx.slip_image_url} alt="slip" style={{ width: "100%", maxHeight: 120, objectFit: "cover", borderRadius: 8, marginBottom: 8, cursor: "pointer" }} onClick={() => window.open(tx.slip_image_url, "_blank")} />}
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => handleApproval(tx.id, "approved")} style={{ flex: 1, padding: "10px", background: T.primary, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Approve</button>
-                      <button onClick={() => handleApproval(tx.id, "rejected")} style={{ flex: 1, padding: "10px", background: T.bg, color: T.danger, border: `1px solid ${T.danger}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Reject</button>
-                    </div>
-                  </div>
-                ))}
+            {/* Spending vs Budget Chart */}
+            <div style={{ ...card, padding: 24, background: "#fff", borderRadius: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>Spending vs Budget</h3>
+                <span style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", color: T.textMuted }}>Last 6 Months</span>
               </div>
-            </section>}
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", height: 128, gap: 8 }}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  <div style={{ width: "100%", height: "66%", background: `${T.primary}28`, borderRadius: "4px 4px 0 0" }} />
+                  <span style={{ fontSize: 9, color: T.textMuted }}>Jan</span>
+                </div>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  <div style={{ width: "100%", height: "75%", background: `${T.primary}28`, borderRadius: "4px 4px 0 0" }} />
+                  <span style={{ fontSize: 9, color: T.textMuted }}>Feb</span>
+                </div>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  <div style={{ width: "100%", height: "50%", background: `${T.primary}28`, borderRadius: "4px 4px 0 0" }} />
+                  <span style={{ fontSize: 9, color: T.textMuted }}>Mar</span>
+                </div>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  <div style={{ width: "100%", height: "83%", background: T.primary, borderRadius: "4px 4px 0 0" }} />
+                  <span style={{ fontSize: 9, color: T.textMuted }}>Apr</span>
+                </div>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  <div style={{ width: "100%", height: "66%", background: `${T.primary}28`, borderRadius: "4px 4px 0 0" }} />
+                  <span style={{ fontSize: 9, color: T.textMuted }}>May</span>
+                </div>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  <div style={{ width: "100%", height: "50%", background: `${T.primary}28`, borderRadius: "4px 4px 0 0" }} />
+                  <span style={{ fontSize: 9, color: T.textMuted }}>Jun</span>
+                </div>
+              </div>
+            </div>
 
-            <section>
-              <div style={{ ...flexBetween, marginBottom: 12 }}><h3 style={{ fontWeight: 700, fontSize: 18 }}>Spending Breakdown</h3><span style={{ fontSize: 14, fontWeight: 700, color: T.primary }}>View All</span></div>
+            {/* Spending Breakdown */}
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: T.text, margin: 0 }}>Spending Breakdown</h3>
+                <a style={{ fontSize: 14, fontWeight: 700, color: T.primary, cursor: "pointer", textDecoration: "none" }}>View All</a>
+              </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {transactions.filter(t => t.type === "expense").slice(0, 5).map((tx) => (
-                  <div key={tx.id} style={{ ...card, padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                {[
+                  { icon: "shopping_basket", label: "Groceries", sub: "Weekly Restock", amount: "-$1,240.00", bg: "#fed7aa" },
+                  { icon: "bolt", label: "Bill Payments", sub: "Electricity & Water", amount: "-$450.20", bg: "#bfdbfe" },
+                  { icon: "subscriptions", label: "Online Subscriptions", sub: "Netflix, Spotify, iCloud", amount: "-$89.99", bg: "#e9d5ff" },
+                  { icon: "flight", label: "Travel", sub: "Weekend Retreat", amount: "-$2,800.00", bg: "#dcfce7" }
+                ].map((item, i) => (
+                  <div key={i} style={{ ...card, padding: 16, background: "#fff", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <MIcon name="receipt_long" size={20} color={T.primary} />
+                      <div style={{ width: 40, height: 40, borderRadius: "50%", background: item.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <MIcon name={item.icon} size={20} color={T.text} />
                       </div>
-                      <div><p style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{tx.description || "Expense"}</p><p style={{ fontSize: 12, color: T.textMuted }}>{tx.profiles?.full_name}</p></div>
+                      <div>
+                        <p style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>{item.label}</p>
+                        <p style={{ fontSize: 12, color: T.textMuted, margin: 0 }}>{item.sub}</p>
+                      </div>
                     </div>
-                    <p style={{ fontWeight: 700 }}>-{fmtVND(tx.amount)}</p>
+                    <p style={{ fontWeight: 700, color: T.text, margin: 0 }}>{item.amount}</p>
                   </div>
                 ))}
               </div>
-            </section>
-          </div>
+            </div>
+
+            {/* Small Investments */}
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: T.text, margin: 0 }}>Small Investments</h3>
+                <span style={{ fontSize: 14, fontWeight: 700, color: T.primary, cursor: "pointer" }}>Manage Assets</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div style={{ ...card, padding: 16, background: "#fff", borderRadius: 12, display: "flex", flexDirection: "column" }}>
+                  <div style={{ width: "100%", aspectRatio: "1", borderRadius: 8, marginBottom: 12, overflow: "hidden", background: "#f0f0f0" }}>
+                    <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBy24kIoNlgftW32XJ44AxDJNfC86HHull45VzX0kKykjDAXMLOcBcKlzC_QFNluaqczxApt3fGgfpPkbMCcuNL3LBdTH6ZE0P-dB65rTjuUM7eALqa9GFa9_PbuvKhsZPRW0B4jaEbfUJ0lNO3oHtadi78jtxMEjqFkmQW6PMZsiRQ_2rI8mAous6u1_1__fuDpaNOHsrHAO-QYIzHzDwvMjF7wpqWLlbLSlCWWzLqUEA6vQjDQlU3ZoPhRCh_4Um50_iRT1Aj3A" alt="Original Painting" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </div>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: T.text, margin: "0 0 4px" }}>Original Painting</p>
+                  <p style={{ fontSize: 10, color: T.textMuted, margin: "0 0 8px" }}>Acquired: Jan 2024</p>
+                  <p style={{ fontSize: 14, fontWeight: 800, color: T.primary, margin: 0 }}>$12,500</p>
+                </div>
+                <div style={{ ...card, padding: 16, background: "#fff", borderRadius: 12, display: "flex", flexDirection: "column" }}>
+                  <div style={{ width: "100%", aspectRatio: "1", borderRadius: 8, marginBottom: 12, overflow: "hidden", background: "#f0f0f0" }}>
+                    <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuC99C79_6learAJ3V0xtqQMIkNiYiCdgg8FJaqLUo1qaBd2hEaqZeWQEMKTL6B3bHh2QTTs5HS2lZX5G76leMGBkP4gz5FTf9e-NZ8ajPXFBWHlxc289RWiaf2r6sMCC9rbZLcDW59Vl0o70U5I5AfFC9Cz_--gijuXZKAmutoVJXOLak3jl658YALwq_GM7FZKAzqaGP167HdQ45LYgofdr33I9xuDZAJrhc1ob2adGPoj_-KX7Vfq7CGtYpC_R237YmuVKpwi6w" alt="Vintage Furniture" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </div>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: T.text, margin: "0 0 4px" }}>Vintage Furniture</p>
+                  <p style={{ fontSize: 10, color: T.textMuted, margin: "0 0 8px" }}>Acquired: Mar 2024</p>
+                  <p style={{ fontSize: 14, fontWeight: 800, color: T.primary, margin: 0 }}>$4,200</p>
+                </div>
+              </div>
+            </div>
+          </main>
         </>)}
 
-        {/* ════════ AMBIANCE ════════ */}
+        {/* ════════ TAB 3: AMBIANCE ════════ */}
         {tab === "ambiance" && (<>
-          <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 24px 16px" }}>
-            <button onClick={() => setTab("home")} style={{ width: 40, height: 40, borderRadius: "50%", background: "#fff", border: `1px solid ${T.primary}10`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: T.shadow }}><MIcon name="arrow_back" size={20} color={T.text} /></button>
-            <h1 style={{ fontSize: 18, fontWeight: 700, color: T.text }}>Ambiance</h1>
-            <NotificationCenter userId={profile?.id} />
+          <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 24px 16px", position: "sticky", top: 0, background: "#f6f8f6", backdropFilter: "blur(12px)", zIndex: 10 }}>
+            <button onClick={() => setTab("home")} style={{ width: 40, height: 40, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "none", border: "none", padding: 0 }}>
+              <MIcon name="arrow_back" size={20} color={T.text} />
+            </button>
+            <h1 style={{ fontSize: 18, fontWeight: 600, color: T.text }}>Ambiance</h1>
+            <button style={{ width: 40, height: 40, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "none", border: "none", padding: 0 }}>
+              <MIcon name="notifications" size={20} color={T.text} />
+            </button>
           </header>
-          <div style={{ padding: "0 24px 24px" }}>
-            <section style={{ marginBottom: 32 }}>
-              <div style={{ ...flexBetween, marginBottom: 12 }}><h3 style={{ fontWeight: 700, fontSize: 18 }}>Security</h3><span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: T.primary, fontWeight: 500 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: T.primary }} /> Live</span></div>
-              <div style={{ ...card, padding: 16, display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: "50%", background: `${T.primary}10`, display: "flex", alignItems: "center", justifyContent: "center" }}><MIcon name="shield" size={20} color={T.primary} /></div>
-                <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>4 Cameras Active</p><p style={{ fontSize: 12, color: T.textMuted }}>System armed &amp; secured</p></div>
-                <MIcon name="check_circle" size={22} color={T.primary} filled />
+
+          <main style={{ padding: "24px", paddingBottom: 120, display: "flex", flexDirection: "column", gap: 24 }}>
+            {/* Security */}
+            <section>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: T.text, margin: 0 }}>Security</h2>
+                <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: T.primary, fontWeight: 500 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: T.primary }} />
+                  Live
+                </span>
+              </div>
+              <div style={{ position: "relative", width: "100%", aspectRatio: "16/9", borderRadius: 12, overflow: "hidden", marginBottom: 16, border: `1px solid ${T.primary}08` }}>
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkeMrhxcy4tkQFNGHOxaTsvmR8lL96FArdho9kjlE7zW4ZPHcX7UfV2HPO0S3cCLjt7ALZi8FcarF9RIEKXxOFDOdd_9VBKd6kLajmHsftsTOwtvCzNCY_kfGQT5Mr1KqGzdDthf0IIOK5xcvabxfDc5s7R8Eo5kCD_r7TBKPFX5FkHC7GEU25MvqO60UgqxcmIpLOl5e3lhdf7a5488FNDpTnOte_743VXrKm4f22Y8lwdbD4wZZwgbZnHjzAPb8JitSCKlxUmQ" alt="Camera feed" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.1)" }}>
+                  <button style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff" }}>
+                    <MIcon name="play_arrow" size={32} color="#fff" />
+                  </button>
+                </div>
+              </div>
+              <div style={{ ...card, padding: 16, background: "#fff", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 8, background: `${T.primary}10`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <MIcon name="shield_with_heart" size={20} color={T.primary} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: T.text, margin: 0 }}>4 Cameras Active</p>
+                  <p style={{ fontSize: 12, color: T.textMuted, margin: 0 }}>System armed & secured</p>
+                </div>
+                <MIcon name="check_circle" size={24} color={T.primary} />
               </div>
             </section>
-            <section style={{ marginBottom: 32 }}>
-              <h3 style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>Lighting</h3>
-              <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
-                {[{ id: "warm", label: "Soft Warm", icon: "wb_sunny" }, { id: "natural", label: "Natural", icon: "light_mode" }, { id: "dim", label: "Dim", icon: "dark_mode" }].map((p) => {
-                  const a = (homeSettings.lighting_preset || "warm") === p.id;
-                  return (<button key={p.id} onClick={() => handleSetting("lighting_preset", p.id)} style={{ flex: 1, padding: "12px 8px", borderRadius: 12, border: "none", cursor: "pointer", background: a ? T.primary : `${T.primary}08`, color: a ? "#fff" : T.textSec, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, fontFamily: T.font, fontWeight: 600, fontSize: 12 }}>
-                    <MIcon name={p.icon} size={20} color={a ? "#fff" : T.textSec} />{p.label}
-                  </button>);
-                })}
+
+            {/* Lighting */}
+            <section>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: T.text, marginBottom: 16 }}>Lighting</h2>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 24 }}>
+                <button style={{ padding: 16, background: T.primary, color: "#fff", border: "none", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, cursor: "pointer", fontWeight: 500, fontSize: 12 }}>
+                  <MIcon name="light_mode" size={24} color="#fff" />
+                  Soft Warm
+                </button>
+                <button style={{ padding: 16, background: "#fff", color: T.text, border: `1px solid ${T.primary}10`, borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, cursor: "pointer", fontWeight: 500, fontSize: 12 }}>
+                  <MIcon name="wb_sunny" size={24} color={T.textMuted} />
+                  Natural
+                </button>
+                <button style={{ padding: 16, background: "#fff", color: T.text, border: `1px solid ${T.primary}10`, borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, cursor: "pointer", fontWeight: 500, fontSize: 12 }}>
+                  <MIcon name="nights_stay" size={24} color={T.textMuted} />
+                  Dim
+                </button>
               </div>
-              <div><div style={{ ...flexBetween, marginBottom: 8 }}><span style={{ fontSize: 14, fontWeight: 500 }}>Brightness</span><span style={{ fontSize: 14, fontWeight: 700, color: T.primary }}>{homeSettings.brightness || 80}%</span></div>
-              <input type="range" min="0" max="100" value={homeSettings.brightness || 80} onChange={(e) => handleSetting("brightness", parseInt(e.target.value))} style={{ width: "100%" }} /></div>
+              <div style={{ ...card, padding: 20, background: "#fff", borderRadius: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>Brightness</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: T.primary }}>80%</span>
+                </div>
+                <div style={{ position: "relative", width: "100%", height: 6, background: "#e2e8f0", borderRadius: 99 }}>
+                  <div style={{ position: "absolute", inset: 0, width: "80%", background: T.primary, borderRadius: 99 }} />
+                  <input type="range" min="0" max="100" defaultValue="80" style={{ position: "absolute", width: "100%", height: "100%", opacity: 0, cursor: "pointer" }} />
+                </div>
+              </div>
             </section>
-            <section style={{ marginBottom: 32 }}>
-              <h3 style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>Climate</h3>
-              <div style={{ ...card, padding: 20, display: "flex", alignItems: "center", gap: 24 }}>
-                <div><p style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 4 }}>Current</p><p style={{ fontSize: 32, fontWeight: 300 }}>{homeSettings.temperature || 24}°C</p><p style={{ fontSize: 12, color: T.textMuted, display: "flex", alignItems: "center", gap: 4 }}><MIcon name="water_drop" size={14} color={T.primary} /> {homeSettings.humidity || 45}% Humidity</p></div>
-                <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
-                  <div style={{ width: 80, height: 80, borderRadius: "50%", border: `3px solid ${T.primary}30`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <div style={{ textAlign: "center" }}><p style={{ fontSize: 20, fontWeight: 700 }}>22.5</p><p style={{ fontSize: 9, textTransform: "uppercase", color: T.textMuted }}>Target</p></div>
+
+            {/* Climate */}
+            <section>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: T.text, marginBottom: 16 }}>Climate</h2>
+              <div style={{ ...card, padding: 24, background: "#fff", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, margin: 0, marginBottom: 4 }}>Current</p>
+                  <p style={{ fontSize: 32, fontWeight: 300, margin: 0 }}>24<span style={{ color: T.primary }}>°C</span></p>
+                  <p style={{ fontSize: 12, color: T.textMuted, display: "flex", alignItems: "center", gap: 4, margin: 0, marginTop: 8 }}>
+                    <MIcon name="water_drop" size={14} color={T.primary} />
+                    45% Humidity
+                  </p>
+                </div>
+                <div style={{ position: "relative", width: 112, height: 112, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg viewBox="0 0 100 100" style={{ width: "100%", height: "100%", transform: "rotate(-90deg)" }}>
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" strokeWidth="6" />
+                    <circle cx="50" cy="50" r="40" fill="none" stroke={T.primary} strokeWidth="6" strokeDasharray="251.2" strokeDashoffset="180" strokeLinecap="round" />
+                  </svg>
+                  <div style={{ position: "absolute", textAlign: "center" }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, margin: 0 }}>22.5</p>
+                    <p style={{ fontSize: 8, textTransform: "uppercase", color: T.textMuted, margin: 0 }}>Target</p>
                   </div>
                 </div>
               </div>
             </section>
+
+            {/* Smart Devices */}
             <section>
-              <h3 style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>Smart Devices</h3>
-              <div style={{ display: "flex", gap: 16 }}>
-                {[{ id: "air_purifier", label: "Air Purifier", sub: "Auto Mode", icon: "air" }, { id: "smart_blinds", label: "Smart Blinds", sub: "Closed", icon: "blinds" }].map((d) => (
-                  <div key={d.id} style={{ flex: 1, textAlign: "center" }}>
-                    <MIcon name={d.icon} size={28} color={T.text} /><p style={{ fontSize: 13, fontWeight: 600, marginTop: 6 }}>{d.label}</p><p style={{ fontSize: 11, color: T.textMuted, marginBottom: 8 }}>{d.sub}</p>
-                    <label style={{ position: "relative", display: "inline-block", width: 44, height: 24 }}>
-                      <input type="checkbox" checked={homeSettings[d.id] || false} onChange={(e) => handleSetting(d.id, e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
-                      <span style={{ position: "absolute", cursor: "pointer", inset: 0, background: homeSettings[d.id] ? T.primary : "#ccc", borderRadius: 12, transition: "0.3s" }}><span style={{ position: "absolute", height: 18, width: 18, left: homeSettings[d.id] ? 22 : 3, bottom: 3, background: "#fff", borderRadius: "50%", transition: "0.3s" }} /></span>
-                    </label>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: T.text, marginBottom: 16 }}>Smart Devices</h2>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div style={{ ...card, padding: 16, background: "#fff", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <MIcon name="air_purifier_gen" size={20} color="#3b82f6" />
                   </div>
-                ))}
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: T.text, margin: 0 }}>Air Purifier</p>
+                    <p style={{ fontSize: 10, color: T.textMuted, margin: 0 }}>Auto Mode</p>
+                  </div>
+                  <div style={{ width: 32, height: 16, background: T.primary, borderRadius: 8, position: "relative" }}>
+                    <div style={{ position: "absolute", right: 2, top: 2, width: 12, height: 12, background: "#fff", borderRadius: "50%" }} />
+                  </div>
+                </div>
+                <div style={{ ...card, padding: 16, background: "#fff", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: "#fed7aa", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <MIcon name="blinds" size={20} color="#f97316" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: T.text, margin: 0 }}>Smart Blinds</p>
+                    <p style={{ fontSize: 10, color: T.textMuted, margin: 0 }}>Closed</p>
+                  </div>
+                  <div style={{ width: 32, height: 16, background: "#cbd5e1", borderRadius: 8, position: "relative" }}>
+                    <div style={{ position: "absolute", left: 2, top: 2, width: 12, height: 12, background: "#fff", borderRadius: "50%" }} />
+                  </div>
+                </div>
               </div>
             </section>
-          </div>
+          </main>
         </>)}
 
-        {/* ════════ AGENDA ════════ */}
+        {/* ════════ TAB 4: AGENDA ════════ */}
         {tab === "agenda" && (<>
           <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "32px 24px 16px" }}>
-            <h1 style={{ fontSize: 24, fontWeight: 300, textTransform: "uppercase", color: T.text }}>Agenda</h1>
-            <NotificationCenter userId={profile?.id} />
+            <h1 style={{ fontSize: 24, fontWeight: 300, textTransform: "uppercase", color: T.text, margin: 0 }}>Agenda</h1>
+            <button style={{ position: "relative", width: 40, height: 40, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "none", border: "none", padding: 0 }}>
+              <MIcon name="notifications" size={24} color={T.text} />
+              <span style={{ position: "absolute", top: 8, right: 8, width: 4, height: 4, borderRadius: "50%", background: T.primary }} />
+            </button>
           </header>
-          <div style={{ padding: "0 24px 24px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-              <div>
-                <p style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.12em", color: T.textMuted, fontWeight: 600 }}>{new Date().toLocaleString("en-US", { month: "long", year: "numeric" })}</p>
-                <p style={{ fontSize: 18, fontWeight: 500, color: T.text }}>{new Date().toLocaleString("en-US", { weekday: "long" })}, {new Date().getDate()}{["st","nd","rd"][((new Date().getDate()+90)%100-10)%10-1]||"th"}</p>
-              </div>
-              <button style={{ display: "flex", alignItems: "center", gap: 4, color: T.primary, fontSize: 14, fontWeight: 500, background: "none", border: "none", cursor: "pointer" }}><MIcon name="calendar_today" size={16} color={T.primary} /> Month View</button>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 32 }}>
-              {weekDays.map((day, i) => { const today = day.toDateString() === new Date().toDateString(); return (
-                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 0", borderRadius: 12, background: today ? T.primary : "transparent", border: today ? "none" : `1px solid ${T.border}`, color: today ? "#fff" : T.text, boxShadow: today ? `0 4px 12px ${T.primary}33` : "none" }}>
-                  <span style={{ fontSize: 10, textTransform: "uppercase", fontWeight: 700, opacity: today ? 0.7 : 0.5, marginBottom: 4 }}>{dn[i]}</span>
-                  <span style={{ fontSize: 14, fontWeight: today ? 700 : 500 }}>{day.getDate()}</span>
-                </div>);
-              })}
-            </div>
-            {tasks.map((task) => (
-              <div key={task.id} style={{ display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 16 }}>
-                <div style={{ width: 48, flexShrink: 0, paddingTop: 4 }}>
-                  <p style={{ fontSize: 14, fontWeight: 600 }}>{task.due_date ? new Date(task.due_date).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }) : "--:--"}</p>
-                  <p style={{ fontSize: 10, color: T.textMuted }}>1h</p>
+
+          <main style={{ padding: "0 24px 120px", display: "flex", flexDirection: "column", gap: 32 }}>
+            {/* Date Header */}
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+                <div>
+                  <p style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, fontWeight: 600, margin: 0 }}>October 2023</p>
+                  <p style={{ fontSize: 18, fontWeight: 500, color: T.text, margin: 0 }}>Thursday, 5th</p>
                 </div>
-                <div style={{ ...card, padding: 16, flex: 1 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 500 }}>{task.title}</h3>
-                    <MIcon name="draw" size={18} color={T.primary} />
+                <button style={{ display: "flex", alignItems: "center", gap: 4, color: T.primary, fontSize: 14, fontWeight: 500, background: "none", border: "none", cursor: "pointer" }}>
+                  <MIcon name="calendar_today" size={16} color={T.primary} />
+                  Month View
+                </button>
+              </div>
+
+              {/* Week Days */}
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, i) => (
+                  <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 0", borderRadius: 12, background: i === 3 ? T.primary : "transparent", border: i === 3 ? "none" : `1px solid ${T.border}`, color: i === 3 ? "#fff" : T.text, textAlign: "center" }}>
+                    <span style={{ fontSize: 10, textTransform: "uppercase", fontWeight: 700, opacity: i === 3 ? 0.7 : 0.5, margin: 0 }}>{day}</span>
+                    <span style={{ fontSize: 14, fontWeight: i === 3 ? 700 : 500, margin: 0 }}>{[2, 3, 4, 5, 6, 7][i]}</span>
                   </div>
-                  <p style={{ fontSize: 14, color: T.textMuted, marginBottom: 12 }}>{task.description || ""}</p>
-                  <StatusBadge status={task.status} />
-                </div>
+                ))}
               </div>
-            ))}
-            {!loading && tasks.length === 0 && <div style={{ textAlign: "center", padding: 40, color: T.textMuted }}>No scheduled tasks</div>}
-          </div>
+            </div>
+
+            {/* Driver Section */}
+            <section>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                <div style={{ width: 8, height: 1, background: `${T.primary}40` }} />
+                <h2 style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, color: T.textMuted, margin: 0 }}>Driver</h2>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {[
+                  { time: "14:00", duration: "2h", title: "Airport Transfer", desc: "Narita International Terminal 3", icon: "flight_takeoff", status: "Scheduled" },
+                  { time: "19:30", duration: "1h", title: "Evening Gala Drop-off", desc: "Imperial Hotel Main Entrance", icon: "directions_car", status: "Waiting" }
+                ].map((task, i) => (
+                  <div key={i} style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                    <div style={{ width: 48, flexShrink: 0, paddingTop: 4 }}>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: T.text, margin: 0 }}>{task.time}</p>
+                      <p style={{ fontSize: 10, color: T.textMuted, margin: 0 }}>{task.duration}</p>
+                    </div>
+                    <div style={{ ...card, padding: 16, flex: 1, background: "#fff", borderRadius: 12 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                        <h3 style={{ fontSize: 16, fontWeight: 500, color: T.text, margin: 0 }}>{task.title}</h3>
+                        <MIcon name={task.icon} size={20} color={T.primary} />
+                      </div>
+                      <p style={{ fontSize: 14, color: T.textMuted, margin: 0, marginBottom: 12 }}>{task.desc}</p>
+                      <span style={{ display: "inline-block", fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "4px 8px", background: task.status === "Scheduled" ? `${T.primary}10` : "#f3f4f6", color: task.status === "Scheduled" ? T.primary : T.textMuted, borderRadius: 4 }}>{task.status}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Secretary Section */}
+            <section>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                <div style={{ width: 8, height: 1, background: `${T.primary}40` }} />
+                <h2 style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, color: T.textMuted, margin: 0 }}>Secretary</h2>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {[
+                  { time: "10:00", duration: "1h", title: "Review travel itinerary", desc: "Kyoto Autumn Season 2023", icon: "map", status: "In Progress" },
+                  { time: "16:30", duration: "30m", title: "Sign Q4 budget report", desc: "Office Lounge / Remote", icon: "draw", status: "Pending" }
+                ].map((task, i) => (
+                  <div key={i} style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                    <div style={{ width: 48, flexShrink: 0, paddingTop: 4 }}>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: T.text, margin: 0 }}>{task.time}</p>
+                      <p style={{ fontSize: 10, color: T.textMuted, margin: 0 }}>{task.duration}</p>
+                    </div>
+                    <div style={{ ...card, padding: 16, flex: 1, background: "#fff", borderRadius: 12 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                        <h3 style={{ fontSize: 16, fontWeight: 500, color: T.text, margin: 0 }}>{task.title}</h3>
+                        <MIcon name={task.icon} size={20} color={T.primary} />
+                      </div>
+                      <p style={{ fontSize: 14, color: T.textMuted, margin: 0, marginBottom: 12 }}>{task.desc}</p>
+                      <span style={{ display: "inline-block", fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "4px 8px", background: task.status === "In Progress" ? T.primary : "#f3f4f6", color: task.status === "In Progress" ? "#fff" : T.textMuted, borderRadius: 4 }}>{task.status}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </main>
         </>)}
 
-        {/* ════════ SETTINGS ════════ */}
+        {/* ════════ TAB 5: SETTINGS ════════ */}
         {tab === "settings" && (<>
-          <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 24px 16px" }}>
-            <button onClick={() => setTab("home")} style={{ width: 40, height: 40, borderRadius: "50%", background: "#fff", border: `1px solid ${T.primary}10`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: T.shadow }}><MIcon name="arrow_back" size={20} color={T.text} /></button>
-            <h1 style={{ fontSize: 18, fontWeight: 700, color: T.text }}>Settings</h1>
-            <div style={{ width: 40 }} />
-          </header>
-          <div style={{ padding: "0 24px 24px" }}>
-            <div style={{ textAlign: "center", marginBottom: 32 }}>
-              <div style={{ width: 96, height: 96, borderRadius: "50%", background: `${T.primary}10`, border: `2px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", fontSize: 36, fontWeight: 700, color: T.primary, position: "relative" }}>Q
-                <div style={{ position: "absolute", bottom: 0, right: 0, width: 28, height: 28, borderRadius: "50%", background: T.primary, display: "flex", alignItems: "center", justifyContent: "center" }}><MIcon name="edit" size={14} color="#fff" /></div>
-              </div>
-              <h2 style={{ fontSize: 22, fontWeight: 700 }}>Mr. Quang</h2>
-              <p style={{ fontSize: 12, fontWeight: 700, color: T.primary, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 4 }}><MIcon name="verified" size={14} color={T.primary} filled /> PREMIUM MEMBER</p>
+          <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 24px 16px", position: "sticky", top: 0, background: "#f6f8f6", backdropFilter: "blur(12px)", zIndex: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <button onClick={() => setTab("home")} style={{ width: 40, height: 40, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "none", border: "none", padding: 0 }}>
+                <MIcon name="arrow_back" size={20} color={T.text} />
+              </button>
+              <h1 style={{ fontSize: 18, fontWeight: 700, color: T.text, margin: 0 }}>Settings</h1>
             </div>
+            <div style={{ width: 40, height: 40, borderRadius: "50%", background: `${T.primary}10`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <MIcon name="hdr_strong" size={20} color={T.primary} />
+            </div>
+          </header>
 
-            <section style={{ marginBottom: 24 }}>
-              <h3 style={{ ...sectionLabel }}>Staff Management</h3>
-              <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-                {staffList.length === 0 ? <div style={{ padding: 20, textAlign: "center", color: T.textMuted, fontSize: 13 }}>No staff members yet</div> : staffList.map((s, i) => (
-                  <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: i < staffList.length - 1 ? `1px solid ${T.border}` : "none" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: `${T.primary}10`, display: "flex", alignItems: "center", justifyContent: "center" }}><MIcon name="person" size={18} color={T.primary} /></div>
-                      <div><p style={{ fontSize: 14, fontWeight: 600 }}>{s.full_name || "—"}</p><p style={{ fontSize: 12, color: T.textMuted }}>{ROLE_LABELS[s.role] || s.role}</p></div>
+          <main style={{ padding: "0 24px 120px", display: "flex", flexDirection: "column" }}>
+            {/* Profile */}
+            <section style={{ padding: "32px 0", textAlign: "center", borderBottom: `1px solid ${T.border}` }}>
+              <div style={{ position: "relative", width: 112, height: 112, borderRadius: "50%", margin: "0 auto 16px", overflow: "hidden", border: `4px solid #fff`, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", background: "#eef5ea" }}>
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuASIEz91IzrEkP7RNXc8g1rGUkJm2kA8wQzOMcHKfgNnnmtrSbFch2Mvf9oVl00l2GHvaJoPrTEyGXlECA8CfwTlzYevA10fTPWseUVbflxWGJLnnaFUFjOlcfV1CGKv6AvMPGyUXyuUo7_avO1ghB5hc1qzPzafmszY3WoSw45STKOps8JIpN3eM3G6WovKQq39DmbNkehjFr4vfQumAWXQ_2Ms04b1za0VqDKOeq_FwitXAmpCJWGw7qc9BzhDLDZYvLS_e64Lg" alt="Mr. Quang" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <div style={{ position: "absolute", bottom: 0, right: 0, width: 32, height: 32, borderRadius: "50%", background: T.primary, border: `2px solid #fff`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <MIcon name="edit" size={16} color="#fff" />
+                </div>
+              </div>
+              <h2 style={{ fontSize: 22, fontWeight: 700, color: T.text, margin: "0 0 8px" }}>Mr. Quang</h2>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, margin: "0 0 8px" }}>
+                <MIcon name="verified" size={14} color={T.primary} />
+                <p style={{ fontSize: 12, fontWeight: 700, color: T.primary, textTransform: "uppercase", margin: 0 }}>Premium Member</p>
+              </div>
+              <p style={{ fontSize: 14, color: T.textMuted, margin: 0 }}>quang@zenhome.com</p>
+            </section>
+
+            {/* Account Section */}
+            <section style={{ padding: "24px 0" }}>
+              <h3 style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: T.textMuted, marginBottom: 16 }}>Account</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {[
+                  { icon: "person", label: "Account Management" },
+                  { icon: "fingerprint", label: "Security & Biometrics" }
+                ].map((item, i) => (
+                  <div key={i} style={{ ...card, padding: 16, background: "#fff", borderRadius: 12, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: "#eef5ea", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <MIcon name={item.icon} size={20} color={T.primary} />
+                    </div>
+                    <span style={{ flex: 1, fontWeight: 500, color: T.text }}>{item.label}</span>
+                    <MIcon name="chevron_right" size={20} color={T.textMuted} />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* App Experience Section */}
+            <section style={{ padding: "24px 0" }}>
+              <h3 style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: T.textMuted, marginBottom: 16 }}>App Experience</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {[
+                  { icon: "notifications_active", label: "Notifications", sub: "Smart Alerts" },
+                  { icon: "palette", label: "Display & Theme", sub: null }
+                ].map((item, i) => (
+                  <div key={i} style={{ ...card, padding: 16, background: "#fff", borderRadius: 12, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: "#eef5ea", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <MIcon name={item.icon} size={20} color={T.primary} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 500, color: T.text, margin: 0 }}>{item.label}</p>
+                      {item.sub && <p style={{ fontSize: 12, color: T.textMuted, margin: 0 }}>{item.sub}</p>}
                     </div>
                     <MIcon name="chevron_right" size={20} color={T.textMuted} />
                   </div>
@@ -378,34 +555,50 @@ export default function OwnerPage() {
               </div>
             </section>
 
-            <section style={{ marginBottom: 32 }}>
-              <h3 style={{ ...sectionLabel }}>Invite New Staff</h3>
-              <div style={{ ...card, padding: 20 }}>
-                <div style={{ marginBottom: 14 }}><label style={{ fontSize: 12, color: T.textMuted, display: "block", marginBottom: 6, fontWeight: 600 }}>Full Name</label><input value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Jane Doe" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: `1px solid ${T.border}`, fontSize: 14, boxSizing: "border-box", outline: "none", fontFamily: T.font }} /></div>
-                <div style={{ marginBottom: 14 }}><label style={{ fontSize: 12, color: T.textMuted, display: "block", marginBottom: 6, fontWeight: 600 }}>Email</label><input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="jane@email.com" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: `1px solid ${T.border}`, fontSize: 14, boxSizing: "border-box", outline: "none", fontFamily: T.font }} /></div>
-                <div style={{ marginBottom: 18 }}><label style={{ fontSize: 12, color: T.textMuted, display: "block", marginBottom: 6, fontWeight: 600 }}>Role</label>
-                  <div style={{ display: "flex", gap: 8 }}>{Object.entries(ROLE_LABELS).map(([r, l]) => (<button key={r} onClick={() => setInviteRole(r)} style={{ flex: 1, padding: "10px 4px", background: inviteRole === r ? T.primary : T.bg, color: inviteRole === r ? "#fff" : T.text, border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: T.font }}>{l}</button>))}</div>
-                </div>
-                {inviteMsg && <div style={{ padding: "10px 14px", borderRadius: 8, marginBottom: 14, fontSize: 13, background: inviteMsg.ok ? "#f0fdf4" : "#fef2f2", color: inviteMsg.ok ? T.primary : T.danger }}>{inviteMsg.text}</div>}
-                <button onClick={handleInvite} disabled={inviting} style={{ width: "100%", padding: "14px", background: T.primary, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: inviting ? "not-allowed" : "pointer", opacity: inviting ? 0.7 : 1, fontFamily: T.font }}>{inviting ? "Creating..." : "Create Staff Account"}</button>
+            {/* Support Section */}
+            <section style={{ padding: "24px 0" }}>
+              <h3 style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: T.textMuted, marginBottom: 16 }}>Support</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {[
+                  { icon: "help_center", label: "Help Center" },
+                  { icon: "info", label: "About ZenHome", sub: "v2.4.0" }
+                ].map((item, i) => (
+                  <div key={i} style={{ ...card, padding: 16, background: "#fff", borderRadius: 12, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: "#eef5ea", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <MIcon name={item.icon} size={20} color={T.primary} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 500, color: T.text, margin: 0 }}>{item.label}</p>
+                      {item.sub && <p style={{ fontSize: 12, color: T.textMuted, margin: 0 }}>{item.sub}</p>}
+                    </div>
+                    <MIcon name="chevron_right" size={20} color={T.textMuted} />
+                  </div>
+                ))}
               </div>
             </section>
 
-            <button onClick={handleLogout} style={{ width: "100%", padding: "14px", background: "transparent", border: `1px solid ${T.border}`, borderRadius: 10, color: T.danger, fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: T.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <MIcon name="logout" size={18} color={T.danger} /> Logout
-            </button>
-          </div>
+            {/* Logout Button */}
+            <section style={{ padding: "24px 0" }}>
+              <button onClick={handleLogout} style={{ width: "100%", padding: 16, background: "transparent", border: `2px solid #cbd5e1`, borderRadius: 12, color: "#ef4444", fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "inherit" }}>
+                <MIcon name="logout" size={20} color="#ef4444" />
+                Logout
+              </button>
+            </section>
+          </main>
         </>)}
 
         {/* ════════ BOTTOM NAV ════════ */}
         <nav style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(16px)", borderTop: `1px solid ${T.primary}08`, padding: "12px 24px 24px", zIndex: 50 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            {NAV_TABS.map((t) => { const a = tab === t.id; return (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, border: "none", background: "transparent", cursor: "pointer", padding: "4px 8px", minWidth: 48 }}>
-                <MIcon name={t.icon} size={24} color={a ? T.primary : T.textMuted} />
-                <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: a ? T.primary : T.textMuted }}>{t.label}</span>
-                {a && <div style={{ width: 4, height: 4, borderRadius: "50%", background: T.primary }} />}
-              </button>);
+            {NAV_TABS.map((t) => {
+              const a = tab === t.id;
+              return (
+                <button key={t.id} onClick={() => setTab(t.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, border: "none", background: "transparent", cursor: "pointer", padding: "4px 8px", minWidth: 48, fontFamily: "inherit" }}>
+                  <MIcon name={t.icon} size={24} color={a ? T.primary : T.textMuted} />
+                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: a ? T.primary : T.textMuted }}>{t.label}</span>
+                  {a && <div style={{ width: 4, height: 4, borderRadius: "50%", background: T.primary }} />}
+                </button>
+              );
             })}
           </div>
         </nav>
