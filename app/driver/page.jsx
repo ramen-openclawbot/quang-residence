@@ -1,51 +1,120 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import StaffShell, { MIcon } from "../../components/shared/StaffShell";
-import { supabase } from "../../lib/supabase";
-import { fmtVND, fmtDate, fmtRelative } from "../../lib/format";
-import StatusBadge from "../../components/shared/StatusBadge";
-import Skeleton from "../../components/shared/Skeleton";
-import TransactionForm from "../../components/TransactionForm";
 import { useAuth } from "../../lib/auth";
+import { supabase } from "../../lib/supabase";
+import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
+import TransactionForm from "../../components/TransactionForm";
 
-const DESIGN = {
+const T = {
   primary: "#56c91d",
   bg: "#f6f8f6",
-  text: "#1a2e1a",
-  textMuted: "#94a3b8",
-  textSec: "#4a5544",
-  border: "#e2e8e2",
   card: "#ffffff",
-  font: "'Manrope', sans-serif",
-};
-
-const cardStyle = {
-  backgroundColor: "#fff",
-  border: "1px solid #56c91d0d",
-  borderRadius: 12,
-  padding: 20,
-  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-};
-
-const sectionLabelStyle = {
-  fontSize: 12,
-  fontWeight: 700,
-  textTransform: "uppercase",
-  letterSpacing: "0.12em",
-  color: "#94a3b8",
-  marginBottom: "0.75rem",
+  text: "#1a2e1a",
+  textMuted: "#7c8b7a",
+  border: "#e6ede4",
+  success: "#10b981",
+  danger: "#ef4444",
+  amber: "#f59e0b",
+  blue: "#3b82f6",
 };
 
 const TABS = [
+  { id: "home", label: "Home", icon: "home" },
   { id: "trips", label: "Trips", icon: "directions_car" },
-  { id: "kitchen", label: "Kitchen", icon: "restaurant" },
+  { id: "expenses", label: "Chi tiêu", icon: "receipt_long" },
   { id: "tasks", label: "Tasks", icon: "task_alt" },
 ];
 
+const cardStyle = {
+  background: T.card,
+  border: `1px solid ${T.border}`,
+  borderRadius: 18,
+  boxShadow: "0 8px 30px rgba(16,24,16,0.04)",
+};
+
+const softCard = {
+  ...cardStyle,
+  background: "linear-gradient(180deg,#ffffff 0%, #fbfdf9 100%)",
+};
+
+function Avatar({ name }) {
+  const letter = (name || "D").trim().charAt(0).toUpperCase();
+  return (
+    <div style={{
+      width: 44,
+      height: 44,
+      borderRadius: "50%",
+      background: "linear-gradient(135deg,#60a5fa,#2563eb)",
+      color: "white",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 18,
+      fontWeight: 800,
+      boxShadow: "0 8px 20px rgba(37,99,235,0.25)",
+      flexShrink: 0,
+    }}>{letter}</div>
+  );
+}
+
+function StatCard({ label, value, sub, color }) {
+  return (
+    <div style={{ ...softCard, padding: 14 }}>
+      <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 800, color: color || T.text, marginTop: 6 }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function ActionCard({ icon, label, sub, onClick, primary }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        ...cardStyle,
+        width: "100%",
+        padding: 16,
+        textAlign: "left",
+        cursor: "pointer",
+        background: primary ? "linear-gradient(135deg,#69d834,#56c91d)" : T.card,
+        color: primary ? "white" : T.text,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{
+          width: 42,
+          height: 42,
+          borderRadius: 12,
+          background: primary ? "rgba(255,255,255,0.18)" : "#eef8e8",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}>
+          <MIcon name={icon} size={22} color={primary ? "white" : T.primary} />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{label}</div>
+          <div style={{ fontSize: 12, color: primary ? "rgba(255,255,255,0.85)" : T.textMuted }}>{sub}</div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function statusTone(status) {
+  if (status === "completed" || status === "done") return { bg: "#e9fff5", color: T.success };
+  if (status === "in_progress") return { bg: "#fff7e6", color: T.amber };
+  if (status === "cancelled") return { bg: "#fff1f1", color: T.danger };
+  return { bg: "#eef4ff", color: T.blue };
+}
+
 export default function DriverPage() {
-  const { profile } = useAuth();
-  const [tab, setTab] = useState("trips");
+  const { profile, signOut } = useAuth();
+  const [tab, setTab] = useState("home");
   const [loading, setLoading] = useState(true);
   const [showTxForm, setShowTxForm] = useState(false);
   const [trips, setTrips] = useState([]);
@@ -57,485 +126,293 @@ export default function DriverPage() {
     fetchData();
   }, [profile?.id]);
 
-  const fetchData = async () => {
+  async function fetchData() {
     setLoading(true);
     try {
       const [tripsRes, txRes, tasksRes] = await Promise.all([
-        supabase
-          .from("driving_trips")
-          .select("*")
-          .eq("assigned_to", profile.id)
-          .order("scheduled_time", { ascending: true }),
-        supabase
-          .from("transactions")
-          .select("*")
-          .eq("created_by", profile.id)
-          .order("created_at", { ascending: false })
-          .limit(30),
-        supabase
-          .from("tasks")
-          .select("*")
-          .eq("assigned_to", profile.id)
-          .order("due_date", { ascending: true }),
+        supabase.from("driving_trips").select("*").eq("assigned_to", profile.id).order("scheduled_time", { ascending: true }),
+        supabase.from("transactions").select("*").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(30),
+        supabase.from("tasks").select("*").or(`assigned_to.eq.${profile.id},created_by.eq.${profile.id}`).order("due_date", { ascending: true }),
       ]);
-
-      if (tripsRes.data) setTrips(tripsRes.data);
-      if (txRes.data) setTransactions(txRes.data);
-      if (tasksRes.data) setTasks(tasksRes.data);
+      setTrips(tripsRes.data || []);
+      setTransactions(txRes.data || []);
+      setTasks(tasksRes.data || []);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Driver fetchData error:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const updateTripStatus = async (tripId, newStatus, updateData = {}) => {
-    try {
-      const data = { ...updateData, status: newStatus };
-      if (newStatus === "in_progress") {
-        data.actual_start = new Date().toISOString();
-      } else if (newStatus === "completed") {
-        data.actual_end = new Date().toISOString();
-      }
+  async function updateTripStatus(trip, newStatus) {
+    const data = { status: newStatus };
+    if (newStatus === "in_progress") data.actual_start = new Date().toISOString();
+    if (newStatus === "completed") data.actual_end = new Date().toISOString();
+    const { error } = await supabase.from("driving_trips").update(data).eq("id", trip.id);
+    if (!error) fetchData();
+  }
 
-      const { error } = await supabase
-        .from("driving_trips")
-        .update(data)
-        .eq("id", tripId);
+  async function updateTaskStatus(task) {
+    const next = task.status === "pending" ? "in_progress" : task.status === "in_progress" ? "done" : "pending";
+    const { error } = await supabase.from("tasks").update({ status: next }).eq("id", task.id);
+    if (!error) fetchData();
+  }
 
-      if (error) throw error;
-      fetchData();
-    } catch (error) {
-      console.error("Error updating trip:", error);
-    }
-  };
-
-  const updateTaskStatus = async (taskId, newStatus) => {
-    try {
-      const { error } = await supabase
-        .from("tasks")
-        .update({ status: newStatus })
-        .eq("id", taskId);
-
-      if (error) throw error;
-      fetchData();
-    } catch (error) {
-      console.error("Error updating task:", error);
-    }
-  };
-
-  const getStatusFlow = (currentStatus) => {
-    const flow = {
-      pending: "in_progress",
-      in_progress: "done",
-      done: "pending",
-    };
-    return flow[currentStatus] || "pending";
-  };
-
-  const getTodayTrips = () => {
-    const today = new Date().toDateString();
-    return trips.filter(
-      (t) => new Date(t.scheduled_time).toDateString() === today
-    );
-  };
-
-  const getFutureTrips = () => {
-    const today = new Date().toDateString();
-    return trips.filter(
-      (t) => new Date(t.scheduled_time).toDateString() !== today
-    );
-  };
-
-  const getUncompletedTasksCount = () => {
-    return tasks.filter((t) => t.status !== "done").length;
-  };
-
-  const getTodayTransactions = () => {
-    const today = new Date().toDateString();
-    return transactions.filter(
-      (t) => new Date(t.created_at).toDateString() === today
-    );
-  };
-
-  const getMonthTransactions = () => {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    return transactions.filter((t) => new Date(t.created_at) >= startOfMonth);
-  };
-
-  const renderTripsTab = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "2rem", paddingBottom: "6rem" }}>
-      <div>
-        <h3 style={sectionLabelStyle}>Today</h3>
-        {loading ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            {[1, 2].map((i) => (
-              <Skeleton key={i} height="6rem" />
-            ))}
-          </div>
-        ) : getTodayTrips().length === 0 ? (
-          <p style={{ color: DESIGN.textMuted, fontSize: "0.875rem", margin: 0 }}>
-            No trips scheduled for today
-          </p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            {getTodayTrips().map((trip) => (
-              <div key={trip.id} style={cardStyle}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div style={{ flex: 1 }}>
-                    <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.95rem", fontWeight: 600, color: DESIGN.text }}>
-                      {trip.title}
-                    </h4>
-                    <div style={{ fontSize: "0.875rem", color: DESIGN.textMuted }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                        <MIcon symbol="location_on" size={14} />
-                        {trip.pickup_location} → {trip.dropoff_location}
-                      </div>
-                      <div>
-                        {fmtRelative(trip.scheduled_time)}
-                      </div>
-                    </div>
-                  </div>
-                  <StatusBadge status={trip.status} />
-                </div>
-                <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem", flexWrap: "wrap" }}>
-                  {trip.status === "pending" && (
-                    <button
-                      onClick={() => updateTripStatus(trip.id, "in_progress")}
-                      style={{
-                        padding: "0.5rem 1rem",
-                        background: DESIGN.primary,
-                        color: "white",
-                        border: "none",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        fontSize: "0.875rem",
-                        fontWeight: 600,
-                        transition: "opacity 0.2s",
-                      }}
-                      onMouseEnter={(e) => (e.target.style.opacity = "0.9")}
-                      onMouseLeave={(e) => (e.target.style.opacity = "1")}
-                    >
-                      Start
-                    </button>
-                  )}
-                  {trip.status === "in_progress" && (
-                    <button
-                      onClick={() => updateTripStatus(trip.id, "completed")}
-                      style={{
-                        padding: "0.5rem 1rem",
-                        background: DESIGN.primary,
-                        color: "white",
-                        border: "none",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        fontSize: "0.875rem",
-                        fontWeight: 600,
-                        transition: "opacity 0.2s",
-                      }}
-                      onMouseEnter={(e) => (e.target.style.opacity = "0.9")}
-                      onMouseLeave={(e) => (e.target.style.opacity = "1")}
-                    >
-                      Complete
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div>
-        <h3 style={sectionLabelStyle}>Upcoming</h3>
-        {loading ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            {[1, 2].map((i) => (
-              <Skeleton key={i} height="6rem" />
-            ))}
-          </div>
-        ) : getFutureTrips().length === 0 ? (
-          <p style={{ color: DESIGN.textMuted, fontSize: "0.875rem", margin: 0 }}>
-            No upcoming trips
-          </p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            {getFutureTrips().map((trip) => (
-              <div key={trip.id} style={cardStyle}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div style={{ flex: 1 }}>
-                    <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.95rem", fontWeight: 600, color: DESIGN.text }}>
-                      {trip.title}
-                    </h4>
-                    <div style={{ fontSize: "0.875rem", color: DESIGN.textMuted }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                        <MIcon symbol="location_on" size={14} />
-                        {trip.pickup_location} → {trip.dropoff_location}
-                      </div>
-                      <div>
-                        {fmtDate(trip.scheduled_time)}
-                      </div>
-                    </div>
-                  </div>
-                  <StatusBadge status={trip.status} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderKitchenTab = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "2rem", paddingBottom: "6rem" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-        <div style={cardStyle}>
-          <div style={{ fontSize: "0.8rem", color: DESIGN.textMuted, textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.05em" }}>
-            Today Spending
-          </div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 700, color: DESIGN.primary, marginTop: "0.75rem" }}>
-            {fmtVND(
-              getTodayTransactions().reduce((sum, tx) => sum + (tx.amount || 0), 0)
-            )}
-          </div>
-        </div>
-        <div style={cardStyle}>
-          <div style={{ fontSize: "0.8rem", color: DESIGN.textMuted, textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.05em" }}>
-            This Month
-          </div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 700, color: DESIGN.primary, marginTop: "0.75rem" }}>
-            {fmtVND(
-              getMonthTransactions().reduce((sum, tx) => sum + (tx.amount || 0), 0)
-            )}
-          </div>
-        </div>
-      </div>
-
-      {loading ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} height="4rem" />
-          ))}
-        </div>
-      ) : transactions.length === 0 ? (
-        <p style={{ color: DESIGN.textMuted, fontSize: "0.875rem", margin: 0 }}>
-          No transactions yet
-        </p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          {transactions.map((tx) => (
-            <div key={tx.id} style={cardStyle}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div>
-                  <h4 style={{ margin: "0 0 0.25rem 0", fontSize: "0.95rem", fontWeight: 600, color: DESIGN.text }}>
-                    {tx.description}
-                  </h4>
-                  <div style={{ fontSize: "0.75rem", color: DESIGN.textMuted }}>
-                    {fmtRelative(tx.created_at)}
-                  </div>
-                </div>
-                <div style={{ fontWeight: 700, color: DESIGN.primary }}>
-                  {fmtVND(tx.amount)}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <button
-        onClick={() => setShowTxForm(!showTxForm)}
-        style={{
-          position: "fixed",
-          bottom: "5.5rem",
-          right: "2rem",
-          width: "3.5rem",
-          height: "3.5rem",
-          borderRadius: "50%",
-          background: DESIGN.primary,
-          color: "white",
-          border: "none",
-          cursor: "pointer",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-          zIndex: 40,
-          transition: "transform 0.2s",
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.1)")}
-        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-      >
-        <MIcon symbol="add" size={24} />
-      </button>
-
-      {showTxForm && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 50,
-          }}
-          onClick={() => setShowTxForm(false)}
-        >
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "90%", maxWidth: "28rem" }}>
-            <TransactionForm
-              defaultFundId="kitchen"
-              onSuccess={() => {
-                setShowTxForm(false);
-                fetchData();
-              }}
-              onCancel={() => setShowTxForm(false)}
-            />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderTasksTab = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "2rem", paddingBottom: "6rem" }}>
-      {getUncompletedTasksCount() > 0 && (
-        <div style={{
-          padding: "1rem",
-          background: "#f0f4e6",
-          border: `1px solid ${DESIGN.primary}20`,
-          borderRadius: "8px",
-          fontSize: "0.875rem",
-          color: DESIGN.text,
-          fontWeight: 600,
-        }}>
-          Incomplete: <strong>{getUncompletedTasksCount()}</strong> task{getUncompletedTasksCount() !== 1 ? "s" : ""}
-        </div>
-      )}
-
-      {loading ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} height="5rem" />
-          ))}
-        </div>
-      ) : tasks.length === 0 ? (
-        <p style={{ color: DESIGN.textMuted, fontSize: "0.875rem", margin: 0 }}>
-          No tasks assigned
-        </p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          {tasks.map((task) => (
-            <div
-              key={task.id}
-              onClick={() => updateTaskStatus(task.id, getStatusFlow(task.status))}
-              style={{
-                ...cardStyle,
-                cursor: "pointer",
-                opacity: task.status === "done" ? 0.6 : 1,
-                textDecoration: task.status === "done" ? "line-through" : "none",
-                transition: "opacity 0.2s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = task.status === "done" ? "0.5" : "0.95")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = task.status === "done" ? "0.6" : "1")}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div style={{ flex: 1 }}>
-                  <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.95rem", fontWeight: 600, color: DESIGN.text }}>
-                    {task.title}
-                  </h4>
-                  {task.description && (
-                    <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.875rem", color: DESIGN.textMuted }}>
-                      {task.description}
-                    </p>
-                  )}
-                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", fontSize: "0.75rem" }}>
-                    {task.priority && <StatusBadge status={task.priority} />}
-                    <span style={{ color: DESIGN.textMuted }}>
-                      Due: {fmtDate(task.due_date)}
-                    </span>
-                  </div>
-                </div>
-                <StatusBadge status={task.status} />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderTab = () => {
-    switch (tab) {
-      case "trips":
-        return renderTripsTab();
-      case "kitchen":
-        return renderKitchenTab();
-      case "tasks":
-        return renderTasksTab();
-      default:
-        return null;
-    }
-  };
+  const today = new Date().toISOString().slice(0, 10);
+  const todayTrips = useMemo(() => trips.filter((t) => (t.scheduled_time || "").slice(0, 10) === today), [trips, today]);
+  const upcomingTrips = useMemo(() => trips.filter((t) => (t.scheduled_time || "").slice(0, 10) !== today), [trips, today]);
+  const activeTrip = useMemo(() => trips.find((t) => t.status === "in_progress") || null, [trips]);
+  const openTasks = useMemo(() => tasks.filter((t) => t.status !== "done"), [tasks]);
+  const todayExpense = useMemo(() => transactions.filter((t) => (t.transaction_date || t.created_at || "").slice(0, 10) === today).reduce((s, t) => s + Number(t.amount || 0), 0), [transactions, today]);
+  const monthExpense = useMemo(() => {
+    const monthKey = today.slice(0, 7);
+    return transactions.filter((t) => (t.transaction_date || t.created_at || "").slice(0, 7) === monthKey).reduce((s, t) => s + Number(t.amount || 0), 0);
+  }, [transactions, today]);
 
   return (
     <StaffShell role="driver">
-      <div style={{ paddingBottom: "4rem" }}>
-        <div style={{ padding: "1.5rem 1rem", background: DESIGN.bg, borderBottom: `1px solid ${DESIGN.border}` }}>
-          <h1 style={{ margin: 0, fontSize: "1.75rem", fontWeight: 700, color: DESIGN.text, fontFamily: DESIGN.font }}>
-            Driver
-          </h1>
+      <div style={{ background: T.bg, minHeight: "100vh", paddingBottom: 100 }}>
+        <div style={{ padding: "22px 18px 18px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Avatar name={profile?.full_name || "Driver"} />
+              <div>
+                <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Driver Console</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Tài xế"}</div>
+              </div>
+            </div>
+            <button onClick={signOut} style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}>
+              <MIcon name="logout" size={22} color={T.textMuted} />
+            </button>
+          </div>
+
+          {loading ? (
+            <div style={{ fontSize: 13, color: T.textMuted }}>Đang tải dữ liệu...</div>
+          ) : (
+            <>
+              {tab === "home" && (
+                <div>
+                  <div style={{ ...cardStyle, padding: 18, marginBottom: 14, background: "linear-gradient(135deg,#15293e 0%, #1f3d5d 56%, #27587c 100%)", color: "white", overflow: "hidden", position: "relative" }}>
+                    <div style={{ position: "absolute", right: -22, top: -22, width: 110, height: 110, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                    <div style={{ position: "relative", zIndex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                        <div>
+                          <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>On the road</div>
+                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Lịch trình hôm nay</div>
+                        </div>
+                        <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Driver</div>
+                      </div>
+                      <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Chuyến hôm nay / task mở / chi tiêu theo dõi</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Trips hôm nay</div><div style={{ fontSize: 18, fontWeight: 800 }}>{todayTrips.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Task mở</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Đang chạy</div><div style={{ fontSize: 18, fontWeight: 800 }}>{activeTrip ? 1 : 0}</div></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+                    <StatCard label="Chi hôm nay" value={fmtVND(todayExpense)} color={T.danger} />
+                    <StatCard label="Chi tháng này" value={fmtVND(monthExpense)} color={T.text} />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
+                    <ActionCard icon="upload_file" label="Ghi chi phí" sub="Upload bill / phiếu / phát sinh" onClick={() => setShowTxForm(true)} primary />
+                    <ActionCard icon="directions_car" label="Xem chuyến" sub="Mở danh sách trip hôm nay" onClick={() => setTab("trips")} />
+                  </div>
+
+                  {activeTrip && (
+                    <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Đang thực hiện</div>
+                        <div style={{ padding: "6px 10px", borderRadius: 999, background: "#fff7e6", color: T.amber, fontSize: 11, fontWeight: 800 }}>in_progress</div>
+                      </div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: T.text }}>{activeTrip.title}</div>
+                      <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{activeTrip.pickup_location || "—"} → {activeTrip.dropoff_location || "—"}</div>
+                      <button onClick={() => updateTripStatus(activeTrip, "completed")} style={{ marginTop: 12, height: 42, borderRadius: 12, border: "none", background: T.primary, color: "white", fontWeight: 800, padding: "0 14px", cursor: "pointer" }}>
+                        Hoàn tất chuyến
+                      </button>
+                    </div>
+                  )}
+
+                  <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Trips hôm nay</div>
+                      <button onClick={() => setTab("trips")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở tab</button>
+                    </div>
+                    {todayTrips.length === 0 ? (
+                      <div style={{ fontSize: 13, color: T.textMuted }}>Không có chuyến nào hôm nay.</div>
+                    ) : todayTrips.slice(0, 3).map((trip) => {
+                      const tone = statusTone(trip.status);
+                      return (
+                        <div key={trip.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{trip.title}</div>
+                            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{trip.pickup_location || "—"} → {trip.dropoff_location || "—"}</div>
+                          </div>
+                          <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{trip.status}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ ...cardStyle, padding: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Task cần chú ý</div>
+                      <button onClick={() => setTab("tasks")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở tab</button>
+                    </div>
+                    {openTasks.length === 0 ? (
+                      <div style={{ fontSize: 13, color: T.textMuted }}>Không có task mở.</div>
+                    ) : openTasks.slice(0, 4).map((task) => {
+                      const tone = statusTone(task.status);
+                      return (
+                        <button key={task.id} onClick={() => updateTaskStatus(task)} style={{ width: "100%", textAlign: "left", border: "none", background: "transparent", padding: "12px 0", borderBottom: `1px solid ${T.border}`, cursor: "pointer" }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
+                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.due_date ? `Hạn: ${fmtDate(task.due_date)}` : "Chưa có deadline"}</div>
+                            </div>
+                            <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {tab === "trips" && (
+                <div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 14 }}>Trips</div>
+                  {[{ title: "Hôm nay", items: todayTrips }, { title: "Sắp tới", items: upcomingTrips }].map((group) => (
+                    <div key={group.title} style={{ marginBottom: 18 }}>
+                      <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>{group.title}</div>
+                      {group.items.length === 0 ? (
+                        <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Không có chuyến nào.</div>
+                      ) : (
+                        <div style={{ display: "grid", gap: 12 }}>
+                          {group.items.map((trip) => {
+                            const tone = statusTone(trip.status);
+                            return (
+                              <div key={trip.id} style={{ ...cardStyle, padding: 16 }}>
+                                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                                  <div style={{ minWidth: 0, flex: 1 }}>
+                                    <div style={{ fontSize: 15, fontWeight: 800, color: T.text }}>{trip.title}</div>
+                                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{trip.pickup_location || "—"} → {trip.dropoff_location || "—"}</div>
+                                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(trip.scheduled_time)}</div>
+                                  </div>
+                                  <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{trip.status}</div>
+                                </div>
+                                <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+                                  {trip.status === "scheduled" && <button onClick={() => updateTripStatus(trip, "in_progress")} style={primaryBtn}>Bắt đầu</button>}
+                                  {trip.status === "pending" && <button onClick={() => updateTripStatus(trip, "in_progress")} style={primaryBtn}>Bắt đầu</button>}
+                                  {trip.status === "in_progress" && <button onClick={() => updateTripStatus(trip, "completed")} style={primaryBtn}>Hoàn tất</button>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {tab === "expenses" && (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Chi phí / bill</div>
+                    <button onClick={() => setShowTxForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Ghi chi</button>
+                  </div>
+                  {transactions.length === 0 ? (
+                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có ghi nhận chi phí nào.</div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {transactions.map((tx) => (
+                        <div key={tx.id} style={{ ...cardStyle, padding: 16 }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{tx.description || tx.recipient_name || "Chi phí"}</div>
+                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{fmtRelative(tx.created_at)}</div>
+                              {tx.bank_name && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{tx.bank_name}</div>}
+                            </div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: tx.type === "income" ? T.success : T.danger }}>{tx.type === "income" ? "+" : "-"}{fmtVND(Math.abs(Number(tx.amount || 0)))}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {tab === "tasks" && (
+                <div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 14 }}>Tasks</div>
+                  {tasks.length === 0 ? (
+                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có task nào.</div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {tasks.map((task) => {
+                        const tone = statusTone(task.status);
+                        return (
+                          <button key={task.id} onClick={() => updateTaskStatus(task)} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
+                            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                              <div>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
+                                {task.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description}</div>}
+                                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{task.due_date ? `Hạn: ${fmtDate(task.due_date)}` : "Chưa có deadline"}</div>
+                              </div>
+                              <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
-        <div style={{ maxWidth: "430px", margin: "0 auto", padding: "1.5rem" }}>
-          {renderTab()}
-        </div>
-      </div>
+        {showTxForm && <TransactionForm onClose={() => setShowTxForm(false)} onSuccess={() => { setShowTxForm(false); fetchData(); }} />}
 
-      <div
-        style={{
+        <div style={{
           position: "fixed",
           bottom: 0,
-          left: 0,
-          right: 0,
-          maxWidth: "430px",
-          margin: "0 auto",
-          background: `linear-gradient(to bottom, rgba(246, 248, 246, 0.95), rgba(246, 248, 246, 0.98))`,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "100%",
+          maxWidth: 430,
+          background: "rgba(255,255,255,0.92)",
           backdropFilter: "blur(10px)",
-          borderTop: `1px solid ${DESIGN.border}`,
+          borderTop: `1px solid ${T.border}`,
           display: "flex",
-          height: "4rem",
-          zIndex: 30,
-        }}
-      >
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            style={{
-              flex: 1,
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.25rem",
-              color: tab === t.id ? DESIGN.primary : DESIGN.textMuted,
-              fontSize: "0.75rem",
-              fontWeight: 600,
-              transition: "color 0.2s ease",
-              fontFamily: DESIGN.font,
-            }}
-          >
-            <MIcon symbol={t.icon} size={24} />
-            <span>{t.label}</span>
-          </button>
-        ))}
+          padding: "10px 12px 18px",
+          zIndex: 120,
+        }}>
+          {TABS.map((item) => {
+            const active = tab === item.id;
+            return (
+              <button key={item.id} onClick={() => setTab(item.id)} style={{ flex: 1, border: "none", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, color: active ? T.primary : T.textMuted }}>
+                <MIcon name={item.icon} size={22} color={active ? T.primary : T.textMuted} />
+                <span style={{ fontSize: 10, fontWeight: 800 }}>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </StaffShell>
   );
 }
+
+const primaryBtn = {
+  height: 40,
+  borderRadius: 12,
+  border: "none",
+  background: T.primary,
+  color: "white",
+  fontWeight: 800,
+  padding: "0 14px",
+  cursor: "pointer",
+};
