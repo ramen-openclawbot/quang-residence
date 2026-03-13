@@ -100,6 +100,9 @@ export default function SecretaryPage() {
   const [loading, setLoading] = useState(true);
   const [showTxForm, setShowTxForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const [activePanel, setActivePanel] = useState("");
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
 
   const [funds, setFunds] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -182,9 +185,14 @@ export default function SecretaryPage() {
                 <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Thư ký"}</div>
               </div>
             </div>
-            <button onClick={signOut} style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}>
-              <MIcon name="logout" size={22} color={T.textMuted} />
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={() => setActivePanel("help")} style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}>
+                <MIcon name="help" size={22} color={T.textMuted} />
+              </button>
+              <button onClick={signOut} style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}>
+                <MIcon name="logout" size={22} color={T.textMuted} />
+              </button>
+            </div>
           </div>
 
           {loading ? (
@@ -324,7 +332,7 @@ export default function SecretaryPage() {
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {transactions.map((tx) => (
-                        <div key={tx.id} style={{ ...cardStyle, padding: 16 }}>
+                        <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("transaction-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
                           <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 12 }}>
                             <div style={{ minWidth: 0, flex: 1 }}>
                               <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{tx.description || tx.recipient_name || "Giao dịch"}</div>
@@ -333,7 +341,7 @@ export default function SecretaryPage() {
                             </div>
                             <div style={{ fontSize: 14, fontWeight: 800, color: tx.type === "income" ? T.success : T.danger }}>{tx.type === "income" ? "+" : "-"}{fmtVND(Math.abs(Number(tx.amount || 0)))}</div>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -353,7 +361,7 @@ export default function SecretaryPage() {
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {tasks.map((task) => (
-                        <button key={task.id} onClick={() => toggleTaskStatus(task)} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
+                        <button key={task.id} onClick={() => { setSelectedTask(task); setActivePanel("task-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
                           <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 12 }}>
                             <div>
                               <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
@@ -385,10 +393,10 @@ export default function SecretaryPage() {
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {upcomingItems.map((item) => (
-                        <div key={item.id} style={{ ...cardStyle, padding: 16 }}>
+                        <button key={item.id} onClick={() => { setSelectedTask(item); setActivePanel("task-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
                           <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
                           <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{fmtDate(item.due_date)}</div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -399,6 +407,54 @@ export default function SecretaryPage() {
         </div>
 
         {showTxForm && <TransactionForm onClose={() => setShowTxForm(false)} onSuccess={() => { setShowTxForm(false); loadData(); }} />}
+
+        {activePanel && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 220, display: "flex", alignItems: "flex-end" }} onClick={() => setActivePanel("")}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18, maxHeight: "78vh", overflowY: "auto" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>
+                  {activePanel === "help" && "Secretary Help"}
+                  {activePanel === "transaction-detail" && "Chi tiết giao dịch"}
+                  {activePanel === "task-detail" && "Chi tiết công việc"}
+                </div>
+                <button onClick={() => setActivePanel("")} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
+                  <MIcon name="close" size={22} color={T.textMuted} />
+                </button>
+              </div>
+
+              {activePanel === "help" && (
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Upload bank slip để ghi giao dịch mới\n• Tạo công việc để giao việc nhanh\n• Mở transaction/task card để xem chi tiết</div></div>
+                  <button onClick={() => setShowTxForm(true)} style={panelBtn}>Upload slip ngay</button>
+                </div>
+              )}
+
+              {activePanel === "transaction-detail" && selectedTransaction && (
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ ...subtleCard, padding: 14 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTransaction.description || selectedTransaction.recipient_name || "Giao dịch"}</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(selectedTransaction.transaction_date || selectedTransaction.created_at)}</div>
+                  </div>
+                  <div style={{ ...subtleCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}>
+                    <div>Số tiền: <strong>{fmtVND(Math.abs(Number(selectedTransaction.amount || 0)))}</strong></div>
+                    <div>Loại: {selectedTransaction.type || "expense"}</div>
+                    <div>Trạng thái: {selectedTransaction.status || "pending"}</div>
+                    {selectedTransaction.bank_name && <div>Ngân hàng: {selectedTransaction.bank_name}</div>}
+                  </div>
+                  <button onClick={() => { setActivePanel(""); setTab("transactions"); }} style={panelBtn}>Về Transactions</button>
+                </div>
+              )}
+
+              {activePanel === "task-detail" && selectedTask && (
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTask.title}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedTask.due_date ? fmtDate(selectedTask.due_date) : "Chưa có deadline"}</div></div>
+                  <div style={{ ...subtleCard, padding: 14, fontSize: 13, color: T.text }}>Trạng thái: <strong>{selectedTask.status}</strong><br/>Ưu tiên: {selectedTask.priority || "medium"}<br/>{selectedTask.description || "Không có mô tả thêm"}</div>
+                  <button onClick={() => { toggleTaskStatus(selectedTask); setActivePanel(""); }} style={panelBtn}>Chuyển trạng thái</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {showTaskForm && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 200, display: "flex", alignItems: "flex-end" }}>
@@ -468,4 +524,14 @@ const inputStyle = {
   padding: "0 14px",
   fontSize: 14,
   boxSizing: "border-box",
+};
+
+const panelBtn = {
+  height: 46,
+  borderRadius: 12,
+  border: "none",
+  background: T.primary,
+  color: "white",
+  fontWeight: 800,
+  cursor: "pointer",
 };
