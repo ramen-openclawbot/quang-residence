@@ -24,7 +24,7 @@ export async function GET(request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const unread = data?.filter((n) => !n.is_read).length || 0;
+  const unread = data?.filter((n) => !n.read_at).length || 0;
   return NextResponse.json({ notifications: data || [], unread });
 }
 
@@ -36,16 +36,18 @@ export async function PATCH(request) {
   const { data: { user } } = await supabaseAdmin.auth.getUser(token);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const now = new Date().toISOString();
+
   if (mark_all) {
     await supabaseAdmin
       .from("notifications")
-      .update({ is_read: true })
+      .update({ read_at: now })
       .eq("user_id", user.id)
-      .eq("is_read", false);
+      .is("read_at", null);
   } else if (notification_id) {
     await supabaseAdmin
       .from("notifications")
-      .update({ is_read: true })
+      .update({ read_at: now })
       .eq("id", notification_id)
       .eq("user_id", user.id);
   }
