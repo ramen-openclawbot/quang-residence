@@ -248,11 +248,12 @@ export default function OwnerPage() {
   }
 
   const totalBalance = useMemo(() => funds.reduce((sum, fund) => sum + Number(fund.current_balance || 0), 0), [funds]);
-  const totalBudget = useMemo(() => funds.reduce((sum, fund) => sum + Number(fund.budget_monthly || 0), 0), [funds]);
+  const activeFunds = useMemo(() => funds.filter((fund) => Number(fund.current_balance || 0) > 0).length, [funds]);
   const pendingTransactions = useMemo(() => transactions.filter((tx) => tx.status === "pending"), [transactions]);
   const openTasks = useMemo(() => tasks.filter((task) => task.status !== "done"), [tasks]);
   const thisMonthKey = new Date().toISOString().slice(0, 7);
   const spentThisMonth = useMemo(() => transactions.filter((tx) => tx.type === "expense" && (tx.transaction_date || tx.created_at || "").slice(0, 7) === thisMonthKey).reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [transactions, thisMonthKey]);
+  const incomeThisMonth = useMemo(() => transactions.filter((tx) => tx.type === "income" && (tx.transaction_date || tx.created_at || "").slice(0, 7) === thisMonthKey).reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [transactions, thisMonthKey]);
   const topFunds = useMemo(() => [...funds].sort((a, b) => Number(b.current_balance || 0) - Number(a.current_balance || 0)).slice(0, 4), [funds]);
   const recentTasks = useMemo(() => tasks.slice(0, 4), [tasks]);
 
@@ -298,14 +299,14 @@ export default function OwnerPage() {
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                         <div><div style={{ fontSize: 11, opacity: 0.7 }}>Pending</div><div style={{ fontSize: 18, fontWeight: 800 }}>{pendingTransactions.length}</div></div>
                         <div><div style={{ fontSize: 11, opacity: 0.7 }}>Open tasks</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Active funds</div><div style={{ fontSize: 18, fontWeight: 800 }}>{funds.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Active funds</div><div style={{ fontSize: 18, fontWeight: 800 }}>{activeFunds}</div></div>
                       </div>
                     </div>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                     <SmallStat label="Spent this month" value={fmtVND(spentThisMonth)} color={T.danger} />
-                    <SmallStat label="Monthly budget" value={fmtVND(totalBudget)} color={T.text} />
+                    <SmallStat label="Income this month" value={fmtVND(incomeThisMonth)} color={T.success} />
                   </div>
 
 

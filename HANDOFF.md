@@ -1,12 +1,12 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-14 (latest SQL sync + funds dedup fix)_
+_Last updated: 2026-03-14 15:13 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
 - GitHub: `https://github.com/ramen-openclawbot/quang-residence.git`
 - Branch: `main`
-- Latest local commit: `22dfe6a` (push to sync after SQL fixes committed)
+- Current pushed commit: `673ce71`
 
 ## Current product state
 ZenHome is now in a **product-hardening + CRUD-completion** phase, not an auth/firefighting phase.
@@ -20,6 +20,7 @@ It currently has:
 - redesigned dashboards for all 4 roles
 - English-first UI direction with a calmer “Zen house / estate console” feel
 - mobile receipt upload fixed to allow selecting from device library
+- owner Home `Active funds` now uses a more meaningful realtime rule: counts only funds with `current_balance > 0`, instead of counting every row in `funds`
 
 ## Auth / account status
 ### Current auth model
@@ -91,6 +92,7 @@ Key owner-related commits:
 - `74a49ac` — require owner session for admin APIs
 - `7f6d4f7` — password reset + self password update
 - `8b42306` — remove wealth snapshot from owner Home for cleaner UI
+- `673ce71` — change `Active funds` to count only funds with positive balance
 
 ### Secretary
 Secretary now has:
