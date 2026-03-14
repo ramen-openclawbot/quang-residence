@@ -1,12 +1,12 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-14 15:13 GMT+7_
+_Last updated: 2026-03-14 18:00 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
 - GitHub: `https://github.com/ramen-openclawbot/quang-residence.git`
 - Branch: `main`
-- Current pushed commit: `673ce71`
+- Current pushed commit: `ad18689`
 
 ## Current product state
 ZenHome is now in a **product-hardening + CRUD-completion** phase, not an auth/firefighting phase.
@@ -102,12 +102,19 @@ Secretary now has:
 - quick help panel
 - cleaner English copy
 - “zen desk” refinement pass
+- transaction upload flow refined for mobile
+- income / expense selector visually separated again with green/red treatment
+- bank slip upload returned to a compact old-style pattern instead of large in-form image preview
+- upload flow now clearly supports: bank slip first → scroll down → supporting proof
+- mobile date input layout patched for Safari-style rendering issues
 
 Key commits:
 - `3de89e9`
 - `2b12e1f`
 - `b9c865e`
 - `54bbcf2`
+- `097a5d4` — refine transaction upload flow for mobile
+- `ad18689` — fix mobile date input layout
 
 ### Driver
 Driver now has:
@@ -171,6 +178,13 @@ Key commit:
 - `app/driver/page.jsx`
 - `app/housekeeper/page.jsx`
 - `components/TransactionForm.jsx`
+
+### Latest UI notes (2026-03-14 evening)
+- Secretary transaction form was adjusted based on direct feedback comparing the new form against the older upload UX.
+- The new direction is: keep overall modern styling, but preserve old UX behavior where it improves mobile usability.
+- Specifically, do **not** show the bank slip as a large preview block after upload on mobile.
+- Instead, show a compact uploaded-state card, then let the user continue downward to add supporting proof.
+- Mobile Safari/date-input rendering needed a dedicated style override to avoid broken vertical alignment in the date field.
 
 ### DB / config
 - `supabase/schema.sql`
