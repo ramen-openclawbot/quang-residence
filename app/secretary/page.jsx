@@ -278,34 +278,6 @@ export default function SecretaryPage() {
                   </div>
 
                   <div style={{ ...subtleCard, padding: 16, marginBottom: 16 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Top funds</div>
-                      <button onClick={() => setTab("transactions")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>View all</button>
-                    </div>
-                    <div style={{ display: "grid", gap: 12 }}>
-                      {funds.slice(0, 4).map((fund) => {
-                        const balance = Number(fund.current_balance || 0);
-                        const budget = Number(fund.budget_monthly || 0);
-                        const pct = budget > 0 ? Math.min((balance / budget) * 100, 100) : 0;
-                        return (
-                          <div key={fund.id} style={{ paddingBottom: 10, borderBottom: `1px solid ${T.border}` }}>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                              <div>
-                                <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{fund.name}</div>
-                                <div style={{ fontSize: 12, color: T.textMuted }}>Budget: {fmtVND(budget)}</div>
-                              </div>
-                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{fmtVND(balance)}</div>
-                            </div>
-                            <div style={{ height: 7, borderRadius: 999, background: "#edf3ea", overflow: "hidden" }}>
-                              <div style={{ width: `${pct}%`, height: "100%", borderRadius: 999, background: pct > 85 ? T.amber : T.primary }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div style={{ ...subtleCard, padding: 16, marginBottom: 16 }}>
                     <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Quiet assets</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "linear-gradient(135deg,#d8ccbb,#8f7757)" }}>
