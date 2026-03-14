@@ -389,26 +389,52 @@ export default function SecretaryPage() {
                     </div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
-                      {transactions.map((tx) => (
-                        <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("transaction-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
-                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                {tx.description || tx.recipient_name || "Transactions"}
+                      {transactions.map((tx) => {
+                        const isIncome = tx.type === "income";
+                        const statusTone = tx.status === "approved"
+                          ? { bg: "#ecfdf3", color: T.success, label: "Approved" }
+                          : tx.status === "rejected"
+                            ? { bg: "#fef2f2", color: T.danger, label: "Rejected" }
+                            : { bg: "#fff7e6", color: T.amber, label: "Pending" };
+
+                        return (
+                          <button
+                            key={tx.id}
+                            onClick={() => { setSelectedTransaction(tx); setActivePanel("transaction-detail"); }}
+                            style={{ ...cardStyle, width: "100%", padding: 14, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 12, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                  <MIcon name={isIncome ? "south_west" : "north_east"} size={18} color={isIncome ? T.success : T.danger} />
+                                </div>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.35 }}>
+                                    {tx.description || tx.recipient_name || "Transactions"}
+                                  </div>
+                                  <div style={{ fontSize: 11, fontWeight: 500, color: T.textMuted, marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.35 }}>
+                                    {fmtDate(tx.transaction_date || tx.created_at)}{tx.bank_name ? ` • ${tx.bank_name}` : ""}
+                                  </div>
+                                  <div style={{ marginTop: 7 }}>
+                                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 8px", borderRadius: 999, background: statusTone.bg, color: statusTone.color, fontSize: 10, fontWeight: 700, letterSpacing: "0.02em" }}>
+                                      <span style={{ width: 5, height: 5, borderRadius: 999, background: statusTone.color }} />
+                                      {statusTone.label}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
-                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                {fmtDate(tx.transaction_date || tx.created_at)}{tx.bank_name ? ` • ${tx.bank_name}` : ""}
-                              </div>
-                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6, textTransform: "capitalize" }}>
-                                Status: {tx.status || "pending"}
+                              <div style={{ flexShrink: 0, textAlign: "right" }}>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: isIncome ? T.success : T.danger, whiteSpace: "nowrap", letterSpacing: "-0.01em" }}>
+                                  {isIncome ? "+" : "-"}{fmtVND(Math.abs(Number(tx.amount || 0)))}
+                                </div>
+                                <div style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                                  {isIncome ? "Income" : "Expense"}
+                                </div>
                               </div>
                             </div>
-                            <div style={{ fontSize: 14, fontWeight: 800, color: tx.type === "income" ? T.success : T.danger, flexShrink: 0, textAlign: "right", whiteSpace: "nowrap" }}>
-                              {tx.type === "income" ? "+" : "-"}{fmtVND(Math.abs(Number(tx.amount || 0)))}
-                            </div>
-                          </div>
-                        </button>
-                      ))}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
