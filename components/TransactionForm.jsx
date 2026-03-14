@@ -211,16 +211,16 @@ export default function TransactionForm({ onClose, onSuccess, defaultFundId, def
       {/* Header */}
       <div style={{ ...flexBetween, padding: "28px 24px 16px", position: "sticky", top: 0, backgroundColor: T.bg, zIndex: 10 }}>
         <button onClick={onClose} style={{ ...flexCenter, gap: 8, border: "none", backgroundColor: "transparent", cursor: "pointer", fontFamily: T.font, fontSize: 15, fontWeight: 600, color: T.text }}>
-          <ChevronLeft size={20} color={T.text} /> Quay lại
+          <ChevronLeft size={20} color={T.text} /> Back
         </button>
-        <span style={{ fontSize: 16, fontWeight: 700, color: T.text }}>Giao dịch mới</span>
+        <span style={{ fontSize: 16, fontWeight: 700, color: T.text }}>New transaction</span>
         <div style={{ width: 80 }} />
       </div>
 
       <div style={{ padding: "0 24px 120px" }}>
         {/* Type Toggle */}
         <div style={{ display: "flex", height: 44, backgroundColor: T.primaryBg, borderRadius: 12, padding: 4, border: `1px solid ${T.primaryBg2}`, marginBottom: 24 }}>
-          {[{ id: "expense", label: "Chi" }, { id: "income", label: "Thu" }].map((t) => (
+          {[{ id: "expense", label: "Out" }, { id: "income", label: "In" }].map((t) => (
             <button key={t.id} onClick={() => setType(t.id)} style={{
               flex: 1, borderRadius: 8, border: "none", cursor: "pointer",
               fontSize: 14, fontWeight: 600, fontFamily: T.font,
@@ -234,8 +234,8 @@ export default function TransactionForm({ onClose, onSuccess, defaultFundId, def
 
         {/* Upload Bank Slip */}
         <div style={{ marginBottom: 24 }}>
-          <div style={labelStyle}>Ảnh bank slip (chứng từ)</div>
-          <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleImageSelect} style={{ display: "none" }} />
+          <div style={labelStyle}>Receipt image</div>
+          <input ref={fileRef} type="file" accept="image/*" onChange={handleImageSelect} style={{ display: "none" }} />
           {slipPreview ? (
             <div style={{ position: "relative" }}>
               <img src={slipPreview} alt="Bank slip" style={{ width: "100%", borderRadius: 12, border: `1px solid ${T.border}` }} />
@@ -250,7 +250,7 @@ export default function TransactionForm({ onClose, onSuccess, defaultFundId, def
                     borderTopColor: T.primary, borderRadius: "50%",
                     animation: "spin 0.8s linear infinite",
                   }} />
-                  <span style={{ color: "white", fontSize: 13, fontWeight: 600 }}>Đang quét bank slip...</span>
+                  <span style={{ color: "white", fontSize: 13, fontWeight: 600 }}>Scanning receipt...</span>
                 </div>
               )}
               {ocrResult && !scanning && (
