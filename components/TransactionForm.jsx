@@ -52,6 +52,54 @@ export default function TransactionForm({ onClose, onSuccess, defaultFundId, def
       reader.readAsDataURL(file);
     });
 
+  const compressImageIfNeeded = async (file) => {
+    const MAX_BYTES = 1024 * 1024; // 1MB
+    const MAX_DIMENSION = 1600;
+    const JPEG_QUALITY = 0.82;
+
+    if (!file || file.size <= MAX_BYTES || !file.type.startsWith("image/")) {
+      return file;
+    }
+
+    const imageUrl = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = reject;
+        el.src = imageUrl;
+      });
+
+      let { width, height } = img;
+      const largest = Math.max(width, height);
+      if (largest > MAX_DIMENSION) {
+        const scale = MAX_DIMENSION / largest;
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d", { alpha: false });
+      if (!ctx) return file;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
+      if (!blob) return file;
+
+      const baseName = file.name.replace(/\.[^.]+$/, "");
+      const compressed = new File([blob], `${baseName}.jpg`, {
+        type: "image/jpeg",
+        lastModified: Date.now(),
+      });
+
+      return compressed.size < file.size ? compressed : file;
+    } finally {
+      URL.revokeObjectURL(imageUrl);
+    }
+  };
+
   // Category name → id mapping
   const CATEGORY_MAP = {
     food: "Thực phẩm",
@@ -70,8 +118,9 @@ export default function TransactionForm({ onClose, onSuccess, defaultFundId, def
   };
 
   const handleImageSelect = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
+    const file = await compressImageIfNeeded(rawFile);
     setSlipImage(file);
     setSlipPreview(URL.createObjectURL(file));
 
@@ -250,7 +299,7 @@ export default function TransactionForm({ onClose, onSuccess, defaultFundId, def
                     borderTopColor: T.primary, borderRadius: "50%",
                     animation: "spin 0.8s linear infinite",
                   }} />
-                  <span style={{ color: "white", fontSize: 13, fontWeight: 600 }}>Scanning receipt...</span>
+                  <span style={{ color: "white", fontSize: 13, fontWeight: 600 }}>Preparing image...</span>
                 </div>
               )}
               {ocrResult && !scanning && (
