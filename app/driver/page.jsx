@@ -23,7 +23,7 @@ const T = {
 const TABS = [
   { id: "home", label: "Home", icon: "home" },
   { id: "trips", label: "Trips", icon: "directions_car" },
-  { id: "expenses", label: "Chi tiêu", icon: "receipt_long" },
+  { id: "expenses", label: "Expenses", icon: "receipt_long" },
   { id: "tasks", label: "Tasks", icon: "task_alt" },
 ];
 
@@ -182,7 +182,7 @@ export default function DriverPage() {
               <Avatar name={profile?.full_name || "Driver"} />
               <div>
                 <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Driver Console</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Tài xế"}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Driver"}</div>
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -196,7 +196,7 @@ export default function DriverPage() {
           </div>
 
           {loading ? (
-            <div style={{ fontSize: 13, color: T.textMuted }}>Đang tải dữ liệu...</div>
+            <div style={{ fontSize: 13, color: T.textMuted }}>Loading...</div>
           ) : (
             <>
               {tab === "home" && (
@@ -207,7 +207,7 @@ export default function DriverPage() {
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                         <div>
                           <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>On the road</div>
-                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Lịch trình hôm nay</div>
+                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Schedule trình hôm nay</div>
                         </div>
                         <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Driver</div>
                       </div>
@@ -215,31 +215,31 @@ export default function DriverPage() {
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                         <div><div style={{ fontSize: 11, opacity: 0.7 }}>Trips hôm nay</div><div style={{ fontSize: 18, fontWeight: 800 }}>{todayTrips.length}</div></div>
                         <div><div style={{ fontSize: 11, opacity: 0.7 }}>Task mở</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Đang chạy</div><div style={{ fontSize: 18, fontWeight: 800 }}>{activeTrip ? 1 : 0}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Live</div><div style={{ fontSize: 18, fontWeight: 800 }}>{activeTrip ? 1 : 0}</div></div>
                       </div>
                     </div>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-                    <StatCard label="Chi hôm nay" value={fmtVND(todayExpense)} color={T.danger} />
+                    <StatCard label="Out today" value={fmtVND(todayExpense)} color={T.danger} />
                     <StatCard label="Chi tháng này" value={fmtVND(monthExpense)} color={T.text} />
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
-                    <ActionCard icon="upload_file" label="Ghi chi phí" sub="Upload bill / phiếu / phát sinh" onClick={() => setShowTxForm(true)} primary />
+                    <ActionCard icon="upload_file" label="Log expense" sub="Upload bill / phiếu / phát sinh" onClick={() => setShowTxForm(true)} primary />
                     <ActionCard icon="directions_car" label="Xem chuyến" sub="Mở danh sách trip hôm nay" onClick={() => setTab("trips")} />
                   </div>
 
                   {activeTrip && (
                     <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                        <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Đang thực hiện</div>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Live now</div>
                         <div style={{ padding: "6px 10px", borderRadius: 999, background: "#fff7e6", color: T.amber, fontSize: 11, fontWeight: 800 }}>in_progress</div>
                       </div>
                       <div style={{ fontSize: 15, fontWeight: 800, color: T.text }}>{activeTrip.title}</div>
                       <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{activeTrip.pickup_location || "—"} → {activeTrip.dropoff_location || "—"}</div>
                       <button onClick={() => updateTripStatus(activeTrip, "completed")} style={{ marginTop: 12, height: 42, borderRadius: 12, border: "none", background: T.primary, color: "white", fontWeight: 800, padding: "0 14px", cursor: "pointer" }}>
-                        Hoàn tất chuyến
+                        Complete chuyến
                       </button>
                     </div>
                   )}
@@ -247,10 +247,10 @@ export default function DriverPage() {
                   <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                       <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Trips hôm nay</div>
-                      <button onClick={() => setTab("trips")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở tab</button>
+                      <button onClick={() => setTab("trips")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     </div>
                     {todayTrips.length === 0 ? (
-                      <div style={{ fontSize: 13, color: T.textMuted }}>Không có chuyến nào hôm nay.</div>
+                      <div style={{ fontSize: 13, color: T.textMuted }}>No trips today.</div>
                     ) : todayTrips.slice(0, 3).map((trip) => {
                       const tone = statusTone(trip.status);
                       return (
@@ -268,10 +268,10 @@ export default function DriverPage() {
                   <div style={{ ...cardStyle, padding: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                       <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Task cần chú ý</div>
-                      <button onClick={() => setTab("tasks")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở tab</button>
+                      <button onClick={() => setTab("tasks")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     </div>
                     {openTasks.length === 0 ? (
-                      <div style={{ fontSize: 13, color: T.textMuted }}>Không có task mở.</div>
+                      <div style={{ fontSize: 13, color: T.textMuted }}>No open tasks.</div>
                     ) : openTasks.slice(0, 4).map((task) => {
                       const tone = statusTone(task.status);
                       return (
@@ -279,7 +279,7 @@ export default function DriverPage() {
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                             <div>
                               <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
-                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.due_date ? `Hạn: ${fmtDate(task.due_date)}` : "Chưa có deadline"}</div>
+                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.due_date ? `Hạn: ${fmtDate(task.due_date)}` : "No deadline"}</div>
                             </div>
                             <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
                           </div>
@@ -297,7 +297,7 @@ export default function DriverPage() {
                     <div key={group.title} style={{ marginBottom: 18 }}>
                       <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>{group.title}</div>
                       {group.items.length === 0 ? (
-                        <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Không có chuyến nào.</div>
+                        <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No trips.</div>
                       ) : (
                         <div style={{ display: "grid", gap: 12 }}>
                           {group.items.map((trip) => {
@@ -313,9 +313,9 @@ export default function DriverPage() {
                                   <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{trip.status}</div>
                                 </div>
                                 <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-                                  {trip.status === "scheduled" && <button onClick={() => updateTripStatus(trip, "in_progress")} style={primaryBtn}>Bắt đầu</button>}
-                                  {trip.status === "pending" && <button onClick={() => updateTripStatus(trip, "in_progress")} style={primaryBtn}>Bắt đầu</button>}
-                                  {trip.status === "in_progress" && <button onClick={() => updateTripStatus(trip, "completed")} style={primaryBtn}>Hoàn tất</button>}
+                                  {trip.status === "scheduled" && <button onClick={() => updateTripStatus(trip, "in_progress")} style={primaryBtn}>Start</button>}
+                                  {trip.status === "pending" && <button onClick={() => updateTripStatus(trip, "in_progress")} style={primaryBtn}>Start</button>}
+                                  {trip.status === "in_progress" && <button onClick={() => updateTripStatus(trip, "completed")} style={primaryBtn}>Complete</button>}
                                 </div>
                               </button>
                             );
@@ -330,11 +330,11 @@ export default function DriverPage() {
               {tab === "expenses" && (
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Chi phí / bill</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Expenses</div>
                     <button onClick={() => setShowTxForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Ghi chi</button>
                   </div>
                   {transactions.length === 0 ? (
-                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có ghi nhận chi phí nào.</div>
+                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No expenses logged yet.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {transactions.map((tx) => (
@@ -358,7 +358,7 @@ export default function DriverPage() {
                 <div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 14 }}>Tasks</div>
                   {tasks.length === 0 ? (
-                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có task nào.</div>
+                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No tasks yet.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {tasks.map((task) => {
@@ -369,7 +369,7 @@ export default function DriverPage() {
                               <div>
                                 <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
                                 {task.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description}</div>}
-                                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{task.due_date ? `Hạn: ${fmtDate(task.due_date)}` : "Chưa có deadline"}</div>
+                                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{task.due_date ? `Hạn: ${fmtDate(task.due_date)}` : "No deadline"}</div>
                               </div>
                               <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
                             </div>
@@ -391,10 +391,10 @@ export default function DriverPage() {
             <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18, maxHeight: "78vh", overflowY: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>
-                  {activePanel === "help" && "Driver Help"}
-                  {activePanel === "trip-detail" && "Chi tiết chuyến"}
-                  {activePanel === "expense-detail" && "Chi tiết chi phí"}
-                  {activePanel === "task-detail" && "Chi tiết công việc"}
+                  {activePanel === "help" && "Driver Guide"}
+                  {activePanel === "trip-detail" && "Trip details"}
+                  {activePanel === "expense-detail" && "Expense details"}
+                  {activePanel === "task-detail" && "Task details"}
                 </div>
                 <button onClick={() => setActivePanel("")} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
                   <MIcon name="close" size={22} color={T.textMuted} />
@@ -403,8 +403,8 @@ export default function DriverPage() {
 
               {activePanel === "help" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Ghi chi phí ngay từ Home\n• Mở trip để xem chi tiết / trạng thái\n• Mở task để đổi trạng thái nhanh</div></div>
-                  <button onClick={() => setShowTxForm(true)} style={primaryBtn}>Ghi chi ngay</button>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Log expense ngay từ Home\n• Mở trip để xem chi tiết / trạng thái\n• Mở task để đổi trạng thái nhanh</div></div>
+                  <button onClick={() => setShowTxForm(true)} style={primaryBtn}>Log expense</button>
                 </div>
               )}
 
@@ -417,12 +417,12 @@ export default function DriverPage() {
                   <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}>
                     <div>Pickup: {selectedTrip.pickup_location || "—"}</div>
                     <div>Dropoff: {selectedTrip.dropoff_location || "—"}</div>
-                    <div>Trạng thái: <strong>{selectedTrip.status}</strong></div>
+                    <div>Status: <strong>{selectedTrip.status}</strong></div>
                     {selectedTrip.notes && <div>Ghi chú: {selectedTrip.notes}</div>}
                   </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {(selectedTrip.status === "scheduled" || selectedTrip.status === "pending") && <button onClick={() => { updateTripStatus(selectedTrip, "in_progress"); setActivePanel(""); }} style={primaryBtn}>Bắt đầu</button>}
-                    {selectedTrip.status === "in_progress" && <button onClick={() => { updateTripStatus(selectedTrip, "completed"); setActivePanel(""); }} style={primaryBtn}>Hoàn tất</button>}
+                    {(selectedTrip.status === "scheduled" || selectedTrip.status === "pending") && <button onClick={() => { updateTripStatus(selectedTrip, "in_progress"); setActivePanel(""); }} style={primaryBtn}>Start</button>}
+                    {selectedTrip.status === "in_progress" && <button onClick={() => { updateTripStatus(selectedTrip, "completed"); setActivePanel(""); }} style={primaryBtn}>Complete</button>}
                   </div>
                 </div>
               )}
@@ -434,10 +434,10 @@ export default function DriverPage() {
                     <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(selectedTransaction.transaction_date || selectedTransaction.created_at)}</div>
                   </div>
                   <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}>
-                    <div>Số tiền: <strong>{fmtVND(Math.abs(Number(selectedTransaction.amount || 0)))}</strong></div>
-                    <div>Loại: {selectedTransaction.type || "expense"}</div>
-                    <div>Trạng thái: {selectedTransaction.status || "pending"}</div>
-                    {selectedTransaction.bank_name && <div>Ngân hàng: {selectedTransaction.bank_name}</div>}
+                    <div>Amount: <strong>{fmtVND(Math.abs(Number(selectedTransaction.amount || 0)))}</strong></div>
+                    <div>Type: {selectedTransaction.type || "expense"}</div>
+                    <div>Status: {selectedTransaction.status || "pending"}</div>
+                    {selectedTransaction.bank_name && <div>Bank: {selectedTransaction.bank_name}</div>}
                   </div>
                   <button onClick={() => { setActivePanel(""); setTab("expenses"); }} style={primaryBtn}>Về Chi phí</button>
                 </div>
@@ -447,11 +447,11 @@ export default function DriverPage() {
                 <div style={{ display: "grid", gap: 12 }}>
                   <div style={{ ...softCard, padding: 14 }}>
                     <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTask.title}</div>
-                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedTask.due_date ? fmtDate(selectedTask.due_date) : "Chưa có deadline"}</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedTask.due_date ? fmtDate(selectedTask.due_date) : "No deadline"}</div>
                   </div>
                   <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}>
-                    <div>Trạng thái: <strong>{selectedTask.status}</strong></div>
-                    <div>{selectedTask.description || "Không có mô tả thêm"}</div>
+                    <div>Status: <strong>{selectedTask.status}</strong></div>
+                    <div>{selectedTask.description || "No notes thêm"}</div>
                   </div>
                   <button onClick={() => { updateTaskStatus(selectedTask); setActivePanel(""); }} style={primaryBtn}>Chuyển trạng thái</button>
                 </div>

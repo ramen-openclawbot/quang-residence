@@ -22,9 +22,9 @@ const T = {
 
 const TABS = [
   { id: "home", label: "Home", icon: "home" },
-  { id: "expenses", label: "Chi tiêu", icon: "receipt_long" },
-  { id: "care", label: "Nhà cửa", icon: "home_repair_service" },
-  { id: "family", label: "Gia đình", icon: "family_restroom" },
+  { id: "expenses", label: "Expenses", icon: "receipt_long" },
+  { id: "care", label: "Home Care", icon: "home_repair_service" },
+  { id: "family", label: "Family", icon: "family_restroom" },
 ];
 
 const MAINTENANCE_STATUSES = ["reported", "scheduled", "in_progress", "completed"];
@@ -242,7 +242,7 @@ export default function HousekeeperPage() {
               <Avatar name={profile?.full_name || "Housekeeper"} />
               <div>
                 <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Housekeeper Console</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Quản gia"}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Housekeeper"}</div>
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -256,7 +256,7 @@ export default function HousekeeperPage() {
           </div>
 
           {loading ? (
-            <div style={{ fontSize: 13, color: T.textMuted }}>Đang tải dữ liệu...</div>
+            <div style={{ fontSize: 13, color: T.textMuted }}>Loading...</div>
           ) : (
             <>
               {tab === "home" && (
@@ -267,36 +267,36 @@ export default function HousekeeperPage() {
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                         <div>
                           <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Home operations</div>
-                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Nhà cửa & gia đình</div>
+                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Home Care & gia đình</div>
                         </div>
                         <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Housekeeper</div>
                       </div>
                       <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Theo dõi chi tiêu, việc nhà và lịch gia đình</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Chi hôm nay</div><div style={{ fontSize: 18, fontWeight: 800 }}>{fmtVND(todayExpense)}</div></div>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Việc nhà mở</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openMaintenance.length}</div></div>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Lịch sắp tới</div><div style={{ fontSize: 18, fontWeight: 800 }}>{upcomingFamily.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Out today</div><div style={{ fontSize: 18, fontWeight: 800 }}>{fmtVND(todayExpense)}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Tasks nhà mở</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openMaintenance.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Schedule sắp tới</div><div style={{ fontSize: 18, fontWeight: 800 }}>{upcomingFamily.length}</div></div>
                       </div>
                     </div>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-                    <StatCard label="Chi hôm nay" value={fmtVND(todayExpense)} color={T.danger} />
+                    <StatCard label="Out today" value={fmtVND(todayExpense)} color={T.danger} />
                     <StatCard label="Chi tháng này" value={fmtVND(monthExpense)} color={T.text} />
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
                     <ActionCard icon="upload_file" label="Ghi chi tiêu" sub="Upload bill / hóa đơn" onClick={() => setShowTxForm(true)} primary />
-                    <ActionCard icon="home_repair_service" label="Báo việc nhà" sub="Thêm vấn đề cần xử lý" onClick={() => setShowMaintenanceForm(true)} />
+                    <ActionCard icon="home_repair_service" label="Report issue" sub="Thêm vấn đề cần xử lý" onClick={() => setShowMaintenanceForm(true)} />
                   </div>
 
                   <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Việc nhà cần chú ý</div>
-                      <button onClick={() => setTab("care")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở tab</button>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Tasks nhà cần chú ý</div>
+                      <button onClick={() => setTab("care")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     </div>
                     {openMaintenance.length === 0 ? (
-                      <div style={{ fontSize: 13, color: T.textMuted }}>Không có đầu việc nhà nào đang mở.</div>
+                      <div style={{ fontSize: 13, color: T.textMuted }}>No open home care items.</div>
                     ) : openMaintenance.slice(0, 4).map((item) => {
                       const s = tone(item.status);
                       return (
@@ -315,11 +315,11 @@ export default function HousekeeperPage() {
 
                   <div style={{ ...cardStyle, padding: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Lịch gia đình sắp tới</div>
-                      <button onClick={() => setTab("family")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở tab</button>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Schedule gia đình sắp tới</div>
+                      <button onClick={() => setTab("family")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     </div>
                     {upcomingFamily.length === 0 ? (
-                      <div style={{ fontSize: 13, color: T.textMuted }}>Chưa có sự kiện sắp tới.</div>
+                      <div style={{ fontSize: 13, color: T.textMuted }}>No upcoming events.</div>
                     ) : upcomingFamily.slice(0, 4).map((item) => (
                       <button key={item.id} onClick={() => { setSelectedFamilyItem(item); setActivePanel("family-detail"); }} style={{ width: "100%", textAlign: "left", border: "none", background: "transparent", padding: "12px 0", borderBottom: `1px solid ${T.border}`, cursor: "pointer" }}>
                         <div>
@@ -336,11 +336,11 @@ export default function HousekeeperPage() {
               {tab === "expenses" && (
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Chi tiêu</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Expenses</div>
                     <button onClick={() => setShowTxForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Ghi chi</button>
                   </div>
                   {transactions.length === 0 ? (
-                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có giao dịch nào.</div>
+                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No transactions yet.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {transactions.map((tx) => (
@@ -366,7 +366,7 @@ export default function HousekeeperPage() {
                     <button onClick={() => setShowMaintenanceForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Báo việc</button>
                   </div>
                   {maintenanceItems.length === 0 ? (
-                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có báo cáo việc nhà nào.</div>
+                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No home care items yet.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {maintenanceItems.map((item) => {
@@ -392,11 +392,11 @@ export default function HousekeeperPage() {
               {tab === "family" && (
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Gia đình / lịch</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Family / lịch</div>
                     <button onClick={() => setShowFamilyForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Thêm lịch</button>
                   </div>
                   {familySchedule.length === 0 ? (
-                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có lịch nào.</div>
+                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No events yet.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {familySchedule.map((item) => (
@@ -426,33 +426,33 @@ export default function HousekeeperPage() {
             <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18, maxHeight: "78vh", overflowY: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>
-                  {activePanel === "help" && "Housekeeper Help"}
-                  {activePanel === "expense-detail" && "Chi tiết chi tiêu"}
-                  {activePanel === "maintenance-detail" && "Chi tiết việc nhà"}
-                  {activePanel === "family-detail" && "Chi tiết lịch gia đình"}
+                  {activePanel === "help" && "Housekeeper Guide"}
+                  {activePanel === "expense-detail" && "Expense details"}
+                  {activePanel === "maintenance-detail" && "Home care details"}
+                  {activePanel === "family-detail" && "Family event details"}
                 </div>
                 <button onClick={() => setActivePanel("")} style={{ border: "none", background: "transparent", cursor: "pointer" }}><MIcon name="close" size={22} color={T.textMuted} /></button>
               </div>
 
               {activePanel === "help" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Ghi chi tiêu ngay từ Home\n• Báo việc nhà và theo dõi tiến độ\n• Mở lịch gia đình để xem chi tiết từng sự kiện</div></div>
-                  <button onClick={() => setShowMaintenanceForm(true)} style={panelBtn}>Báo việc nhà ngay</button>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Ghi chi tiêu ngay từ Home\n• Report issue và theo dõi tiến độ\n• Mở lịch gia đình để xem chi tiết từng sự kiện</div></div>
+                  <button onClick={() => setShowMaintenanceForm(true)} style={panelBtn}>Report issue ngay</button>
                 </div>
               )}
 
               {activePanel === "expense-detail" && selectedTransaction && (
                 <div style={{ display: "grid", gap: 12 }}>
                   <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTransaction.description || "Expense"}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(selectedTransaction.transaction_date || selectedTransaction.created_at)}</div></div>
-                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}><div>Số tiền: <strong>{fmtVND(Math.abs(Number(selectedTransaction.amount || 0)))}</strong></div><div>Loại: {selectedTransaction.type || "expense"}</div><div>Trạng thái: {selectedTransaction.status || "pending"}</div></div>
-                  <button onClick={() => { setActivePanel(""); setTab("expenses"); }} style={panelBtn}>Về Chi tiêu</button>
+                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}><div>Amount: <strong>{fmtVND(Math.abs(Number(selectedTransaction.amount || 0)))}</strong></div><div>Type: {selectedTransaction.type || "expense"}</div><div>Status: {selectedTransaction.status || "pending"}</div></div>
+                  <button onClick={() => { setActivePanel(""); setTab("expenses"); }} style={panelBtn}>Về Expenses</button>
                 </div>
               )}
 
               {activePanel === "maintenance-detail" && selectedMaintenance && (
                 <div style={{ display: "grid", gap: 12 }}>
                   <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedMaintenance.title}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedMaintenance.location_in_house || "Không rõ vị trí"}</div></div>
-                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}><div>Trạng thái: <strong>{selectedMaintenance.status}</strong></div><div>{selectedMaintenance.description || "Không có mô tả thêm"}</div></div>
+                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}><div>Status: <strong>{selectedMaintenance.status}</strong></div><div>{selectedMaintenance.description || "No notes thêm"}</div></div>
                   <button onClick={() => { handleMaintenanceStatusChange(selectedMaintenance); setActivePanel(""); }} style={panelBtn}>Chuyển trạng thái</button>
                 </div>
               )}
@@ -460,8 +460,8 @@ export default function HousekeeperPage() {
               {activePanel === "family-detail" && selectedFamilyItem && (
                 <div style={{ display: "grid", gap: 12 }}>
                   <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedFamilyItem.title}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(selectedFamilyItem.event_date)}{selectedFamilyItem.event_time ? ` • ${selectedFamilyItem.event_time}` : ""}</div></div>
-                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}><div>Loại: {selectedFamilyItem.schedule_type}</div><div>Thành viên: {selectedFamilyItem.family_member}</div><div>{selectedFamilyItem.notes || "Không có ghi chú thêm"}</div></div>
-                  <button onClick={() => { setActivePanel(""); setTab("family"); }} style={panelBtn}>Về Gia đình</button>
+                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}><div>Type: {selectedFamilyItem.schedule_type}</div><div>Member: {selectedFamilyItem.family_member}</div><div>{selectedFamilyItem.notes || "No extra notes"}</div></div>
+                  <button onClick={() => { setActivePanel(""); setTab("family"); }} style={panelBtn}>Về Family</button>
                 </div>
               )}
             </div>
@@ -472,7 +472,7 @@ export default function HousekeeperPage() {
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 200, display: "flex", alignItems: "flex-end" }}>
             <div style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Báo việc nhà</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Report issue</div>
                 <button onClick={() => setShowMaintenanceForm(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}><MIcon name="close" size={22} color={T.textMuted} /></button>
               </div>
               <form onSubmit={handleMaintenanceSubmit}>
@@ -480,7 +480,7 @@ export default function HousekeeperPage() {
                 <input value={maintenanceFormData.location_in_house} onChange={(e) => setMaintenanceFormData({ ...maintenanceFormData, location_in_house: e.target.value })} placeholder="Vị trí trong nhà" required style={{ ...inputStyle, marginTop: 10 }} />
                 <textarea value={maintenanceFormData.description} onChange={(e) => setMaintenanceFormData({ ...maintenanceFormData, description: e.target.value })} placeholder="Mô tả thêm" style={{ ...inputStyle, minHeight: 90, resize: "none", marginTop: 10 }} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
-                  <button type="button" onClick={() => setShowMaintenanceForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Huỷ</button>
+                  <button type="button" onClick={() => setShowMaintenanceForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Cancel</button>
                   <button type="submit" style={{ height: 46, borderRadius: 12, border: "none", background: T.primary, color: "white", cursor: "pointer", fontWeight: 800 }}>Tạo báo cáo</button>
                 </div>
               </form>
@@ -492,7 +492,7 @@ export default function HousekeeperPage() {
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 200, display: "flex", alignItems: "flex-end" }}>
             <div style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Thêm lịch gia đình</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Add family event</div>
                 <button onClick={() => setShowFamilyForm(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}><MIcon name="close" size={22} color={T.textMuted} /></button>
               </div>
               <form onSubmit={handleFamilyScheduleSubmit}>
@@ -510,7 +510,7 @@ export default function HousekeeperPage() {
                 </div>
                 <textarea value={familyFormData.notes} onChange={(e) => setFamilyFormData({ ...familyFormData, notes: e.target.value })} placeholder="Ghi chú" style={{ ...inputStyle, minHeight: 90, resize: "none", marginTop: 10 }} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
-                  <button type="button" onClick={() => setShowFamilyForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Huỷ</button>
+                  <button type="button" onClick={() => setShowFamilyForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Cancel</button>
                   <button type="submit" style={{ height: 46, borderRadius: 12, border: "none", background: T.primary, color: "white", cursor: "pointer", fontWeight: 800 }}>Lưu lịch</button>
                 </div>
               </form>

@@ -21,9 +21,9 @@ const T = {
 
 const TABS = [
   { id: "home", label: "Home", icon: "home" },
-  { id: "transactions", label: "Giao dịch", icon: "receipt_long" },
-  { id: "tasks", label: "Việc", icon: "task_alt" },
-  { id: "calendar", label: "Lịch", icon: "calendar_month" },
+  { id: "transactions", label: "Transactions", icon: "receipt_long" },
+  { id: "tasks", label: "Tasks", icon: "task_alt" },
+  { id: "calendar", label: "Schedule", icon: "calendar_month" },
 ];
 
 const cardStyle = {
@@ -182,7 +182,7 @@ export default function SecretaryPage() {
               <Avatar name={profile?.full_name || "Secretary"} />
               <div>
                 <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Secretary Dashboard</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Thư ký"}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Secretary"}</div>
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -196,7 +196,7 @@ export default function SecretaryPage() {
           </div>
 
           {loading ? (
-            <div style={{ fontSize: 13, color: T.textMuted }}>Đang tải dữ liệu...</div>
+            <div style={{ fontSize: 13, color: T.textMuted }}>Loading...</div>
           ) : (
             <>
               {tab === "home" && (
@@ -207,23 +207,23 @@ export default function SecretaryPage() {
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                         <div>
                           <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Desk overview</div>
-                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Xin chào, {profile?.full_name?.split(" ").slice(-1)[0] || "bạn"}</div>
+                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Hello, {profile?.full_name?.split(" ").slice(-1)[0] || "bạn"}</div>
                         </div>
                         <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Secretary</div>
                       </div>
-                      <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Tổng số dư đang theo dõi</div>
+                      <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Tracked balance</div>
                       <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 16 }}>{fmtVND(totalBalance)}</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                         <div>
-                          <div style={{ fontSize: 11, opacity: 0.7 }}>Chờ duyệt</div>
+                          <div style={{ fontSize: 11, opacity: 0.7 }}>Pending</div>
                           <div style={{ fontSize: 18, fontWeight: 800 }}>{pendingTx.length}</div>
                         </div>
                         <div>
-                          <div style={{ fontSize: 11, opacity: 0.7 }}>Việc hôm nay</div>
+                          <div style={{ fontSize: 11, opacity: 0.7 }}>Tasks hôm nay</div>
                           <div style={{ fontSize: 18, fontWeight: 800 }}>{todayTasks.length}</div>
                         </div>
                         <div>
-                          <div style={{ fontSize: 11, opacity: 0.7 }}>Quá hạn</div>
+                          <div style={{ fontSize: 11, opacity: 0.7 }}>Overdue</div>
                           <div style={{ fontSize: 18, fontWeight: 800 }}>{overdueTasks.length}</div>
                         </div>
                       </div>
@@ -232,24 +232,24 @@ export default function SecretaryPage() {
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                     <div style={{ ...subtleCard, padding: 14 }}>
-                      <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Thu hôm nay</div>
+                      <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>In today</div>
                       <div style={{ fontSize: 20, fontWeight: 800, color: T.success, marginTop: 6 }}>{fmtVND(incomeToday)}</div>
                     </div>
                     <div style={{ ...subtleCard, padding: 14 }}>
-                      <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Chi hôm nay</div>
+                      <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Out today</div>
                       <div style={{ fontSize: 20, fontWeight: 800, color: T.danger, marginTop: 6 }}>{fmtVND(expenseToday)}</div>
                     </div>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
-                    <QuickAction icon="upload_file" label="Upload bank slip" sub="Quét biên lai & tạo giao dịch" onClick={() => setShowTxForm(true)} primary />
-                    <QuickAction icon="task_alt" label="Tạo công việc" sub="Giao việc nhanh trong ngày" onClick={() => setShowTaskForm(true)} />
+                    <QuickAction icon="upload_file" label="Upload slip" sub="Scan receipt and log transaction" onClick={() => setShowTxForm(true)} primary />
+                    <QuickAction icon="task_alt" label="New task" sub="Create a task in seconds" onClick={() => setShowTaskForm(true)} />
                   </div>
 
                   <div style={{ ...subtleCard, padding: 16, marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Các quỹ nổi bật</div>
-                      <button onClick={() => setTab("transactions")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Xem giao dịch</button>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Top funds</div>
+                      <button onClick={() => setTab("transactions")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>View all</button>
                     </div>
                     <div style={{ display: "grid", gap: 12 }}>
                       {funds.slice(0, 4).map((fund) => {
@@ -276,17 +276,17 @@ export default function SecretaryPage() {
 
                   <div style={{ ...subtleCard, padding: 16, marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Focus hôm nay</div>
-                      <button onClick={() => setTab("tasks")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở việc</button>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Today focus</div>
+                      <button onClick={() => setTab("tasks")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open tasks</button>
                     </div>
                     {todayTasks.length === 0 ? (
-                      <div style={{ fontSize: 13, color: T.textMuted }}>Không có task nào đến hạn hôm nay.</div>
+                      <div style={{ fontSize: 13, color: T.textMuted }}>No tasks due today.</div>
                     ) : todayTasks.slice(0, 3).map((task) => (
                       <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
                         <div style={{ width: 10, height: 10, borderRadius: 999, background: task.priority === "urgent" ? T.danger : task.priority === "high" ? T.amber : T.primary, marginTop: 5, flexShrink: 0 }} />
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{task.title}</div>
-                          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description || "Không có mô tả"}</div>
+                          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description || "No notes"}</div>
                         </div>
                       </div>
                     ))}
@@ -294,11 +294,11 @@ export default function SecretaryPage() {
 
                   <div style={{ ...cardStyle, padding: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Giao dịch gần đây</div>
-                      <button onClick={() => setTab("transactions")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở tab</button>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Transactions gần đây</div>
+                      <button onClick={() => setTab("transactions")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     </div>
                     {recentTransactions.length === 0 ? (
-                      <div style={{ fontSize: 13, color: T.textMuted }}>Chưa có giao dịch nào.</div>
+                      <div style={{ fontSize: 13, color: T.textMuted }}>No transactions yet.</div>
                     ) : recentTransactions.slice(0, 5).map((tx) => (
                       <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
@@ -306,7 +306,7 @@ export default function SecretaryPage() {
                             <MIcon name={tx.type === "income" ? "south_west" : "north_east"} size={18} color={tx.type === "income" ? T.success : T.danger} />
                           </div>
                           <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tx.description || tx.recipient_name || "Giao dịch"}</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tx.description || tx.recipient_name || "Transactions"}</div>
                             <div style={{ fontSize: 12, color: T.textMuted }}>{fmtRelative(tx.created_at)}</div>
                           </div>
                         </div>
@@ -327,7 +327,7 @@ export default function SecretaryPage() {
                   </div>
                   {transactions.length === 0 ? (
                     <div style={{ ...cardStyle, padding: 24, textAlign: "center", color: T.textMuted }}>
-                      Chưa có giao dịch. Bấm <strong>Upload slip</strong> để tạo giao dịch đầu tiên.
+                      No transactions yet. Tap <strong>Upload slip</strong> to log the first one.
                     </div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
@@ -335,9 +335,9 @@ export default function SecretaryPage() {
                         <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("transaction-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
                           <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 12 }}>
                             <div style={{ minWidth: 0, flex: 1 }}>
-                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{tx.description || tx.recipient_name || "Giao dịch"}</div>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{tx.description || tx.recipient_name || "Transactions"}</div>
                               <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(tx.transaction_date || tx.created_at)}{tx.bank_name ? ` • ${tx.bank_name}` : ""}</div>
-                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Trạng thái: {tx.status || "pending"}</div>
+                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Status: {tx.status || "pending"}</div>
                             </div>
                             <div style={{ fontSize: 14, fontWeight: 800, color: tx.type === "income" ? T.success : T.danger }}>{tx.type === "income" ? "+" : "-"}{fmtVND(Math.abs(Number(tx.amount || 0)))}</div>
                           </div>
@@ -357,7 +357,7 @@ export default function SecretaryPage() {
                     </button>
                   </div>
                   {tasks.length === 0 ? (
-                    <div style={{ ...cardStyle, padding: 24, textAlign: "center", color: T.textMuted }}>Chưa có task nào.</div>
+                    <div style={{ ...cardStyle, padding: 24, textAlign: "center", color: T.textMuted }}>No tasks yet.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {tasks.map((task) => (
@@ -389,7 +389,7 @@ export default function SecretaryPage() {
                 <div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 14 }}>Upcoming</div>
                   {upcomingItems.length === 0 ? (
-                    <div style={{ ...cardStyle, padding: 24, textAlign: "center", color: T.textMuted }}>Chưa có lịch / task sắp tới.</div>
+                    <div style={{ ...cardStyle, padding: 24, textAlign: "center", color: T.textMuted }}>No upcoming items.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {upcomingItems.map((item) => (
@@ -413,9 +413,9 @@ export default function SecretaryPage() {
             <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18, maxHeight: "78vh", overflowY: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>
-                  {activePanel === "help" && "Secretary Help"}
-                  {activePanel === "transaction-detail" && "Chi tiết giao dịch"}
-                  {activePanel === "task-detail" && "Chi tiết công việc"}
+                  {activePanel === "help" && "Secretary Guide"}
+                  {activePanel === "transaction-detail" && "Transaction details"}
+                  {activePanel === "task-detail" && "Task details"}
                 </div>
                 <button onClick={() => setActivePanel("")} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
                   <MIcon name="close" size={22} color={T.textMuted} />
@@ -424,7 +424,7 @@ export default function SecretaryPage() {
 
               {activePanel === "help" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Upload bank slip để ghi giao dịch mới\n• Tạo công việc để giao việc nhanh\n• Mở transaction/task card để xem chi tiết</div></div>
+                  <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Upload slip để ghi giao dịch mới\n• New task để giao việc nhanh\n• Mở transaction/task card để xem chi tiết</div></div>
                   <button onClick={() => setShowTxForm(true)} style={panelBtn}>Upload slip ngay</button>
                 </div>
               )}
@@ -432,23 +432,23 @@ export default function SecretaryPage() {
               {activePanel === "transaction-detail" && selectedTransaction && (
                 <div style={{ display: "grid", gap: 12 }}>
                   <div style={{ ...subtleCard, padding: 14 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTransaction.description || selectedTransaction.recipient_name || "Giao dịch"}</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTransaction.description || selectedTransaction.recipient_name || "Transactions"}</div>
                     <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(selectedTransaction.transaction_date || selectedTransaction.created_at)}</div>
                   </div>
                   <div style={{ ...subtleCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}>
-                    <div>Số tiền: <strong>{fmtVND(Math.abs(Number(selectedTransaction.amount || 0)))}</strong></div>
-                    <div>Loại: {selectedTransaction.type || "expense"}</div>
-                    <div>Trạng thái: {selectedTransaction.status || "pending"}</div>
-                    {selectedTransaction.bank_name && <div>Ngân hàng: {selectedTransaction.bank_name}</div>}
+                    <div>Amount: <strong>{fmtVND(Math.abs(Number(selectedTransaction.amount || 0)))}</strong></div>
+                    <div>Type: {selectedTransaction.type || "expense"}</div>
+                    <div>Status: {selectedTransaction.status || "pending"}</div>
+                    {selectedTransaction.bank_name && <div>Bank: {selectedTransaction.bank_name}</div>}
                   </div>
-                  <button onClick={() => { setActivePanel(""); setTab("transactions"); }} style={panelBtn}>Về Transactions</button>
+                  <button onClick={() => { setActivePanel(""); setTab("transactions"); }} style={panelBtn}>Back to Transactions</button>
                 </div>
               )}
 
               {activePanel === "task-detail" && selectedTask && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTask.title}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedTask.due_date ? fmtDate(selectedTask.due_date) : "Chưa có deadline"}</div></div>
-                  <div style={{ ...subtleCard, padding: 14, fontSize: 13, color: T.text }}>Trạng thái: <strong>{selectedTask.status}</strong><br/>Ưu tiên: {selectedTask.priority || "medium"}<br/>{selectedTask.description || "Không có mô tả thêm"}</div>
+                  <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTask.title}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedTask.due_date ? fmtDate(selectedTask.due_date) : "No deadline"}</div></div>
+                  <div style={{ ...subtleCard, padding: 14, fontSize: 13, color: T.text }}>Status: <strong>{selectedTask.status}</strong><br/>Priority: {selectedTask.priority || "medium"}<br/>{selectedTask.description || "No notes thêm"}</div>
                   <button onClick={() => { toggleTaskStatus(selectedTask); setActivePanel(""); }} style={panelBtn}>Chuyển trạng thái</button>
                 </div>
               )}
@@ -460,7 +460,7 @@ export default function SecretaryPage() {
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 200, display: "flex", alignItems: "flex-end" }}>
             <div style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Tạo công việc</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>New task</div>
                 <button onClick={() => setShowTaskForm(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
                   <MIcon name="close" size={22} color={T.textMuted} />
                 </button>
@@ -478,7 +478,7 @@ export default function SecretaryPage() {
                   <input type="date" value={newTask.due_date} onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })} style={inputStyle} />
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
-                  <button type="button" onClick={() => setShowTaskForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Huỷ</button>
+                  <button type="button" onClick={() => setShowTaskForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Cancel</button>
                   <button type="submit" style={{ height: 46, borderRadius: 12, border: "none", background: T.primary, color: "white", cursor: "pointer", fontWeight: 800 }}>Tạo việc</button>
                 </div>
               </form>
