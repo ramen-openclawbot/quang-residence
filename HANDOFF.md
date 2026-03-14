@@ -1,12 +1,12 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-14 19:05 GMT+7_
+_Last updated: 2026-03-14 21:18 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
 - GitHub: `https://github.com/ramen-openclawbot/quang-residence.git`
 - Branch: `main`
-- Current pushed commit: `7fa0bf3`
+- Current pushed commit: `10902b0`
 
 ## Current product state
 ZenHome is now in a **product-hardening + CRUD-completion** phase, not an auth/firefighting phase.
@@ -93,6 +93,9 @@ Key owner-related commits:
 - `7f6d4f7` — password reset + self password update
 - `8b42306` — remove wealth snapshot from owner Home for cleaner UI
 - `673ce71` — change `Active funds` to count only funds with positive balance
+- `52a725f` — add balance fallback and handoff updates
+- `c77b65b` — audit and harden owner date-based metrics
+- `10902b0` — refine dashboard balance source display
 
 ### Secretary
 Secretary now has:
@@ -110,6 +113,9 @@ Secretary now has:
 - secretary home `In today / Out today` logic hardened to avoid empty values when transaction dates are inconsistent
 - secretary upload OCR fixed by routing the form to the real `/api/ocr` endpoint
 - dashboard balance cards now fall back to transaction-ledger math when `funds.current_balance` is zeroed or stale
+- secretary home no longer shows `Top funds`; the dashboard now stays focused on operational items instead of fund reporting
+- curated 1stDibs imagery was added to the secretary `Art note` and `Collection` cards for a more premium visual layer
+- balance source labeling now distinguishes between `Synced from funds` and `Ledger fallback`
 
 Key commits:
 - `3de89e9`
@@ -119,6 +125,9 @@ Key commits:
 - `097a5d4` — refine transaction upload flow for mobile
 - `ad18689` — fix mobile date input layout
 - `7fa0bf3` — fix secretary dashboard totals and OCR upload
+- `1b8ae9a` — remove top funds from secretary home
+- `fadfccd` — add curated art imagery to secretary home
+- `10902b0` — refine dashboard balance source display
 
 ### Driver
 Driver now has:
@@ -127,11 +136,14 @@ Driver now has:
 - quick help panel
 - cleaner English copy
 - calmer visual direction
+- date-based dashboard stats hardened to use local-date logic instead of naive string slicing
+- monthly expense summary now filters expense outflow more correctly
 
 Key commits:
 - `023f156`
 - `f08e3b9`
 - `5bef9c2`
+- `1216f12` — harden driver and housekeeper date-based stats
 
 ### Housekeeper
 Housekeeper now has:
@@ -140,11 +152,14 @@ Housekeeper now has:
 - quick help panel
 - refined English copy
 - zen-home visual refinement
+- date-based dashboard stats hardened to use local-date logic instead of naive string slicing
+- monthly expense summary now filters expense outflow more correctly
 
 Key commits:
 - `96c6b3c`
 - `52a4b21`
 - `7ab0e50`
+- `1216f12` — harden driver and housekeeper date-based stats
 
 ### Cross-role consistency / tone
 A consistency sweep unified:
@@ -183,13 +198,19 @@ Key commit:
 - `app/housekeeper/page.jsx`
 - `components/TransactionForm.jsx`
 
-### Latest UI notes (2026-03-14 evening)
+### Latest UI + logic notes (2026-03-14 evening)
 - Secretary transaction form was adjusted based on direct feedback comparing the new form against the older upload UX.
 - The new direction is: keep overall modern styling, but preserve old UX behavior where it improves mobile usability.
 - Specifically, do **not** show the bank slip as a large preview block after upload on mobile.
 - Instead, show a compact uploaded-state card, then let the user continue downward to add supporting proof.
 - Mobile Safari/date-input rendering needed a dedicated style override to avoid broken vertical alignment in the date field.
-- A later issue also showed that dashboard balance cards could display `0` even when transactions existed, because the UI trusted `funds.current_balance` only. Current direction: if fund balances are stale/zero, fall back to net transactions so the dashboard still reflects real activity.
+- Dashboard metrics across secretary / driver / housekeeper / owner were hardened away from naive `toISOString().slice(...)` assumptions and now use local-date logic more consistently.
+- Secretary home no longer uses the `Top funds` block; that section was removed because it was not useful for a small-team secretary workflow.
+- `Art note` / `Collection` cards on secretary home now use curated image assets from 1stDibs-hosted CDN downloads stored in `public/art-blocks/`.
+- Transaction audit behavior was upgraded in phases:
+  - **Phase 1:** rejected transactions are preserved instead of deleted
+  - **Phase 2:** approved transactions can update `funds.current_balance` when `fund_id` is set
+  - **Phase 3:** owner/secretary balance cards now prefer real fund balances and explicitly label when they are still using ledger fallback
 
 ### DB / config
 - `supabase/schema.sql`
