@@ -207,7 +207,7 @@ export default function SecretaryPage() {
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                         <div>
                           <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Desk overview</div>
-                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Hello, {profile?.full_name?.split(" ").slice(-1)[0] || "bạn"}</div>
+                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Desk calm</div>
                         </div>
                         <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Secretary</div>
                       </div>
@@ -219,7 +219,7 @@ export default function SecretaryPage() {
                           <div style={{ fontSize: 18, fontWeight: 800 }}>{pendingTx.length}</div>
                         </div>
                         <div>
-                          <div style={{ fontSize: 11, opacity: 0.7 }}>Tasks hôm nay</div>
+                          <div style={{ fontSize: 11, opacity: 0.7 }}>Today</div>
                           <div style={{ fontSize: 18, fontWeight: 800 }}>{todayTasks.length}</div>
                         </div>
                         <div>
@@ -275,9 +275,29 @@ export default function SecretaryPage() {
                   </div>
 
                   <div style={{ ...subtleCard, padding: 16, marginBottom: 16 }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Quiet assets</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "linear-gradient(135deg,#d8ccbb,#8f7757)" }}>
+                        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top right, rgba(255,255,255,0.4), transparent 35%)" }} />
+                        <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Art note</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Bronze study</div>
+                        </div>
+                      </div>
+                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "linear-gradient(135deg,#2e4630,#112116)" }}>
+                        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top left, rgba(255,255,255,0.22), transparent 35%)" }} />
+                        <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Collection</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Tea vessel</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ ...subtleCard, padding: 16, marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                       <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Today focus</div>
-                      <button onClick={() => setTab("tasks")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open tasks</button>
+                      <button onClick={() => setTab("tasks")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     </div>
                     {todayTasks.length === 0 ? (
                       <div style={{ fontSize: 13, color: T.textMuted }}>No tasks due today.</div>
@@ -294,7 +314,7 @@ export default function SecretaryPage() {
 
                   <div style={{ ...cardStyle, padding: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Transactions gần đây</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Recent flow</div>
                       <button onClick={() => setTab("transactions")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     </div>
                     {recentTransactions.length === 0 ? (
@@ -353,7 +373,7 @@ export default function SecretaryPage() {
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                     <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Tasks</div>
                     <button onClick={() => setShowTaskForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
-                      + Tạo việc
+                      + Create
                     </button>
                   </div>
                   {tasks.length === 0 ? (
@@ -366,7 +386,7 @@ export default function SecretaryPage() {
                             <div>
                               <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
                               {task.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description}</div>}
-                              {task.due_date && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>Hạn: {fmtDate(task.due_date)}</div>}
+                              {task.due_date && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>Due: {fmtDate(task.due_date)}</div>}
                             </div>
                             <div style={{
                               fontSize: 11,
@@ -448,8 +468,8 @@ export default function SecretaryPage() {
               {activePanel === "task-detail" && selectedTask && (
                 <div style={{ display: "grid", gap: 12 }}>
                   <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTask.title}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedTask.due_date ? fmtDate(selectedTask.due_date) : "No deadline"}</div></div>
-                  <div style={{ ...subtleCard, padding: 14, fontSize: 13, color: T.text }}>Status: <strong>{selectedTask.status}</strong><br/>Priority: {selectedTask.priority || "medium"}<br/>{selectedTask.description || "No notes thêm"}</div>
-                  <button onClick={() => { toggleTaskStatus(selectedTask); setActivePanel(""); }} style={panelBtn}>Chuyển trạng thái</button>
+                  <div style={{ ...subtleCard, padding: 14, fontSize: 13, color: T.text }}>Status: <strong>{selectedTask.status}</strong><br/>Priority: {selectedTask.priority || "medium"}<br/>{selectedTask.description || "No notes"}</div>
+                  <button onClick={() => { toggleTaskStatus(selectedTask); setActivePanel(""); }} style={panelBtn}>Update status</button>
                 </div>
               )}
             </div>
@@ -466,8 +486,8 @@ export default function SecretaryPage() {
                 </button>
               </div>
               <form onSubmit={handleCreateTask}>
-                <input value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="Tiêu đề công việc" required style={inputStyle} />
-                <textarea value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} placeholder="Mô tả thêm" style={{ ...inputStyle, minHeight: 90, resize: "none", marginTop: 10 }} />
+                <input value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="Task title" required style={inputStyle} />
+                <textarea value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} placeholder="Notes" style={{ ...inputStyle, minHeight: 90, resize: "none", marginTop: 10 }} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
                   <select value={newTask.priority} onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })} style={inputStyle}>
                     <option value="low">Low</option>
@@ -479,7 +499,7 @@ export default function SecretaryPage() {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
                   <button type="button" onClick={() => setShowTaskForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Cancel</button>
-                  <button type="submit" style={{ height: 46, borderRadius: 12, border: "none", background: T.primary, color: "white", cursor: "pointer", fontWeight: 800 }}>Tạo việc</button>
+                  <button type="submit" style={{ height: 46, borderRadius: 12, border: "none", background: T.primary, color: "white", cursor: "pointer", fontWeight: 800 }}>Create</button>
                 </div>
               </form>
             </div>
