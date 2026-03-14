@@ -444,8 +444,8 @@ export default function SecretaryPage() {
 
               {activePanel === "help" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Upload slip để ghi giao dịch mới\n• New task để giao việc nhanh\n• Mở transaction/task card để xem chi tiết</div></div>
-                  <button onClick={() => setShowTxForm(true)} style={panelBtn}>Upload slip ngay</button>
+                  <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Upload a slip fast\n• Create a task quickly\n• Open any card to view details</div></div>
+                  <button onClick={() => setShowTxForm(true)} style={panelBtn}>Upload slip</button>
                 </div>
               )}
 

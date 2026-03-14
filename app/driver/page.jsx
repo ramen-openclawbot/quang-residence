@@ -207,14 +207,14 @@ export default function DriverPage() {
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                         <div>
                           <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>On the road</div>
-                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Schedule trình hôm nay</div>
+                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Road rhythm</div>
                         </div>
                         <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Driver</div>
                       </div>
-                      <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Chuyến hôm nay / task mở / chi tiêu theo dõi</div>
+                      <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Trips, tasks, and a clear road ahead.</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Trips hôm nay</div><div style={{ fontSize: 18, fontWeight: 800 }}>{todayTrips.length}</div></div>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Task mở</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Today</div><div style={{ fontSize: 18, fontWeight: 800 }}>{todayTrips.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Open tasks</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
                         <div><div style={{ fontSize: 11, opacity: 0.7 }}>Live</div><div style={{ fontSize: 18, fontWeight: 800 }}>{activeTrip ? 1 : 0}</div></div>
                       </div>
                     </div>
@@ -222,12 +222,12 @@ export default function DriverPage() {
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                     <StatCard label="Out today" value={fmtVND(todayExpense)} color={T.danger} />
-                    <StatCard label="Chi tháng này" value={fmtVND(monthExpense)} color={T.text} />
+                    <StatCard label="This month" value={fmtVND(monthExpense)} color={T.text} />
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
-                    <ActionCard icon="upload_file" label="Log expense" sub="Upload bill / phiếu / phát sinh" onClick={() => setShowTxForm(true)} primary />
-                    <ActionCard icon="directions_car" label="Xem chuyến" sub="Mở danh sách trip hôm nay" onClick={() => setTab("trips")} />
+                    <ActionCard icon="upload_file" label="Log expense" sub="Receipt, fuel, parking" onClick={() => setShowTxForm(true)} primary />
+                    <ActionCard icon="directions_car" label="Trips" sub="Open today’s route" onClick={() => setTab("trips")} />
                   </div>
 
                   {activeTrip && (
@@ -239,14 +239,14 @@ export default function DriverPage() {
                       <div style={{ fontSize: 15, fontWeight: 800, color: T.text }}>{activeTrip.title}</div>
                       <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{activeTrip.pickup_location || "—"} → {activeTrip.dropoff_location || "—"}</div>
                       <button onClick={() => updateTripStatus(activeTrip, "completed")} style={{ marginTop: 12, height: 42, borderRadius: 12, border: "none", background: T.primary, color: "white", fontWeight: 800, padding: "0 14px", cursor: "pointer" }}>
-                        Complete chuyến
+Complete trip
                       </button>
                     </div>
                   )}
 
                   <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Trips hôm nay</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Today’s route</div>
                       <button onClick={() => setTab("trips")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     </div>
                     {todayTrips.length === 0 ? (
@@ -265,9 +265,29 @@ export default function DriverPage() {
                     })}
                   </div>
 
+                  <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Road objects</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "linear-gradient(135deg,#50575d,#1d2327)" }}>
+                        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top right, rgba(255,255,255,0.22), transparent 35%)" }} />
+                        <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Collection</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Rim study</div>
+                        </div>
+                      </div>
+                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "linear-gradient(135deg,#8f7458,#4d3521)" }}>
+                        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top left, rgba(255,255,255,0.3), transparent 35%)" }} />
+                        <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Travel piece</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Leather map</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div style={{ ...cardStyle, padding: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Task cần chú ý</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Open tasks</div>
                       <button onClick={() => setTab("tasks")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     </div>
                     {openTasks.length === 0 ? (
@@ -279,7 +299,7 @@ export default function DriverPage() {
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                             <div>
                               <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
-                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.due_date ? `Hạn: ${fmtDate(task.due_date)}` : "No deadline"}</div>
+                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.due_date ? `Due: ${fmtDate(task.due_date)}` : "No deadline"}</div>
                             </div>
                             <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
                           </div>
@@ -295,7 +315,7 @@ export default function DriverPage() {
                   <div style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 14 }}>Trips</div>
                   {[{ title: "Hôm nay", items: todayTrips }, { title: "Sắp tới", items: upcomingTrips }].map((group) => (
                     <div key={group.title} style={{ marginBottom: 18 }}>
-                      <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>{group.title}</div>
+                      <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>{group.title === "Hôm nay" ? "Today" : group.title === "Sắp tới" ? "Upcoming" : group.title}</div>
                       {group.items.length === 0 ? (
                         <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No trips.</div>
                       ) : (
@@ -331,7 +351,7 @@ export default function DriverPage() {
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                     <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Expenses</div>
-                    <button onClick={() => setShowTxForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Ghi chi</button>
+                    <button onClick={() => setShowTxForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ New</button>
                   </div>
                   {transactions.length === 0 ? (
                     <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No expenses logged yet.</div>
@@ -341,7 +361,7 @@ export default function DriverPage() {
                         <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("expense-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
                           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                             <div style={{ minWidth: 0, flex: 1 }}>
-                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{tx.description || tx.recipient_name || "Chi phí"}</div>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{tx.description || tx.recipient_name || "Expense"}</div>
                               <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{fmtRelative(tx.created_at)}</div>
                               {tx.bank_name && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{tx.bank_name}</div>}
                             </div>
@@ -369,7 +389,7 @@ export default function DriverPage() {
                               <div>
                                 <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
                                 {task.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description}</div>}
-                                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{task.due_date ? `Hạn: ${fmtDate(task.due_date)}` : "No deadline"}</div>
+                                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{task.due_date ? `Due: ${fmtDate(task.due_date)}` : "No deadline"}</div>
                               </div>
                               <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
                             </div>
@@ -403,7 +423,7 @@ export default function DriverPage() {
 
               {activePanel === "help" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Log expense ngay từ Home\n• Mở trip để xem chi tiết / trạng thái\n• Mở task để đổi trạng thái nhanh</div></div>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Log expense from Home\n• Open any trip for details\n• Update task status in one tap</div></div>
                   <button onClick={() => setShowTxForm(true)} style={primaryBtn}>Log expense</button>
                 </div>
               )}
@@ -418,7 +438,7 @@ export default function DriverPage() {
                     <div>Pickup: {selectedTrip.pickup_location || "—"}</div>
                     <div>Dropoff: {selectedTrip.dropoff_location || "—"}</div>
                     <div>Status: <strong>{selectedTrip.status}</strong></div>
-                    {selectedTrip.notes && <div>Ghi chú: {selectedTrip.notes}</div>}
+                    {selectedTrip.notes && <div>Notes: {selectedTrip.notes}</div>}
                   </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                     {(selectedTrip.status === "scheduled" || selectedTrip.status === "pending") && <button onClick={() => { updateTripStatus(selectedTrip, "in_progress"); setActivePanel(""); }} style={primaryBtn}>Start</button>}
@@ -430,7 +450,7 @@ export default function DriverPage() {
               {activePanel === "expense-detail" && selectedTransaction && (
                 <div style={{ display: "grid", gap: 12 }}>
                   <div style={{ ...softCard, padding: 14 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTransaction.description || selectedTransaction.recipient_name || "Chi phí"}</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTransaction.description || selectedTransaction.recipient_name || "Expense"}</div>
                     <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(selectedTransaction.transaction_date || selectedTransaction.created_at)}</div>
                   </div>
                   <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}>
@@ -439,7 +459,7 @@ export default function DriverPage() {
                     <div>Status: {selectedTransaction.status || "pending"}</div>
                     {selectedTransaction.bank_name && <div>Bank: {selectedTransaction.bank_name}</div>}
                   </div>
-                  <button onClick={() => { setActivePanel(""); setTab("expenses"); }} style={primaryBtn}>Về Chi phí</button>
+                  <button onClick={() => { setActivePanel(""); setTab("expenses"); }} style={primaryBtn}>Back to Expenses</button>
                 </div>
               )}
 
@@ -451,9 +471,9 @@ export default function DriverPage() {
                   </div>
                   <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}>
                     <div>Status: <strong>{selectedTask.status}</strong></div>
-                    <div>{selectedTask.description || "No notes thêm"}</div>
+                    <div>{selectedTask.description || "No notes"}</div>
                   </div>
-                  <button onClick={() => { updateTaskStatus(selectedTask); setActivePanel(""); }} style={primaryBtn}>Chuyển trạng thái</button>
+                  <button onClick={() => { updateTaskStatus(selectedTask); setActivePanel(""); }} style={primaryBtn}>Update status</button>
                 </div>
               )}
             </div>
