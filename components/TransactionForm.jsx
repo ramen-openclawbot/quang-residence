@@ -11,6 +11,7 @@ import { getIcon } from "./shared/Icons";
 export default function TransactionForm({ onClose, onSuccess, defaultFundId, defaultType = "expense" }) {
   const { profile } = useAuth();
   const fileRef = useRef(null);
+  const supportingFileRef = useRef(null);
 
   const [type, setType] = useState(defaultType);
   const [amount, setAmount] = useState("");
