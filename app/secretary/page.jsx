@@ -408,39 +408,39 @@ export default function SecretaryPage() {
                               textAlign: "left",
                               cursor: "pointer",
                               border: `1px solid ${T.border}`,
-                              background: "linear-gradient(180deg,#ffffff 0%, #fbfcfa 100%)",
+                              background: "#ffffff",
                             }}
                           >
                             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                               <div style={{ minWidth: 0, flex: 1 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                                   <div style={{ width: 28, height: 28, borderRadius: 9, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                     <MIcon name={isIncome ? "south_west" : "north_east"} size={14} color={isIncome ? T.success : T.danger} />
                                   </div>
-                                  <div style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                                    {isIncome ? "Inflow" : "Outflow"}
+                                  <div style={{ fontSize: 11, fontWeight: 600, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                                    {isIncome ? "In" : "Out"}
                                   </div>
                                 </div>
 
-                                <div style={{ fontSize: 22, fontWeight: 800, color: isIncome ? T.success : T.danger, letterSpacing: "-0.03em", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                <div style={{ fontSize: 16, fontWeight: 800, color: isIncome ? T.success : T.danger, letterSpacing: "-0.02em", lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                   {isIncome ? "+" : "-"}{fmtVND(Math.abs(Number(tx.amount || 0)))}
                                 </div>
 
-                                <div style={{ fontSize: 10.5, fontWeight: 400, color: T.text, marginTop: 9, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.3, opacity: 0.88 }}>
+                                <div style={{ fontSize: 13, fontWeight: 500, color: T.text, marginTop: 7, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.35 }}>
                                   {tx.description || tx.recipient_name || "Transaction"}
                                 </div>
 
                                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, minWidth: 0, flexWrap: "wrap" }}>
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 7px", borderRadius: 999, background: statusTone.bg, color: statusTone.color, fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 7px", borderRadius: 999, background: statusTone.bg, color: statusTone.color, fontSize: 10, fontWeight: 700, letterSpacing: "0.03em", textTransform: "uppercase" }}>
                                     <span style={{ width: 5, height: 5, borderRadius: 999, background: statusTone.color }} />
                                     {statusTone.label}
                                   </span>
-                                  <span style={{ fontSize: 10, fontWeight: 400, color: T.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                  <span style={{ fontSize: 11, fontWeight: 500, color: T.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                     {fmtDate(tx.transaction_date || tx.created_at)}{tx.bank_name ? ` • ${tx.bank_name}` : ""}
                                   </span>
                                 </div>
                               </div>
-                              <div style={{ flexShrink: 0, paddingTop: 2 }}>
+                              <div style={{ flexShrink: 0, paddingTop: 4 }}>
                                 <MIcon name="chevron_right" size={18} color={T.textMuted} />
                               </div>
                             </div>
