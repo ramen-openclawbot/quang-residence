@@ -211,8 +211,20 @@ export default function TransactionForm({ onClose, onSuccess }) {
         },
       };
 
-      const { error } = await supabase.from("transactions").insert(payload);
+      const { data: inserted, error } = await supabase.from("transactions").insert(payload).select("id").single();
       if (error) throw error;
+
+      // Notify reviewers (fire-and-forget)
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token && inserted?.id) {
+          fetch("/api/transactions/notify-submit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ transaction_id: inserted.id, amount: payload.amount, type: payload.type, description: payload.description }),
+          }).catch(() => {});
+        }
+      } catch (_) {}
 
       setForm({
         amount: "",

@@ -215,30 +215,55 @@ Production should have these env vars set correctly:
 - `NEXT_PUBLIC_APP_URL`
 - `ADMIN_SECRET` (legacy / optional depending on future cleanup)
 
-## Best next steps for the next agent
-### Highest-value next task
-1. **Add edit / delete flows** for core records:
-   - tasks
-   - home maintenance
-   - family schedule
-   - possibly transactions (carefully)
+## Transaction Audit System
 
-### Then
-2. Expand password/self-service logic to more roles
-3. Add audit logging for: user creation, role change, password reset
-4. Improve notifications/report/reporting logic
-5. Consider a richer **asset / art collection module** to match the visual direction
+### Overview
+All household financial transactions flow through a centralized audit pipeline. Staff members (housekeeper, driver, secretary) submit transactions that must be reviewed before they are accepted into the system.
 
-## Monthly Budget logic (for reference)
-Owner home screen shows `Monthly budget` = sum of all `funds.budget_monthly` rows from Supabase.
-Default seed values: PR 50M, cash 30M, salary 20M, household 15M, kitchen 10M = **125,000,000đ total**.
-The number is live — changing `budget_monthly` in the `funds` table updates the UI immediately.
+### Roles & permissions
+
+| Action | Owner | Secretary | Housekeeper | Driver |
+|---|---|---|---|---|
+| Submit transactions | — | Yes | Yes | Yes |
+| View all transactions (Ledger) | Yes | Yes | — | — |
+| Approve transactions | Yes | Yes (not own) | — | — |
+| Reject transactions | Yes | Yes (not own) | — | — |
+
+**Key rule:** Owner can reject any transaction, including those submitted by the secretary. Secretary can only review transactions submitted by housekeeper and driver — never their own.
+
+### Transaction lifecycle
+
+```
+Submit (pending) → Review → Approve (accepted into system)
+                         → Reject (deleted permanently + submitter notified)
+```
+
+A rejected transaction is **permanently removed** from the database. The submitter receives a real-time notification with the rejection reason and must create a new transaction from scratch if needed.
+
+### Real-time notifications
+
+| Event | Who gets notified |
+|---|---|
+| Housekeeper/Driver submits a transaction | Secretary |
+| Secretary submits a transaction | Owner |
+| Transaction approved | Original submitter |
+| Transaction rejected (with reason) | Original submitter |
+
+Notifications are delivered via Supabase Realtime (postgres_changes) and appear instantly in the in-app notification center.
+
+### Transaction Ledger page (`/transactions`)
+Accessible by **owner and secretary only**. Features:
+- Full list of all transactions across all staff, sorted newest-first
+- Filter by month and year
+- Real-time text search (instant, client-side)
+- Tap any row to open the detail/audit view
+
+### Transaction Detail view
+Full-screen detail panel showing all transaction fields including bank slip image, supporting proof images, proof links, and notes. Image gallery supports tap-to-zoom with swipe navigation. Audit actions (approve / reject with note) are available at the bottom.
+
+### Income tracking
+Owner home screen shows **"Income this month"** = sum of all `type: "income"` transactions in the current month. This reflects income entered by the secretary in real time.
 
 ## Summary for the next agent
-This app is no longer in an early prototyping state.
-It is now in a **stabilize, secure, and complete operations** phase.
-If continuing work, prioritize:
-- real edit/delete flows
-- stronger lifecycle management for records
-- more robust admin/user operations
-- product-depth improvements over more visual-only polish
+This app is now in a **transaction audit + operations** phase.
+Priority areas: complete the audit pipeline, deepen CRUD flows for tasks/maintenance/schedule, expand self-service to other roles.

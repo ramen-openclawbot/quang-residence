@@ -434,6 +434,14 @@ export default function OwnerPage() {
               </div>
             </div>
 
+            <button onClick={() => window.location.href = "/transactions"} style={{ ...cardStyle, width: "100%", padding: 14, marginBottom: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: `${T.primary}12`, display: "flex", alignItems: "center", justifyContent: "center" }}><MIcon name="receipt_long" size={20} color={T.primary} /></div>
+                <div><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Audit Ledger</div><div style={{ fontSize: 12, color: T.textMuted }}>Review all transactions</div></div>
+              </div>
+              <MIcon name="chevron_right" size={20} color={T.textMuted} />
+            </button>
+
             <div style={{ ...cardStyle, padding: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Recent approvals / spend</div>
               {transactions.slice(0, 6).map((tx) => (
