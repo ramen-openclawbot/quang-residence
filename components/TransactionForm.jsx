@@ -106,15 +106,15 @@ export default function TransactionForm({ onClose, onSuccess }) {
     try {
       setScanning(true);
       const imageBase64 = await fileToBase64(file);
-      const res = await fetch("/api/ocr/parse-receipt", {
+      const res = await fetch("/api/ocr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64 }),
+        body: JSON.stringify({ imageBase64, imageMimeType: file.type || "image/jpeg" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "OCR failed");
 
-      const parsed = data.parsed || {};
+      const parsed = data.data || data.parsed || {};
       setOcrData(parsed);
       setForm((prev) => ({
         ...prev,

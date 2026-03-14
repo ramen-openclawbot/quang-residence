@@ -165,12 +165,36 @@ export default function SecretaryPage() {
 
   const totalBalance = useMemo(() => funds.reduce((s, f) => s + Number(f.current_balance || 0), 0), [funds]);
   const pendingTx = useMemo(() => transactions.filter((t) => t.status === "pending"), [transactions]);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }, []);
+  const getLocalDateKey = (value) => {
+    if (!value) return "";
+    if (typeof value === "string") {
+      const direct = value.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (direct) return direct[1];
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
   const todayTasks = useMemo(() => tasks.filter((t) => (t.due_date || "").startsWith(today)), [tasks, today]);
   const overdueTasks = useMemo(() => tasks.filter((t) => t.status !== "done" && t.due_date && t.due_date.slice(0, 10) < today), [tasks, today]);
   const recentTransactions = useMemo(() => transactions.slice(0, 8), [transactions]);
-  const incomeToday = useMemo(() => transactions.filter((t) => t.type === "income" && (t.transaction_date || t.created_at || "").slice(0, 10) === today).reduce((s, t) => s + Number(t.amount || 0), 0), [transactions, today]);
-  const expenseToday = useMemo(() => transactions.filter((t) => t.type === "expense" && (t.transaction_date || t.created_at || "").slice(0, 10) === today).reduce((s, t) => s + Number(t.amount || 0), 0), [transactions, today]);
+  const isTodayTransaction = (t) => {
+    const createdKey = getLocalDateKey(t.created_at);
+    const transactionKey = getLocalDateKey(t.transaction_date);
+    return createdKey === today || transactionKey === today;
+  };
+  const incomeToday = useMemo(() => transactions.filter((t) => t.type === "income" && isTodayTransaction(t)).reduce((s, t) => s + Number(t.amount || 0), 0), [transactions, today]);
+  const expenseToday = useMemo(() => transactions.filter((t) => t.type === "expense" && isTodayTransaction(t)).reduce((s, t) => s + Number(t.amount || 0), 0), [transactions, today]);
   const upcomingItems = useMemo(() => tasks.filter((t) => t.due_date).slice().sort((a, b) => (a.due_date || "").localeCompare(b.due_date || "")), [tasks]);
 
   return (
