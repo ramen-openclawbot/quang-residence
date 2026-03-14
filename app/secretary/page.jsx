@@ -280,17 +280,37 @@ export default function SecretaryPage() {
                   <div style={{ ...subtleCard, padding: 16, marginBottom: 16 }}>
                     <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Quiet assets</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "linear-gradient(135deg,#d8ccbb,#8f7757)" }}>
-                        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top right, rgba(255,255,255,0.4), transparent 35%)" }} />
+                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 156, background: "#7c6852" }}>
+                        <div
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            backgroundImage: "linear-gradient(180deg, rgba(16,20,16,0.04) 0%, rgba(16,20,16,0.48) 72%, rgba(16,20,16,0.72) 100%), url('/art-blocks/art-note-bronze-study.jpg')",
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                            transform: "scale(1.02)",
+                          }}
+                        />
+                        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top right, rgba(255,255,255,0.28), transparent 36%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
-                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Art note</div>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.84 }}>Art note</div>
                           <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Bronze study</div>
                         </div>
                       </div>
-                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "linear-gradient(135deg,#2e4630,#112116)" }}>
-                        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top left, rgba(255,255,255,0.22), transparent 35%)" }} />
+                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 156, background: "#1e3224" }}>
+                        <div
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            backgroundImage: "linear-gradient(180deg, rgba(12,22,14,0.08) 0%, rgba(12,22,14,0.52) 74%, rgba(12,22,14,0.78) 100%), url('/art-blocks/collection-tea-vessel.jpg')",
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                            transform: "scale(1.02)",
+                          }}
+                        />
+                        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top left, rgba(255,255,255,0.18), transparent 35%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
-                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Collection</div>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.84 }}>Collection</div>
                           <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Tea vessel</div>
                         </div>
                       </div>
