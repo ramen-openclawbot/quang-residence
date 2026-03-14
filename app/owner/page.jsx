@@ -98,6 +98,8 @@ export default function OwnerPage() {
   const [accountLoading, setAccountLoading] = useState(false);
   const [accountUsers, setAccountUsers] = useState([]);
   const [accountMsg, setAccountMsg] = useState("");
+  const [passwordMsg, setPasswordMsg] = useState("");
+  const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
   const [inviteForm, setInviteForm] = useState({ email: "", full_name: "", role: "driver" });
   const [funds, setFunds] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -191,14 +193,57 @@ export default function OwnerPage() {
         body: JSON.stringify({ user_id: userId, role }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Đổi role thất bại");
-      setAccountMsg(`Đã đổi role thành ${role}`);
+      if (!res.ok) throw new Error(data.error || "Role update failed");
+      setAccountMsg(`Role updated to ${role}`);
       await loadAccountUsers();
     } catch (error) {
       console.error("handleRoleChange error:", error);
-      setAccountMsg(error.message || "Đổi role thất bại");
+      setAccountMsg(error.message || "Role update failed");
     } finally {
       setAccountLoading(false);
+    }
+  }
+
+  async function handleResetPassword(userId) {
+    setAccountLoading(true);
+    setAccountMsg("");
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const res = await fetch("/api/admin/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ user_id: userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Password reset failed");
+      setAccountMsg(`Temporary password: ${data.temporary_password}`);
+    } catch (error) {
+      console.error("handleResetPassword error:", error);
+      setAccountMsg(error.message || "Password reset failed");
+    } finally {
+      setAccountLoading(false);
+    }
+  }
+
+  async function handleChangeOwnPassword(e) {
+    e.preventDefault();
+    setPasswordMsg("");
+    if (!passwordForm.next || passwordForm.next !== passwordForm.confirm) {
+      setPasswordMsg("New passwords do not match.");
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.updateUser({ password: passwordForm.next });
+      if (error) throw error;
+      setPasswordMsg("Password updated successfully.");
+      setPasswordForm({ current: "", next: "", confirm: "" });
+    } catch (error) {
+      console.error("handleChangeOwnPassword error:", error);
+      setPasswordMsg(error.message || "Password update failed.");
     }
   }
 
@@ -605,6 +650,7 @@ export default function OwnerPage() {
                               <option value="driver">driver</option>
                             </select>
                           </div>
+                          <button onClick={() => handleResetPassword(u.id)} style={{ marginTop: 10, width: "100%", height: 38, borderRadius: 10, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700, color: T.text }}>Reset password</button>
                         </div>
                       ))}
                       {!accountLoading && accountUsers.length === 0 && <div style={{ fontSize: 12, color: T.textMuted }}>No users yet.</div>}
@@ -615,8 +661,17 @@ export default function OwnerPage() {
 
               {activePanel === "security" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Auth mode</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Email + password login đang được dùng thay cho magic link.</div></div>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Recommendation</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Nên bổ sung reset password và harden create-user route ở vòng tiếp theo.</div></div>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Auth mode</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Email + password is now the primary sign-in method.</div></div>
+                  <div style={{ ...softCard, padding: 14 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 10 }}>Change your password</div>
+                    <form onSubmit={handleChangeOwnPassword} style={{ display: "grid", gap: 10 }}>
+                      <input type="password" value={passwordForm.current} onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })} placeholder="Current password" style={inputStyle} />
+                      <input type="password" value={passwordForm.next} onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })} placeholder="New password" style={inputStyle} />
+                      <input type="password" value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} placeholder="Confirm new password" style={inputStyle} />
+                      <button type="submit" style={{ ...panelBtn }}>Update password</button>
+                    </form>
+                    {passwordMsg && <div style={{ marginTop: 10, fontSize: 12, color: T.textMuted }}>{passwordMsg}</div>}
+                  </div>
                 </div>
               )}
 
