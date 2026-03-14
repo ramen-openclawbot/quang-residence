@@ -288,15 +288,17 @@ Complete trip
                   <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
                     <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Road objects</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "linear-gradient(135deg,#50575d,#1d2327)" }}>
-                        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top right, rgba(255,255,255,0.22), transparent 35%)" }} />
+                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "#273039" }}>
+                        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(10,14,18,0.12) 0%, rgba(10,14,18,0.54) 74%, rgba(10,14,18,0.78) 100%), url('/art-blocks/driver-rim-study.jpg')", backgroundSize: "cover", backgroundPosition: "center", transform: "scale(1.02)" }} />
+                        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top right, rgba(255,255,255,0.20), transparent 35%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
                           <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Collection</div>
                           <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Rim study</div>
                         </div>
                       </div>
-                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "linear-gradient(135deg,#8f7458,#4d3521)" }}>
-                        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top left, rgba(255,255,255,0.3), transparent 35%)" }} />
+                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "#5f4736" }}>
+                        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(22,16,12,0.10) 0%, rgba(22,16,12,0.50) 72%, rgba(22,16,12,0.76) 100%), url('/art-blocks/driver-leather-map.jpg')", backgroundSize: "cover", backgroundPosition: "center", transform: "scale(1.02)" }} />
+                        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top left, rgba(255,255,255,0.24), transparent 35%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
                           <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Travel piece</div>
                           <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Leather map</div>
