@@ -1,12 +1,12 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-14 21:18 GMT+7_
+_Last updated: 2026-03-14 22:49 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
 - GitHub: `https://github.com/ramen-openclawbot/quang-residence.git`
 - Branch: `main`
-- Current pushed commit: `10902b0`
+- Current pushed commit: `0ba70fa`
 
 ## Current product state
 ZenHome is now in a **product-hardening + CRUD-completion** phase, not an auth/firefighting phase.
@@ -96,6 +96,8 @@ Key owner-related commits:
 - `52a725f` — add balance fallback and handoff updates
 - `c77b65b` — audit and harden owner date-based metrics
 - `10902b0` — refine dashboard balance source display
+- `595dea3` — add curated decorative imagery across role dashboards
+- `0ba70fa` — polish decorative card art direction
 
 ### Secretary
 Secretary now has:
@@ -128,6 +130,8 @@ Key commits:
 - `1b8ae9a` — remove top funds from secretary home
 - `fadfccd` — add curated art imagery to secretary home
 - `10902b0` — refine dashboard balance source display
+- `189170d` — optimize secretary curated asset images for faster loading
+- `0ba70fa` — polish decorative card art direction
 
 ### Driver
 Driver now has:
@@ -144,6 +148,8 @@ Key commits:
 - `f08e3b9`
 - `5bef9c2`
 - `1216f12` — harden driver and housekeeper date-based stats
+- `595dea3` — add curated decorative imagery across role dashboards
+- `0ba70fa` — polish decorative card art direction
 
 ### Housekeeper
 Housekeeper now has:
@@ -160,6 +166,8 @@ Key commits:
 - `52a4b21`
 - `7ab0e50`
 - `1216f12` — harden driver and housekeeper date-based stats
+- `595dea3` — add curated decorative imagery across role dashboards
+- `0ba70fa` — polish decorative card art direction
 
 ### Cross-role consistency / tone
 A consistency sweep unified:
@@ -207,6 +215,8 @@ Key commit:
 - Dashboard metrics across secretary / driver / housekeeper / owner were hardened away from naive `toISOString().slice(...)` assumptions and now use local-date logic more consistently.
 - Secretary home no longer uses the `Top funds` block; that section was removed because it was not useful for a small-team secretary workflow.
 - `Art note` / `Collection` cards on secretary home now use curated image assets from 1stDibs-hosted CDN downloads stored in `public/art-blocks/`.
+- Decorative cards across driver / housekeeper / owner were later upgraded to use the same curated-image strategy, so all role dashboards now share a more premium and consistent visual language.
+- Decorative assets were compressed down for faster mobile loading, then polished with improved focal-point cropping and more cinematic overlay tuning.
 - Transaction audit behavior was upgraded in phases:
   - **Phase 1:** rejected transactions are preserved instead of deleted
   - **Phase 2:** approved transactions can update `funds.current_balance` when `fund_id` is set
