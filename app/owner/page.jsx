@@ -388,7 +388,7 @@ export default function OwnerPage() {
                     <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Collected pieces</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 168, background: "#8d7555" }}>
-                        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(18,18,14,0.10) 0%, rgba(18,18,14,0.48) 72%, rgba(18,18,14,0.74) 100()), url('/art-blocks/owner-ceramic-horse.jpg')", backgroundSize: "cover", backgroundPosition: "center", transform: "scale(1.02)" }} />
+                        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(18,18,14,0.04) 0%, rgba(18,18,14,0.42) 58%, rgba(18,18,14,0.78) 100()), url('/art-blocks/owner-ceramic-horse.jpg')", backgroundSize: "cover", backgroundPosition: "center 36%", transform: "scale(1.05)" }} />
                         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top right, rgba(255,255,255,0.40), transparent 35%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
                           <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Art holding</div>
@@ -397,7 +397,7 @@ export default function OwnerPage() {
                         </div>
                       </div>
                       <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 168, background: "#304432" }}>
-                        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(8,16,12,0.10) 0%, rgba(8,16,12,0.50) 72%, rgba(8,16,12,0.76) 100()), url('/art-blocks/owner-ink-landscape.jpg')", backgroundSize: "cover", backgroundPosition: "center", transform: "scale(1.02)" }} />
+                        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(8,16,12,0.04) 0%, rgba(8,16,12,0.42) 58%, rgba(8,16,12,0.80) 100()), url('/art-blocks/owner-ink-landscape.jpg')", backgroundSize: "cover", backgroundPosition: "center 34%", transform: "scale(1.05)" }} />
                         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top left, rgba(255,255,255,0.18), transparent 35%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
                           <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Private collection</div>

@@ -291,10 +291,10 @@ export default function SecretaryPage() {
                           style={{
                             position: "absolute",
                             inset: 0,
-                            backgroundImage: "linear-gradient(180deg, rgba(16,20,16,0.04) 0%, rgba(16,20,16,0.48) 72%, rgba(16,20,16,0.72) 100%), url('/art-blocks/art-note-bronze-study.jpg')",
+                            backgroundImage: "linear-gradient(180deg, rgba(16,20,16,0.02) 0%, rgba(16,20,16,0.40) 60%, rgba(16,20,16,0.74) 100%), url('/art-blocks/art-note-bronze-study.jpg')",
                             backgroundSize: "cover",
-                            backgroundPosition: "center",
-                            transform: "scale(1.02)",
+                            backgroundPosition: "center 38%",
+                            transform: "scale(1.04)",
                           }}
                         />
                         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top right, rgba(255,255,255,0.28), transparent 36%)" }} />
@@ -308,10 +308,10 @@ export default function SecretaryPage() {
                           style={{
                             position: "absolute",
                             inset: 0,
-                            backgroundImage: "linear-gradient(180deg, rgba(12,22,14,0.08) 0%, rgba(12,22,14,0.52) 74%, rgba(12,22,14,0.78) 100%), url('/art-blocks/collection-tea-vessel.jpg')",
+                            backgroundImage: "linear-gradient(180deg, rgba(12,22,14,0.04) 0%, rgba(12,22,14,0.42) 60%, rgba(12,22,14,0.80) 100()), url('/art-blocks/collection-tea-vessel.jpg')",
                             backgroundSize: "cover",
-                            backgroundPosition: "center",
-                            transform: "scale(1.02)",
+                            backgroundPosition: "center 42%",
+                            transform: "scale(1.05)",
                           }}
                         />
                         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top left, rgba(255,255,255,0.18), transparent 35%)" }} />

@@ -317,7 +317,7 @@ export default function HousekeeperPage() {
                     <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Collected forms</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "#8d7250" }}>
-                        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(20,18,14,0.10) 0%, rgba(20,18,14,0.46) 72%, rgba(20,18,14,0.72) 100%), url('/art-blocks/house-clay-bowl.jpg')", backgroundSize: "cover", backgroundPosition: "center", transform: "scale(1.02)" }} />
+                        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(20,18,14,0.04) 0%, rgba(20,18,14,0.40) 58%, rgba(20,18,14,0.72) 100()), url('/art-blocks/house-clay-bowl.jpg')", backgroundSize: "cover", backgroundPosition: "center 36%", transform: "scale(1.05)" }} />
                         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top right, rgba(255,255,255,0.34), transparent 35%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
                           <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Object</div>
@@ -325,7 +325,7 @@ export default function HousekeeperPage() {
                         </div>
                       </div>
                       <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "#223126" }}>
-                        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(10,18,12,0.10) 0%, rgba(10,18,12,0.50) 72%, rgba(10,18,12,0.76) 100()), url('/art-blocks/house-stone-tray.jpg')", backgroundSize: "cover", backgroundPosition: "center", transform: "scale(1.02)" }} />
+                        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(10,18,12,0.04) 0%, rgba(10,18,12,0.42) 58%, rgba(10,18,12,0.78) 100()), url('/art-blocks/house-stone-tray.jpg')", backgroundSize: "cover", backgroundPosition: "center 34%", transform: "scale(1.05)" }} />
                         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top left, rgba(255,255,255,0.18), transparent 35%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
                           <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>House note</div>
