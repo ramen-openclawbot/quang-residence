@@ -1,11 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-// Uses Service Role key (server-side only) to create users
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { requireOwner, supabaseAdmin } from "../_auth";
 
 const VALID_ROLES = ["owner", "secretary", "housekeeper", "driver"];
 
@@ -16,6 +10,11 @@ function generateTemporaryPassword() {
 
 export async function POST(request) {
   try {
+    const auth = await requireOwner(request);
+    if (auth.error) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
     const { email, full_name, role } = await request.json();
 
     if (!email || !full_name || !role) {
@@ -52,7 +51,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
-      message: `Đã tạo user ${email} với mật khẩu tạm.`,
+      message: `Created ${email} with a temporary password.`,
       user_id: data.user.id,
       temporary_password: temporaryPassword,
     });

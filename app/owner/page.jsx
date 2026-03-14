@@ -153,9 +153,14 @@ export default function OwnerPage() {
     setAccountLoading(true);
     setAccountMsg("");
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
       const res = await fetch("/api/admin/create-user", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(inviteForm),
       });
       const data = await res.json();
@@ -175,9 +180,14 @@ export default function OwnerPage() {
     setAccountLoading(true);
     setAccountMsg("");
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
       const res = await fetch("/api/admin/update-role", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ user_id: userId, role }),
       });
       const data = await res.json();

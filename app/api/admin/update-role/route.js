@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { requireOwner, supabaseAdmin } from "../_auth";
 
 const VALID_ROLES = ["owner", "secretary", "housekeeper", "driver"];
 
 export async function POST(request) {
   try {
+    const auth = await requireOwner(request);
+    if (auth.error) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
     const { user_id, role } = await request.json();
 
     if (!user_id || !role) {
