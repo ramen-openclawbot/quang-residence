@@ -12,7 +12,6 @@ export default function TransactionForm({ onClose, onSuccess, defaultFundId, def
   const { profile } = useAuth();
   const fileRef = useRef(null);
   const supportingFileRef = useRef(null);
-  const supportingFileRef = useRef(null);
 
   const [type, setType] = useState(defaultType);
   const [amount, setAmount] = useState("");
