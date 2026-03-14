@@ -308,7 +308,7 @@ export default function SecretaryPage() {
                           style={{
                             position: "absolute",
                             inset: 0,
-                            backgroundImage: "linear-gradient(180deg, rgba(12,22,14,0.04) 0%, rgba(12,22,14,0.42) 60%, rgba(12,22,14,0.80) 100()), url('/art-blocks/collection-tea-vessel.jpg')",
+                            backgroundImage: "linear-gradient(180deg, rgba(12,22,14,0.04) 0%, rgba(12,22,14,0.42) 60%, rgba(12,22,14,0.80) 100%), url('/art-blocks/collection-tea-vessel.jpg')",
                             backgroundSize: "cover",
                             backgroundPosition: "center 42%",
                             transform: "scale(1.05)",

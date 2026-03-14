@@ -290,14 +290,32 @@ export default function TransactionsPage() {
     const startDate = new Date(selectedYear, selectedMonth, 1).toISOString();
     const endDate = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59).toISOString();
 
-    const { data } = await supabase
+    let data = null;
+    let error = null;
+
+    ({ data, error } = await supabase
       .from("transactions")
       .select("*, profiles!created_by(id, full_name, role), approved_by_profile:profiles!approved_by(id, full_name), reviewed_by_profile:profiles!reviewed_by(id, full_name)")
       .gte("created_at", startDate)
       .lte("created_at", endDate)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }));
 
-    setTransactions(data || []);
+    if (error) {
+      console.warn("Rich ledger query failed, falling back:", error.message);
+      ({ data, error } = await supabase
+        .from("transactions")
+        .select("*, profiles!created_by(id, full_name, role)")
+        .gte("created_at", startDate)
+        .lte("created_at", endDate)
+        .order("created_at", { ascending: false }));
+    }
+
+    if (error) {
+      console.error("fetchTransactions error:", error);
+      setTransactions([]);
+    } else {
+      setTransactions(data || []);
+    }
     setLoading(false);
   }, [selectedMonth, selectedYear]);
 
