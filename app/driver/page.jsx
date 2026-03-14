@@ -162,15 +162,35 @@ export default function DriverPage() {
     if (!error) fetchData();
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const todayTrips = useMemo(() => trips.filter((t) => (t.scheduled_time || "").slice(0, 10) === today), [trips, today]);
-  const upcomingTrips = useMemo(() => trips.filter((t) => (t.scheduled_time || "").slice(0, 10) !== today), [trips, today]);
+  const today = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }, []);
+  const getLocalDateKey = (value) => {
+    if (!value) return "";
+    if (typeof value === "string") {
+      const direct = value.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (direct) return direct[1];
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+  const todayTrips = useMemo(() => trips.filter((t) => getLocalDateKey(t.scheduled_time) === today), [trips, today]);
+  const upcomingTrips = useMemo(() => trips.filter((t) => getLocalDateKey(t.scheduled_time) !== today), [trips, today]);
   const activeTrip = useMemo(() => trips.find((t) => t.status === "in_progress") || null, [trips]);
   const openTasks = useMemo(() => tasks.filter((t) => t.status !== "done"), [tasks]);
-  const todayExpense = useMemo(() => transactions.filter((t) => (t.transaction_date || t.created_at || "").slice(0, 10) === today).reduce((s, t) => s + Number(t.amount || 0), 0), [transactions, today]);
+  const isCurrentDayTransaction = (t) => getLocalDateKey(t.transaction_date) === today || getLocalDateKey(t.created_at) === today;
+  const todayExpense = useMemo(() => transactions.filter((t) => t.type === "expense" && isCurrentDayTransaction(t)).reduce((s, t) => s + Number(t.amount || 0), 0), [transactions, today]);
   const monthExpense = useMemo(() => {
     const monthKey = today.slice(0, 7);
-    return transactions.filter((t) => (t.transaction_date || t.created_at || "").slice(0, 7) === monthKey).reduce((s, t) => s + Number(t.amount || 0), 0);
+    return transactions.filter((t) => t.type === "expense" && [getLocalDateKey(t.transaction_date), getLocalDateKey(t.created_at)].some((key) => key.startsWith(monthKey))).reduce((s, t) => s + Number(t.amount || 0), 0);
   }, [transactions, today]);
 
   return (

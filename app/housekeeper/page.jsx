@@ -227,9 +227,32 @@ export default function HousekeeperPage() {
     fetchData();
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const todayExpense = useMemo(() => transactions.filter((tx) => (tx.transaction_date || tx.created_at || "").slice(0, 10) === today).reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [transactions, today]);
-  const monthExpense = useMemo(() => transactions.reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [transactions]);
+  const today = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }, []);
+  const getLocalDateKey = (value) => {
+    if (!value) return "";
+    if (typeof value === "string") {
+      const direct = value.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (direct) return direct[1];
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+  const isCurrentDayTransaction = (tx) => getLocalDateKey(tx.transaction_date) === today || getLocalDateKey(tx.created_at) === today;
+  const todayExpense = useMemo(() => transactions.filter((tx) => tx.type === "expense" && isCurrentDayTransaction(tx)).reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [transactions, today]);
+  const monthExpense = useMemo(() => {
+    const monthKey = today.slice(0, 7);
+    return transactions.filter((tx) => tx.type === "expense" && [getLocalDateKey(tx.transaction_date), getLocalDateKey(tx.created_at)].some((key) => key.startsWith(monthKey))).reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+  }, [transactions, today]);
   const openMaintenance = useMemo(() => maintenanceItems.filter((m) => m.status !== "completed"), [maintenanceItems]);
   const upcomingFamily = useMemo(() => familySchedule.filter((s) => s.event_date && s.event_date >= today), [familySchedule, today]);
 
