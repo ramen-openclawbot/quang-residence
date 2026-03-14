@@ -391,11 +391,7 @@ export default function SecretaryPage() {
                     <div style={{ display: "grid", gap: 8 }}>
                       {transactions.map((tx) => {
                         const isIncome = tx.type === "income";
-                        const statusTone = tx.status === "approved"
-                          ? { bg: "#edf9f1", color: T.success, label: "Approved" }
-                          : tx.status === "rejected"
-                            ? { bg: "#fdf0f0", color: T.danger, label: "Rejected" }
-                            : { bg: "#fff8ea", color: T.amber, label: "Pending" };
+                        const statusColor = tx.status === "approved" ? T.success : tx.status === "pending" ? T.amber : T.danger;
 
                         return (
                           <button
@@ -403,38 +399,35 @@ export default function SecretaryPage() {
                             onClick={() => { setSelectedTransaction(tx); setActivePanel("transaction-detail"); }}
                             style={{
                               ...cardStyle,
+                              padding: 14,
                               width: "100%",
-                              padding: "12px 14px",
                               textAlign: "left",
                               cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 12,
                               border: `1px solid ${T.border}`,
-                              background: "#ffffff",
-                              boxShadow: "0 6px 18px rgba(16,24,16,0.03)",
                             }}
                           >
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
-                                <div style={{ width: 32, height: 32, borderRadius: 10, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                  <MIcon name={isIncome ? "south_west" : "north_east"} size={15} color={isIncome ? T.success : T.danger} />
+                            <div style={{ width: 42, height: 42, borderRadius: 12, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                              <MIcon name={isIncome ? "trending_up" : "trending_down"} size={20} color={isIncome ? T.success : T.danger} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                                <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "52%" }}>
+                                  {tx.description || tx.recipient_name || (isIncome ? "Income" : "Expense")}
                                 </div>
-                                <div style={{ minWidth: 0, flex: 1 }}>
-                                  <div style={{ fontSize: 14, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.35 }}>
-                                    {tx.description || tx.recipient_name || "Transaction"}
-                                  </div>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4, minWidth: 0, flexWrap: "wrap" }}>
-                                    <span style={{ fontSize: 12, color: T.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                      {fmtDate(tx.transaction_date || tx.created_at)}{tx.bank_name ? ` • ${tx.bank_name}` : ""}
-                                    </span>
-                                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 6px", borderRadius: 999, background: statusTone.bg, color: statusTone.color, fontSize: 12, fontWeight: 600 }}>
-                                      <span style={{ width: 4, height: 4, borderRadius: 999, background: statusTone.color }} />
-                                      {statusTone.label}
-                                    </span>
-                                  </div>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: isIncome ? T.success : T.danger, flexShrink: 0, whiteSpace: "nowrap" }}>
+                                  {isIncome ? "+" : "−"}{fmtVND(Math.abs(Number(tx.amount || 0)))}
                                 </div>
                               </div>
-                              <div style={{ flexShrink: 0, textAlign: "right" }}>
-                                <div style={{ fontSize: 14, fontWeight: 800, color: isIncome ? T.success : T.danger, whiteSpace: "nowrap", letterSpacing: "-0.01em", lineHeight: 1.2 }}>
-                                  {isIncome ? "+" : "-"}{fmtVND(Math.abs(Number(tx.amount || 0)))}
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4, gap: 10 }}>
+                                <div style={{ fontSize: 12, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {fmtDate(tx.transaction_date || tx.created_at)}{tx.bank_name ? ` • ${tx.bank_name}` : ""}
+                                </div>
+                                <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, background: `${statusColor}15`, color: statusColor, fontSize: 10, fontWeight: 700, textTransform: "uppercase", flexShrink: 0 }}>
+                                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: statusColor }} />
+                                  {tx.status}
                                 </div>
                               </div>
                             </div>
