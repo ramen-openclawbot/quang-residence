@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ChevronLeft, Loader2, UploadCloud } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ImagePlus, Loader2, UploadCloud, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 
@@ -12,6 +12,10 @@ const T = {
   textMuted: "#7c8b7a",
   border: "#e6ede4",
   primary: "#56c91d",
+  success: "#16a34a",
+  successSoft: "#ecfdf3",
+  danger: "#dc2626",
+  dangerSoft: "#fef2f2",
   shadow: "0 8px 30px rgba(16,24,16,0.04)",
   font: "Inter, system-ui, sans-serif",
 };
@@ -34,7 +38,6 @@ export default function TransactionForm({ onClose, onSuccess }) {
   });
 
   const [slipImage, setSlipImage] = useState(null);
-  const [slipPreview, setSlipPreview] = useState(null);
   const [supportingImages, setSupportingImages] = useState([]);
   const [supportingPreviews, setSupportingPreviews] = useState([]);
   const [proofLinksText, setProofLinksText] = useState("");
@@ -134,7 +137,6 @@ export default function TransactionForm({ onClose, onSuccess }) {
     if (!rawFile) return;
     const file = await compressImageIfNeeded(rawFile);
     setSlipImage(file);
-    setSlipPreview(URL.createObjectURL(file));
     await parseReceipt(file);
   };
 
@@ -151,6 +153,12 @@ export default function TransactionForm({ onClose, onSuccess }) {
   const removeSupportingImage = (index) => {
     setSupportingImages((prev) => prev.filter((_, i) => i !== index));
     setSupportingPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const clearSlipImage = () => {
+    setSlipImage(null);
+    setOcrData(null);
+    if (fileRef.current) fileRef.current.value = "";
   };
 
   const uploadFileToStorage = async (file, prefix = "proof") => {
@@ -217,7 +225,6 @@ export default function TransactionForm({ onClose, onSuccess }) {
         notes: "",
       });
       setSlipImage(null);
-      setSlipPreview(null);
       setSupportingImages([]);
       setSupportingPreviews([]);
       setProofLinksText("");
@@ -232,6 +239,23 @@ export default function TransactionForm({ onClose, onSuccess }) {
     }
   };
 
+  const typeOptions = [
+    {
+      id: "expense",
+      label: "Out",
+      tone: T.danger,
+      soft: T.dangerSoft,
+      border: "rgba(220, 38, 38, 0.18)",
+    },
+    {
+      id: "income",
+      label: "In",
+      tone: T.success,
+      soft: T.successSoft,
+      border: "rgba(22, 163, 74, 0.18)",
+    },
+  ];
+
   return (
     <div style={overlayStyle}>
       <div style={sheetStyle}>
@@ -245,11 +269,97 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
         <div style={bodyStyle}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {[{ id: "expense", label: "Out" }, { id: "income", label: "In" }].map((item) => (
-              <button key={item.id} type="button" onClick={() => setType(item.id)} style={{ ...segBtnStyle, background: type === item.id ? T.primary : T.card, color: type === item.id ? "white" : T.text }}>
-                {item.label}
+            {typeOptions.map((item) => {
+              const active = type === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setType(item.id)}
+                  style={{
+                    ...segBtnStyle,
+                    background: active ? item.tone : item.soft,
+                    border: `1px solid ${active ? item.tone : item.border}`,
+                    color: active ? "white" : item.tone,
+                    boxShadow: active ? `0 8px 20px ${item.id === "expense" ? "rgba(220,38,38,0.22)" : "rgba(22,163,74,0.22)"}` : "none",
+                  }}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={sectionCardStyle}>
+            <div style={sectionHeaderStyle}>
+              <div>
+                <div style={labelStyle}>Bank slip</div>
+                <div style={helperTextStyle}>Giữ kiểu compact như form cũ: chọn slip, không hiển thị full ảnh trên mobile.</div>
+              </div>
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleImageSelect} style={{ display: "none" }} />
+            {!slipImage ? (
+              <button type="button" onClick={() => fileRef.current?.click()} style={uploadBoxStyle}>
+                <UploadCloud size={20} color={T.primary} />
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Upload bank slip</div>
+                <div style={{ fontSize: 12, color: T.textMuted }}>UNC / transfer receipt</div>
               </button>
-            ))}
+            ) : (
+              <div style={compactUploadCardStyle}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <div style={compactUploadIconStyle}>
+                    <CheckCircle2 size={20} color={T.primary} />
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text, wordBreak: "break-word" }}>{slipImage.name}</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>
+                      Bank slip uploaded. Kéo xuống để upload proof.
+                    </div>
+                    {ocrData && (
+                      <div style={infoPillStyle}>OCR auto-filled available</div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <button type="button" onClick={() => fileRef.current?.click()} style={secondaryActionBtnStyle}>Change</button>
+                  <button type="button" onClick={clearSlipImage} style={ghostDangerBtnStyle}>Remove</button>
+                </div>
+              </div>
+            )}
+            {scanning && (
+              <div style={{ marginTop: 10, ...rowStyle, gap: 8 }}>
+                <Loader2 size={16} color={T.primary} className="spin" />
+                <span style={{ color: T.textMuted, fontSize: 13 }}>Preparing image...</span>
+              </div>
+            )}
+          </div>
+
+          <div style={sectionCardStyle}>
+            <div style={sectionHeaderStyle}>
+              <div>
+                <div style={labelStyle}>Supporting proof</div>
+                <div style={helperTextStyle}>Sau khi upload bank slip, user chỉ cần kéo xuống đây để thêm proof.</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 10 }}>Up to 10 extra images: invoice, received item, chat proof, or related evidence.</div>
+            <input ref={supportingFileRef} type="file" accept="image/*" multiple onChange={handleSupportingSelect} style={{ display: "none" }} />
+            <button type="button" onClick={() => supportingFileRef.current?.click()} style={uploadBoxStyle}>
+              <ImagePlus size={20} color={T.primary} />
+              <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Add supporting images</div>
+              <div style={{ fontSize: 12, color: T.textMuted }}>{supportingImages.length}/10 selected</div>
+            </button>
+            {supportingPreviews.length > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 12 }}>
+                {supportingPreviews.map((src, index) => (
+                  <div key={index} style={{ position: "relative" }}>
+                    <img src={src} alt={`Proof ${index + 1}`} style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: 12, border: `1px solid ${T.border}` }} />
+                    <button type="button" onClick={() => removeSupportingImage(index)} style={removeProofBtnStyle}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div style={sectionCardStyle}>
@@ -285,48 +395,6 @@ export default function TransactionForm({ onClose, onSuccess }) {
           <div style={sectionCardStyle}>
             <div style={labelStyle}>Date</div>
             <input type="date" value={form.transaction_date} onChange={(e) => updateField("transaction_date", e.target.value)} style={inputStyle} />
-          </div>
-
-          <div style={sectionCardStyle}>
-            <div style={labelStyle}>Receipt image</div>
-            <input ref={fileRef} type="file" accept="image/*" onChange={handleImageSelect} style={{ display: "none" }} />
-            <button type="button" onClick={() => fileRef.current?.click()} style={uploadBoxStyle}>
-              <UploadCloud size={20} color={T.primary} />
-              <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>Upload primary proof</div>
-              <div style={{ fontSize: 12, color: T.textMuted }}>Bank slip / UNC</div>
-            </button>
-            {scanning && (
-              <div style={{ marginTop: 10, ...rowStyle, gap: 8 }}>
-                <Loader2 size={16} color={T.primary} className="spin" />
-                <span style={{ color: T.textMuted, fontSize: 13 }}>Preparing image...</span>
-              </div>
-            )}
-            {slipPreview && (
-              <div style={{ position: "relative", marginTop: 12 }}>
-                <img src={slipPreview} alt="Slip preview" style={{ width: "100%", borderRadius: 16, objectFit: "cover", maxHeight: 240, border: `1px solid ${T.border}` }} />
-              </div>
-            )}
-          </div>
-
-          <div style={sectionCardStyle}>
-            <div style={labelStyle}>Supporting proof</div>
-            <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 10 }}>Up to 10 extra images: invoice, received item, chat proof, or related evidence.</div>
-            <input ref={supportingFileRef} type="file" accept="image/*" multiple onChange={handleSupportingSelect} style={{ display: "none" }} />
-            <button type="button" onClick={() => supportingFileRef.current?.click()} style={uploadBoxStyle}>
-              <UploadCloud size={20} color={T.primary} />
-              <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>Add supporting images</div>
-              <div style={{ fontSize: 12, color: T.textMuted }}>{supportingImages.length}/10 selected</div>
-            </button>
-            {supportingPreviews.length > 0 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 12 }}>
-                {supportingPreviews.map((src, index) => (
-                  <div key={index} style={{ position: "relative" }}>
-                    <img src={src} alt={`Proof ${index + 1}`} style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: 12, border: `1px solid ${T.border}` }} />
-                    <button type="button" onClick={() => removeSupportingImage(index)} style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: 999, border: "none", background: "rgba(0,0,0,0.65)", color: "white", cursor: "pointer" }}>×</button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           <div style={sectionCardStyle}>
@@ -414,13 +482,27 @@ const sectionCardStyle = {
   boxShadow: T.shadow,
 };
 
+const sectionHeaderStyle = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: 12,
+  marginBottom: 10,
+};
+
 const labelStyle = {
   fontSize: 12,
   fontWeight: 700,
   letterSpacing: "0.08em",
   textTransform: "uppercase",
   color: T.textMuted,
-  marginBottom: 10,
+  marginBottom: 6,
+};
+
+const helperTextStyle = {
+  fontSize: 12,
+  color: T.textMuted,
+  lineHeight: 1.45,
 };
 
 const inputStyle = {
@@ -438,10 +520,9 @@ const inputStyle = {
 
 const segBtnStyle = {
   height: 46,
-  border: `1px solid ${T.border}`,
   borderRadius: 14,
   cursor: "pointer",
-  fontWeight: 700,
+  fontWeight: 800,
   fontFamily: T.font,
 };
 
@@ -458,6 +539,71 @@ const uploadBoxStyle = {
   justifyContent: "center",
   gap: 6,
   fontFamily: T.font,
+};
+
+const compactUploadCardStyle = {
+  border: `1px solid ${T.border}`,
+  borderRadius: 16,
+  background: "#fbfdf9",
+  padding: 14,
+};
+
+const compactUploadIconStyle = {
+  width: 40,
+  height: 40,
+  borderRadius: 12,
+  background: "#eef8e8",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+};
+
+const infoPillStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "6px 10px",
+  borderRadius: 999,
+  background: "#eef8e8",
+  color: T.primary,
+  fontSize: 11,
+  fontWeight: 700,
+  marginTop: 8,
+};
+
+const secondaryActionBtnStyle = {
+  height: 36,
+  padding: "0 14px",
+  borderRadius: 12,
+  border: `1px solid ${T.border}`,
+  background: T.card,
+  color: T.text,
+  cursor: "pointer",
+  fontWeight: 700,
+  fontFamily: T.font,
+};
+
+const ghostDangerBtnStyle = {
+  ...secondaryActionBtnStyle,
+  color: T.danger,
+  border: `1px solid rgba(220, 38, 38, 0.18)`,
+  background: T.dangerSoft,
+};
+
+const removeProofBtnStyle = {
+  position: "absolute",
+  top: 6,
+  right: 6,
+  width: 24,
+  height: 24,
+  borderRadius: 999,
+  border: "none",
+  background: "rgba(0,0,0,0.65)",
+  color: "white",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
 };
 
 const footerStyle = {
