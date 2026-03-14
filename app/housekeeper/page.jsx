@@ -121,6 +121,10 @@ export default function HousekeeperPage() {
   const [showTxForm, setShowTxForm] = useState(false);
   const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
   const [showFamilyForm, setShowFamilyForm] = useState(false);
+  const [activePanel, setActivePanel] = useState("");
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [selectedMaintenance, setSelectedMaintenance] = useState(null);
+  const [selectedFamilyItem, setSelectedFamilyItem] = useState(null);
 
   const [transactions, setTransactions] = useState([]);
   const [maintenanceItems, setMaintenanceItems] = useState([]);
@@ -241,9 +245,14 @@ export default function HousekeeperPage() {
                 <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Quản gia"}</div>
               </div>
             </div>
-            <button onClick={signOut} style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}>
-              <MIcon name="logout" size={22} color={T.textMuted} />
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={() => setActivePanel("help")} style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}>
+                <MIcon name="help" size={22} color={T.textMuted} />
+              </button>
+              <button onClick={signOut} style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}>
+                <MIcon name="logout" size={22} color={T.textMuted} />
+              </button>
+            </div>
           </div>
 
           {loading ? (
@@ -291,7 +300,7 @@ export default function HousekeeperPage() {
                     ) : openMaintenance.slice(0, 4).map((item) => {
                       const s = tone(item.status);
                       return (
-                        <button key={item.id} onClick={() => handleMaintenanceStatusChange(item)} style={{ width: "100%", textAlign: "left", border: "none", background: "transparent", padding: "12px 0", borderBottom: `1px solid ${T.border}`, cursor: "pointer" }}>
+                        <button key={item.id} onClick={() => { setSelectedMaintenance(item); setActivePanel("maintenance-detail"); }} style={{ width: "100%", textAlign: "left", border: "none", background: "transparent", padding: "12px 0", borderBottom: `1px solid ${T.border}`, cursor: "pointer" }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                             <div>
                               <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
@@ -312,13 +321,13 @@ export default function HousekeeperPage() {
                     {upcomingFamily.length === 0 ? (
                       <div style={{ fontSize: 13, color: T.textMuted }}>Chưa có sự kiện sắp tới.</div>
                     ) : upcomingFamily.slice(0, 4).map((item) => (
-                      <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
+                      <button key={item.id} onClick={() => { setSelectedFamilyItem(item); setActivePanel("family-detail"); }} style={{ width: "100%", textAlign: "left", border: "none", background: "transparent", padding: "12px 0", borderBottom: `1px solid ${T.border}`, cursor: "pointer" }}>
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
                           <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(item.event_date)}{item.event_time ? ` • ${item.event_time}` : ""}</div>
                         </div>
                         <div style={{ fontSize: 12, color: T.textMuted }}>{item.family_member}</div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -335,7 +344,7 @@ export default function HousekeeperPage() {
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {transactions.map((tx) => (
-                        <div key={tx.id} style={{ ...cardStyle, padding: 16 }}>
+                        <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("expense-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
                           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                             <div style={{ minWidth: 0, flex: 1 }}>
                               <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{tx.description || "Expense"}</div>
@@ -343,7 +352,7 @@ export default function HousekeeperPage() {
                             </div>
                             <div style={{ fontSize: 14, fontWeight: 800, color: T.danger }}>-{fmtVND(Math.abs(Number(tx.amount || 0)))}</div>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -363,7 +372,7 @@ export default function HousekeeperPage() {
                       {maintenanceItems.map((item) => {
                         const s = tone(item.status);
                         return (
-                          <button key={item.id} onClick={() => handleMaintenanceStatusChange(item)} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
+                          <button key={item.id} onClick={() => { setSelectedMaintenance(item); setActivePanel("maintenance-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
                             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                               <div>
                                 <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
@@ -391,7 +400,7 @@ export default function HousekeeperPage() {
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {familySchedule.map((item) => (
-                        <div key={item.id} style={{ ...cardStyle, padding: 16 }}>
+                        <button key={item.id} onClick={() => { setSelectedFamilyItem(item); setActivePanel("family-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
                           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                             <div>
                               <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
@@ -400,7 +409,7 @@ export default function HousekeeperPage() {
                               {item.notes && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{item.notes}</div>}
                             </div>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -411,6 +420,53 @@ export default function HousekeeperPage() {
         </div>
 
         {showTxForm && <TransactionForm onClose={() => setShowTxForm(false)} onSuccess={() => { setShowTxForm(false); fetchData(); }} />}
+
+        {activePanel && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 220, display: "flex", alignItems: "flex-end" }} onClick={() => setActivePanel("")}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18, maxHeight: "78vh", overflowY: "auto" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>
+                  {activePanel === "help" && "Housekeeper Help"}
+                  {activePanel === "expense-detail" && "Chi tiết chi tiêu"}
+                  {activePanel === "maintenance-detail" && "Chi tiết việc nhà"}
+                  {activePanel === "family-detail" && "Chi tiết lịch gia đình"}
+                </div>
+                <button onClick={() => setActivePanel("")} style={{ border: "none", background: "transparent", cursor: "pointer" }}><MIcon name="close" size={22} color={T.textMuted} /></button>
+              </div>
+
+              {activePanel === "help" && (
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Ghi chi tiêu ngay từ Home\n• Báo việc nhà và theo dõi tiến độ\n• Mở lịch gia đình để xem chi tiết từng sự kiện</div></div>
+                  <button onClick={() => setShowMaintenanceForm(true)} style={panelBtn}>Báo việc nhà ngay</button>
+                </div>
+              )}
+
+              {activePanel === "expense-detail" && selectedTransaction && (
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTransaction.description || "Expense"}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(selectedTransaction.transaction_date || selectedTransaction.created_at)}</div></div>
+                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}><div>Số tiền: <strong>{fmtVND(Math.abs(Number(selectedTransaction.amount || 0)))}</strong></div><div>Loại: {selectedTransaction.type || "expense"}</div><div>Trạng thái: {selectedTransaction.status || "pending"}</div></div>
+                  <button onClick={() => { setActivePanel(""); setTab("expenses"); }} style={panelBtn}>Về Chi tiêu</button>
+                </div>
+              )}
+
+              {activePanel === "maintenance-detail" && selectedMaintenance && (
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedMaintenance.title}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedMaintenance.location_in_house || "Không rõ vị trí"}</div></div>
+                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}><div>Trạng thái: <strong>{selectedMaintenance.status}</strong></div><div>{selectedMaintenance.description || "Không có mô tả thêm"}</div></div>
+                  <button onClick={() => { handleMaintenanceStatusChange(selectedMaintenance); setActivePanel(""); }} style={panelBtn}>Chuyển trạng thái</button>
+                </div>
+              )}
+
+              {activePanel === "family-detail" && selectedFamilyItem && (
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedFamilyItem.title}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(selectedFamilyItem.event_date)}{selectedFamilyItem.event_time ? ` • ${selectedFamilyItem.event_time}` : ""}</div></div>
+                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}><div>Loại: {selectedFamilyItem.schedule_type}</div><div>Thành viên: {selectedFamilyItem.family_member}</div><div>{selectedFamilyItem.notes || "Không có ghi chú thêm"}</div></div>
+                  <button onClick={() => { setActivePanel(""); setTab("family"); }} style={panelBtn}>Về Gia đình</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {showMaintenanceForm && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 200, display: "flex", alignItems: "flex-end" }}>
@@ -500,4 +556,14 @@ const inputStyle = {
   padding: "0 14px",
   fontSize: 14,
   boxSizing: "border-box",
+};
+
+const panelBtn = {
+  height: 46,
+  borderRadius: 12,
+  border: "none",
+  background: T.primary,
+  color: "white",
+  fontWeight: 800,
+  cursor: "pointer",
 };
