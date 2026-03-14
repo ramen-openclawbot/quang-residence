@@ -258,9 +258,29 @@ export default function OwnerPage() {
   const activeFunds = useMemo(() => funds.filter((fund) => Number(fund.current_balance || 0) > 0).length, [funds]);
   const pendingTransactions = useMemo(() => transactions.filter((tx) => tx.status === "pending"), [transactions]);
   const openTasks = useMemo(() => tasks.filter((task) => task.status !== "done"), [tasks]);
-  const thisMonthKey = new Date().toISOString().slice(0, 7);
-  const spentThisMonth = useMemo(() => transactions.filter((tx) => tx.type === "expense" && (tx.transaction_date || tx.created_at || "").slice(0, 7) === thisMonthKey).reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [transactions, thisMonthKey]);
-  const incomeThisMonth = useMemo(() => transactions.filter((tx) => tx.type === "income" && (tx.transaction_date || tx.created_at || "").slice(0, 7) === thisMonthKey).reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [transactions, thisMonthKey]);
+  const today = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }, []);
+  const getLocalDateKey = (value) => {
+    if (!value) return "";
+    if (typeof value === "string") {
+      const direct = value.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (direct) return direct[1];
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+  const thisMonthKey = today.slice(0, 7);
+  const spentThisMonth = useMemo(() => transactions.filter((tx) => tx.type === "expense" && [getLocalDateKey(tx.transaction_date), getLocalDateKey(tx.created_at)].some((key) => key.startsWith(thisMonthKey))).reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [transactions, thisMonthKey]);
+  const incomeThisMonth = useMemo(() => transactions.filter((tx) => tx.type === "income" && [getLocalDateKey(tx.transaction_date), getLocalDateKey(tx.created_at)].some((key) => key.startsWith(thisMonthKey))).reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [transactions, thisMonthKey]);
   const topFunds = useMemo(() => [...funds].sort((a, b) => Number(b.current_balance || 0) - Number(a.current_balance || 0)).slice(0, 4), [funds]);
   const recentTasks = useMemo(() => tasks.slice(0, 4), [tasks]);
 
