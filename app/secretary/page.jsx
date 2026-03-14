@@ -163,7 +163,14 @@ export default function SecretaryPage() {
     if (!error) loadData();
   }
 
-  const totalBalance = useMemo(() => funds.reduce((s, f) => s + Number(f.current_balance || 0), 0), [funds]);
+  const fundsBalance = useMemo(() => funds.reduce((s, f) => s + Number(f.current_balance || 0), 0), [funds]);
+  const ledgerBalance = useMemo(() => transactions.reduce((sum, tx) => {
+    const amount = Number(tx.amount || 0);
+    if (tx.type === "income") return sum + amount;
+    if (tx.type === "expense") return sum - amount;
+    return sum;
+  }, 0), [transactions]);
+  const totalBalance = useMemo(() => (fundsBalance !== 0 ? fundsBalance : ledgerBalance), [fundsBalance, ledgerBalance]);
   const pendingTx = useMemo(() => transactions.filter((t) => t.status === "pending"), [transactions]);
   const today = useMemo(() => {
     const now = new Date();

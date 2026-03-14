@@ -1,12 +1,12 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-14 18:00 GMT+7_
+_Last updated: 2026-03-14 19:05 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
 - GitHub: `https://github.com/ramen-openclawbot/quang-residence.git`
 - Branch: `main`
-- Current pushed commit: `ad18689`
+- Current pushed commit: `7fa0bf3`
 
 ## Current product state
 ZenHome is now in a **product-hardening + CRUD-completion** phase, not an auth/firefighting phase.
@@ -107,6 +107,9 @@ Secretary now has:
 - bank slip upload returned to a compact old-style pattern instead of large in-form image preview
 - upload flow now clearly supports: bank slip first → scroll down → supporting proof
 - mobile date input layout patched for Safari-style rendering issues
+- secretary home `In today / Out today` logic hardened to avoid empty values when transaction dates are inconsistent
+- secretary upload OCR fixed by routing the form to the real `/api/ocr` endpoint
+- dashboard balance cards now fall back to transaction-ledger math when `funds.current_balance` is zeroed or stale
 
 Key commits:
 - `3de89e9`
@@ -115,6 +118,7 @@ Key commits:
 - `54bbcf2`
 - `097a5d4` — refine transaction upload flow for mobile
 - `ad18689` — fix mobile date input layout
+- `7fa0bf3` — fix secretary dashboard totals and OCR upload
 
 ### Driver
 Driver now has:
@@ -185,6 +189,7 @@ Key commit:
 - Specifically, do **not** show the bank slip as a large preview block after upload on mobile.
 - Instead, show a compact uploaded-state card, then let the user continue downward to add supporting proof.
 - Mobile Safari/date-input rendering needed a dedicated style override to avoid broken vertical alignment in the date field.
+- A later issue also showed that dashboard balance cards could display `0` even when transactions existed, because the UI trusted `funds.current_balance` only. Current direction: if fund balances are stale/zero, fall back to net transactions so the dashboard still reflects real activity.
 
 ### DB / config
 - `supabase/schema.sql`
