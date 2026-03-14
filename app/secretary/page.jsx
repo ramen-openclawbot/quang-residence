@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import StaffShell, { MIcon } from "../../components/shared/StaffShell";
+import NotificationCenter from "../../components/shared/NotificationCenter";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
@@ -219,6 +220,7 @@ export default function SecretaryPage() {
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <NotificationCenter userId={profile?.id} />
               <button onClick={() => setActivePanel("help")} style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}>
                 <MIcon name="help" size={22} color={T.textMuted} />
               </button>

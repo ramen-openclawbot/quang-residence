@@ -234,17 +234,23 @@ export default function TransactionForm({ onClose, onSuccess }) {
       const { data: inserted, error } = await supabase.from("transactions").insert(payload).select("id").single();
       if (error) throw error;
 
-      // Notify reviewers (fire-and-forget)
+      // Notify reviewers after submit
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.access_token && inserted?.id) {
-          fetch("/api/transactions/notify-submit", {
+          const notifyRes = await fetch("/api/transactions/notify-submit", {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
             body: JSON.stringify({ transaction_id: inserted.id, amount: payload.amount, type: payload.type, description: payload.description }),
-          }).catch(() => {});
+          });
+          if (!notifyRes.ok) {
+            const notifyErr = await notifyRes.text();
+            console.warn("notify-submit failed:", notifyErr);
+          }
         }
-      } catch (_) {}
+      } catch (notifyError) {
+        console.warn("notify-submit error:", notifyError);
+      }
 
       setForm({
         amount: "",
