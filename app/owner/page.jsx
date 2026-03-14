@@ -248,13 +248,15 @@ export default function OwnerPage() {
   }
 
   const fundsBalance = useMemo(() => funds.reduce((sum, fund) => sum + Number(fund.current_balance || 0), 0), [funds]);
+  const fundedEntries = useMemo(() => funds.filter((fund) => Number(fund.current_balance || 0) !== 0).length, [funds]);
   const ledgerBalance = useMemo(() => transactions.reduce((sum, tx) => {
     const amount = Number(tx.amount || 0);
     if (tx.type === "income") return sum + amount;
     if (tx.type === "expense") return sum - amount;
     return sum;
   }, 0), [transactions]);
-  const totalBalance = useMemo(() => (fundsBalance !== 0 ? fundsBalance : ledgerBalance), [fundsBalance, ledgerBalance]);
+  const usingLedgerFallback = useMemo(() => fundedEntries === 0 && transactions.length > 0, [fundedEntries, transactions.length]);
+  const totalBalance = useMemo(() => (usingLedgerFallback ? ledgerBalance : fundsBalance), [usingLedgerFallback, fundsBalance, ledgerBalance]);
   const activeFunds = useMemo(() => funds.filter((fund) => Number(fund.current_balance || 0) > 0).length, [funds]);
   const pendingTransactions = useMemo(() => transactions.filter((tx) => tx.status === "pending"), [transactions]);
   const openTasks = useMemo(() => tasks.filter((task) => task.status !== "done"), [tasks]);
@@ -322,7 +324,11 @@ export default function OwnerPage() {
                         <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Owner</div>
                       </div>
                       <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Finance, estate, team, and rhythm.</div>
-                      <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 16 }}>{fmtVND(totalBalance)}</div>
+                      <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 10 }}>{fmtVND(totalBalance)}</div>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,0.12)", fontSize: 11, fontWeight: 700, marginBottom: 16 }}>
+                        <div style={{ width: 6, height: 6, borderRadius: 999, background: usingLedgerFallback ? "#fbbf24" : "#86efac" }} />
+                        {usingLedgerFallback ? "Ledger fallback" : "Synced from funds"}
+                      </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                         <div><div style={{ fontSize: 11, opacity: 0.7 }}>Pending</div><div style={{ fontSize: 18, fontWeight: 800 }}>{pendingTransactions.length}</div></div>
                         <div><div style={{ fontSize: 11, opacity: 0.7 }}>Open tasks</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
