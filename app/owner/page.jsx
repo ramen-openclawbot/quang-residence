@@ -217,7 +217,7 @@ export default function OwnerPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <OwnerAvatar name={profile?.full_name || "Mr. Quang"} />
                   <div>
-                    <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Owner Dashboard</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Owner Studio</div>
                     <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Mr. Quang"}</div>
                   </div>
                 </div>
@@ -569,7 +569,7 @@ export default function OwnerPage() {
                         <option value="housekeeper">housekeeper</option>
                         <option value="driver">driver</option>
                       </select>
-                      <button type="submit" disabled={accountLoading} style={{ ...panelBtn }}>{accountLoading ? "Đang tạo..." : "Tạo user"}</button>
+                      <button type="submit" disabled={accountLoading} style={{ ...panelBtn }}>{accountLoading ? "Creating..." : "Create user"}</button>
                     </form>
                   </div>
 
@@ -597,7 +597,7 @@ export default function OwnerPage() {
                           </div>
                         </div>
                       ))}
-                      {!accountLoading && accountUsers.length === 0 && <div style={{ fontSize: 12, color: T.textMuted }}>Chưa có user nào hiển thị.</div>}
+                      {!accountLoading && accountUsers.length === 0 && <div style={{ fontSize: 12, color: T.textMuted }}>No users yet.</div>}
                     </div>
                   </div>
                 </div>
@@ -626,15 +626,15 @@ export default function OwnerPage() {
 
               {activePanel === "help" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick help</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Home: overview tổng thể\n• Wealth: quỹ và chi tiêu\n• Ambiance: trạng thái nhà thông minh\n• Agenda: việc sắp tới\n• Settings: tuỳ chọn hệ thống</div></div>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick help</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Home: overall view\n• Wealth: funds and spend\n• Ambience: estate state\n• Agenda: upcoming priorities\n• Settings: system controls</div></div>
                   <button onClick={() => { setActivePanel(""); setTab("home"); }} style={{ ...panelBtn }}>Về Home</button>
                 </div>
               )}
 
               {activePanel === "agenda-help" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Agenda view</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Tab Agenda đang lấy từ tasks hiện có trong hệ thống để owner nhìn nhanh các việc gần nhất.</div></div>
-                  <button onClick={() => { setActivePanel(""); setTab("agenda"); }} style={{ ...panelBtn }}>Mở Agenda</button>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Agenda view</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Agenda surfaces the nearest tasks already stored in the system.</div></div>
+                  <button onClick={() => { setActivePanel(""); setTab("agenda"); }} style={{ ...panelBtn }}>Open Agenda</button>
                 </div>
               )}
             </div>

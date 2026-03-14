@@ -241,7 +241,7 @@ export default function HousekeeperPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <Avatar name={profile?.full_name || "Housekeeper"} />
               <div>
-                <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Housekeeper Console</div>
+                <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Housekeeper Studio</div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Housekeeper"}</div>
               </div>
             </div>
@@ -456,7 +456,7 @@ export default function HousekeeperPage() {
 
               {activePanel === "help" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Ghi chi tiêu ngay từ Home\n• Report issue và theo dõi tiến độ\n• Mở lịch gia đình để xem chi tiết từng sự kiện</div></div>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Log expense from Home\n• Report and track care items\n• Open any family event for details</div></div>
                   <button onClick={() => setShowMaintenanceForm(true)} style={panelBtn}>Report issue</button>
                 </div>
               )}

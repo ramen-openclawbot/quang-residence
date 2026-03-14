@@ -181,7 +181,7 @@ export default function SecretaryPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <Avatar name={profile?.full_name || "Secretary"} />
               <div>
-                <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Secretary Dashboard</div>
+                <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Secretary Studio</div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Secretary"}</div>
               </div>
             </div>

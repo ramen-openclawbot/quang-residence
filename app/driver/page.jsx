@@ -181,7 +181,7 @@ export default function DriverPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <Avatar name={profile?.full_name || "Driver"} />
               <div>
-                <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Driver Console</div>
+                <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Driver Studio</div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Driver"}</div>
               </div>
             </div>
