@@ -12,6 +12,7 @@ export default function TransactionForm({ onClose, onSuccess, defaultFundId, def
   const { profile } = useAuth();
   const fileRef = useRef(null);
   const supportingFileRef = useRef(null);
+  const supportingFileRef = useRef(null);
 
   const [type, setType] = useState(defaultType);
   const [amount, setAmount] = useState("");
@@ -52,6 +53,23 @@ export default function TransactionForm({ onClose, onSuccess, defaultFundId, def
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+
+  const handleSupportingSelect = async (e) => {
+    const remaining = Math.max(0, 10 - supportingImages.length);
+    const files = Array.from(e.target.files || []).slice(0, remaining);
+    if (!files.length) return;
+
+    const compressed = [];
+    for (const f of files) compressed.push(await compressImageIfNeeded(f));
+
+    setSupportingImages((prev) => [...prev, ...compressed].slice(0, 10));
+    setSupportingPreviews((prev) => [...prev, ...compressed.map((f) => URL.createObjectURL(f))].slice(0, 10));
+  };
+
+  const removeSupportingImage = (index) => {
+    setSupportingImages((prev) => prev.filter((_, i) => i !== index));
+    setSupportingPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const compressImageIfNeeded = async (file) => {
     const MAX_BYTES = 1024 * 1024; // 1MB
