@@ -1,81 +1,199 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-13 23:50 GMT+7_
+_Last updated: 2026-03-14 13:58 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
 - GitHub: `https://github.com/ramen-openclawbot/quang-residence.git`
 - Branch: `main`
-- Current pushed commit: `83203be`
+- Current pushed commit: `7f6d4f7`
 
-## Current status
-The app was migrated away from Supabase magic-link login and now uses **email + password login**.
+## Current product state
+ZenHome has moved well beyond the initial broken prototype state.
+It now has:
+- working **email + password auth**
+- owner-only protected admin APIs
+- temporary-password user creation flow
+- owner-side role management
+- owner-side password reset for users
+- self password update flow for the logged-in owner
+- redesigned dashboards for all 4 roles
+- cleaner English-first UI direction with a calmer “Zen house / estate console” feel
 
-### Auth flow now
-- Login page uses `signInWithPassword()`
-- Admin create-user API creates users with a **temporary password**
-- Owner UI shows the temporary password after user creation so the operator can send it manually via Zalo/other channel
-- Middleware cookie-based redirect logic was disabled because it interfered with browser-side Supabase auth flow
+## Auth / account status
+### Current auth model
+- Login uses `signInWithPassword()`
+- Magic-link login was removed as the primary flow
+- New users are created with a **temporary password**
+- Owner can reset a user password from Account Management
+- Owner can change their own password from Security panel
 
-## Important recent fixes
-1. Fixed Supabase env/build issues on Vercel (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
-2. Fixed create-user flow to use real auth user creation instead of invite flow
-3. Removed bad `profiles.email` select because `profiles` table does not have `email`
-4. Moved `themeColor` from metadata to viewport to remove Next.js warning
-5. Disabled cookie-based middleware redirects
-6. Switched auth from magic link to password login
+### Admin protection
+Admin routes are now protected by **owner session verification**.
+These routes require a valid logged-in owner bearer token:
+- `/api/admin/create-user`
+- `/api/admin/update-role`
+- `/api/admin/reset-password`
 
-## User test status
-- Test user: `tam@bmq.vn`
-- Login: **working**
-- Role was initially `driver`
-- Role was manually changed to `owner` in Supabase SQL and confirmed working
+### Shared server auth helper
+- `app/api/admin/_auth.js`
 
-### SQL used to promote test user to owner
-```sql
-update profiles
-set role = 'owner'
-where id in (
-  select id
-  from auth.users
-  where email = 'tam@bmq.vn'
-);
-```
+## Test account / manual validation
+- Test user used during development: `tam@bmq.vn`
+- Login confirmed working
+- Roles were manually changed in Supabase during testing to preview role-specific UIs
 
-## Key files changed recently
+## Database / Supabase status
+Supabase scripts were reconciled and aligned with current codebase:
+- `supabase/schema.sql`
+- `supabase/storage.sql`
+- `supabase/seed.sql`
+
+### Important DB status
+- scripts are now intended to be **rerunnable**
+- policies were updated toward safer re-run behavior
+- storage bucket `bank-slips` is defined
+- `notifications` and `daily_reports` were aligned with code expectations
+
+## Major UI / product work completed
+### Owner
+Owner is no longer just a static mock.
+It now has:
+- better live-data dashboard summaries
+- notification center wiring
+- settings panels with real interaction
+- working **Account Management** panel
+- create user flow in UI
+- role update flow in UI
+- reset-password flow in UI
+- self password update flow in Security
+- calmer “Zen estate” visual pass
+
+Key owner-related commits:
+- `3daf809` — account management panel + role updates
+- `22ee13c` — owner interactions + settings panels
+- `9690e23` — owner zen-estate visual refinement
+- `74a49ac` — require owner session for admin APIs
+- `7f6d4f7` — password reset + self password update
+
+### Secretary
+Secretary now has:
+- redesigned dashboard
+- surfaced slip upload on Home
+- detail panels for transactions / tasks
+- quick help panel
+- cleaner English copy
+- “zen desk” refinement pass
+
+Key commits:
+- `3de89e9`
+- `2b12e1f`
+- `b9c865e`
+- `54bbcf2`
+
+### Driver
+Driver now has:
+- redesigned trip-oriented dashboard
+- detail panels for trips / expenses / tasks
+- quick help panel
+- cleaner English copy
+- calmer visual direction
+
+Key commits:
+- `023f156`
+- `f08e3b9`
+- `5bef9c2`
+
+### Housekeeper
+Housekeeper now has:
+- redesigned home care / family dashboard
+- detail panels for expenses / maintenance / family events
+- quick help panel
+- refined English copy
+- zen-home visual refinement
+
+Key commits:
+- `96c6b3c`
+- `52a4b21`
+- `7ab0e50`
+
+### Cross-role consistency / tone
+A consistency sweep was completed across all 4 roles to unify:
+- top-label naming
+- panel wording
+- calmer English-first UI copy
+- cleaner “studio / estate / zen” tone
+
+Key commit:
+- `5e8818c`
+
+## Important files changed recently
+### Auth / admin
 - `lib/auth.js`
 - `app/login/page.jsx`
+- `app/api/admin/_auth.js`
 - `app/api/admin/create-user/route.js`
+- `app/api/admin/update-role/route.js`
+- `app/api/admin/reset-password/route.js`
+
+### Role dashboards
 - `app/owner/page.jsx`
-- `app/layout.jsx`
+- `app/secretary/page.jsx`
+- `app/driver/page.jsx`
+- `app/housekeeper/page.jsx`
+
+### DB / config
+- `supabase/schema.sql`
+- `supabase/storage.sql`
+- `supabase/seed.sql`
 - `middleware.js`
+- `app/layout.jsx`
 
-## Security / follow-up notes
-### Important
-The `create-user` API currently no longer checks `ADMIN_SECRET` in practice for the owner UI flow and should be hardened later.
-Recommended follow-up:
-- Protect `/api/admin/create-user` with real owner session validation on the server
-- Add password reset / change-password flow
-- Consider rotating any leaked Supabase `service_role` key and update both:
-  - Vercel env
-  - local `.env.local`
+## Known caveats / important notes
+1. **Owner admin API hardening is better now, but still not ultimate security**
+   - current protection checks bearer token + owner role
+   - future improvement could move toward stricter server session handling and auditing
 
-### Also recommended
-- Add a proper owner-only server-side guard for admin APIs
-- Add first-login password change flow
-- Optionally add audit logging for user creation / role changes
+2. **Current self password change UI is implemented from owner Security panel**
+   - broader rollout to non-owner roles is not yet done
 
-## Deploy notes
-If something looks wrong on production, confirm Vercel has these env vars:
+3. **Many edit/delete flows are still missing**
+   - the app is now much more usable, but CRUD completeness is still partial
+
+4. **UI quality is much better, but still mid-flight**
+   - the app is no longer a broken prototype
+   - however, some screens still need product-depth improvements rather than only polish
+
+## Deploy / env notes
+Production should have these env vars set correctly:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_APP_URL`
-- `ADMIN_SECRET` (if reused later)
+- `ADMIN_SECRET` (legacy / optional now, depending on future cleanup)
 
-## Suggested next tasks for the next agent
-1. Harden `/api/admin/create-user` so only authenticated owner users can call it
-2. Add a change-password screen for logged-in users
-3. Add a reset-password/admin reset-password flow
-4. Review RLS policies for all role-based pages
-5. Clean up auth code/comments that still mention magic link
+## Best next steps for the next agent
+### Highest-value next task
+1. **Add edit / delete flows** for core records:
+   - tasks
+   - home maintenance
+   - family schedule
+   - possibly transactions (carefully)
+
+### Then
+2. Expand password/self-service logic to more roles
+3. Add proper audit logging for:
+   - user creation
+   - role change
+   - password reset
+4. Improve notifications/reporting logic
+5. Consider a richer **asset / art collection module** to match the visual direction already introduced
+
+## Summary for the next agent
+This project is no longer in the early auth/firefighting phase.
+The app is now in a **product-hardening + CRUD-completion** phase.
+If continuing work, prioritize:
+- real edit/delete flows
+- stronger lifecycle management for records
+- more robust admin/user operations
+- selective deeper product logic over more surface polish
