@@ -194,6 +194,9 @@ function TransactionDetail({ tx, profile, onClose, onAction }) {
             <InfoRow label="Submitted by" value={tx.profiles?.full_name || "—"} />
             <InfoRow label="Notes" value={tx.notes} />
             {tx.approved_by_profile && <InfoRow label="Approved by" value={tx.approved_by_profile.full_name} />}
+            {tx.reviewed_by_profile && !tx.approved_by_profile && <InfoRow label="Reviewed by" value={tx.reviewed_by_profile.full_name} />}
+            {tx.reviewed_at && <InfoRow label="Reviewed at" value={`${fmtDate(tx.reviewed_at)} ${fmtTime(tx.reviewed_at)}`} />}
+            {tx.reject_reason && <InfoRow label="Reject reason" value={tx.reject_reason} />}
           </div>
 
           {/* Bank slip + supporting images */}
@@ -289,7 +292,7 @@ export default function TransactionsPage() {
 
     const { data } = await supabase
       .from("transactions")
-      .select("*, profiles!created_by(id, full_name, role)")
+      .select("*, profiles!created_by(id, full_name, role), approved_by_profile:profiles!approved_by(id, full_name), reviewed_by_profile:profiles!reviewed_by(id, full_name)")
       .gte("created_at", startDate)
       .lte("created_at", endDate)
       .order("created_at", { ascending: false });
@@ -332,11 +335,11 @@ export default function TransactionsPage() {
   const pendingCount = useMemo(() => filtered.filter((t) => t.status === "pending").length, [filtered]);
 
   const handleAction = (action, txId) => {
-    if (action === "reject") {
-      setTransactions((prev) => prev.filter((t) => t.id !== txId));
-    } else {
-      setTransactions((prev) => prev.map((t) => t.id === txId ? { ...t, status: "approved" } : t));
-    }
+    setTransactions((prev) => prev.map((t) => {
+      if (t.id !== txId) return t;
+      if (action === "reject") return { ...t, status: "rejected" };
+      return { ...t, status: "approved" };
+    }));
     setDetail(null);
   };
 

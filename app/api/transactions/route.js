@@ -81,13 +81,17 @@ export async function PATCH(request) {
     const amountStr = Number(tx.amount || 0).toLocaleString("vi-VN") + "đ";
 
     if (action === "approve") {
+      const reviewedAt = new Date().toISOString();
       // Mark as approved
       const { error } = await supabaseAdmin
         .from("transactions")
         .update({
           status: "approved",
           approved_by: profile.id,
-          approved_at: new Date().toISOString(),
+          approved_at: reviewedAt,
+          reviewed_by: profile.id,
+          reviewed_at: reviewedAt,
+          reject_reason: null,
         })
         .eq("id", transaction_id);
 
@@ -113,25 +117,32 @@ export async function PATCH(request) {
         return NextResponse.json({ error: "reject_reason is required" }, { status: 400 });
       }
 
-      // Notify submitter BEFORE deleting
+      const reviewedAt = new Date().toISOString();
+
+      // Keep the transaction for audit trail, mark it as rejected instead of deleting.
+      const { error } = await supabaseAdmin
+        .from("transactions")
+        .update({
+          status: "rejected",
+          reviewed_by: profile.id,
+          reviewed_at: reviewedAt,
+          reject_reason: reject_reason.trim(),
+        })
+        .eq("id", transaction_id);
+
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+      // Notify submitter after the audit state is stored.
       if (tx.created_by) {
         await notify(
           tx.created_by,
           "Transaction rejected",
-          `Your ${tx.type} of ${amountStr} — "${tx.description || "no description"}" was rejected by ${profile.full_name}. Reason: ${reject_reason.trim()}. Please submit a corrected transaction.`,
+          `Your ${tx.type} of ${amountStr} — "${tx.description || "no description"}" was rejected by ${profile.full_name}. Reason: ${reject_reason.trim()}. Please review and resubmit if needed.`,
           "warning",
-          null,
-          { reject_reason: reject_reason.trim(), original_amount: tx.amount, original_description: tx.description }
+          "/transactions",
+          { transaction_id, reject_reason: reject_reason.trim(), original_amount: tx.amount, original_description: tx.description }
         );
       }
-
-      // Delete the transaction permanently
-      const { error } = await supabaseAdmin
-        .from("transactions")
-        .delete()
-        .eq("id", transaction_id);
-
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
       return NextResponse.json({ success: true, action: "rejected" });
     }
