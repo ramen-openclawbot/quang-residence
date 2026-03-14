@@ -22,15 +22,16 @@ VALUES
   ('Other', 'Khác', 'file', '#94a3b8', 'cash', 99)
 ON CONFLICT DO NOTHING;
 
--- Funds
+-- Funds (5 quỹ chính — unique on fund_type, safe to re-run)
 INSERT INTO public.funds (name, fund_type, current_balance, budget_monthly)
 VALUES
-  ('Quỹ PR', 'pr', 0, 50000000),
-  ('Quỹ tiền mặt', 'cash', 0, 30000000),
-  ('Quỹ lương', 'salary', 0, 20000000),
-  ('Chi gia đình', 'household', 0, 15000000),
-  ('Chi bếp', 'kitchen', 0, 10000000)
-ON CONFLICT DO NOTHING;
+  ('Quỹ PR',        'pr',        0, 50000000),
+  ('Quỹ tiền mặt', 'cash',      0, 30000000),
+  ('Quỹ lương',     'salary',    0, 20000000),
+  ('Chi gia đình',  'household', 0, 15000000),
+  ('Chi bếp',       'kitchen',   0, 10000000)
+ON CONFLICT (fund_type) DO UPDATE SET
+  budget_monthly = EXCLUDED.budget_monthly;
 
 -- Home settings used by current UI
 INSERT INTO public.home_settings (setting_key, setting_value)

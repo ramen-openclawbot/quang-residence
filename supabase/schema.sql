@@ -66,8 +66,8 @@ CREATE TABLE IF NOT EXISTS public.categories (
 -- =============================================
 CREATE TABLE IF NOT EXISTS public.funds (
   id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  fund_type TEXT NOT NULL CHECK (fund_type IN ('pr', 'cash', 'salary', 'household', 'kitchen', 'other')),
+  name TEXT NOT NULL UNIQUE,
+  fund_type TEXT NOT NULL UNIQUE CHECK (fund_type IN ('pr', 'cash', 'salary', 'household', 'kitchen', 'other')),
   current_balance DECIMAL(15, 0) DEFAULT 0,
   budget_monthly DECIMAL(15, 0) DEFAULT 0,
   managed_by UUID REFERENCES public.profiles(id),
