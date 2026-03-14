@@ -418,14 +418,14 @@ export default function SecretaryPage() {
                                   <MIcon name={isIncome ? "south_west" : "north_east"} size={15} color={isIncome ? T.success : T.danger} />
                                 </div>
                                 <div style={{ minWidth: 0, flex: 1 }}>
-                                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.35 }}>
+                                  <div style={{ fontSize: 14, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.35 }}>
                                     {tx.description || tx.recipient_name || "Transaction"}
                                   </div>
                                   <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4, minWidth: 0, flexWrap: "wrap" }}>
-                                    <span style={{ fontSize: 11, fontWeight: 500, color: T.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                    <span style={{ fontSize: 12, color: T.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                       {fmtDate(tx.transaction_date || tx.created_at)}{tx.bank_name ? ` • ${tx.bank_name}` : ""}
                                     </span>
-                                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 6px", borderRadius: 999, background: statusTone.bg, color: statusTone.color, fontSize: 9.5, fontWeight: 700, letterSpacing: "0.02em" }}>
+                                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 6px", borderRadius: 999, background: statusTone.bg, color: statusTone.color, fontSize: 12, fontWeight: 600 }}>
                                       <span style={{ width: 4, height: 4, borderRadius: 999, background: statusTone.color }} />
                                       {statusTone.label}
                                     </span>
@@ -433,7 +433,7 @@ export default function SecretaryPage() {
                                 </div>
                               </div>
                               <div style={{ flexShrink: 0, textAlign: "right" }}>
-                                <div style={{ fontSize: 15, fontWeight: 700, color: isIncome ? T.success : T.danger, whiteSpace: "nowrap", letterSpacing: "-0.01em", lineHeight: 1.2 }}>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: isIncome ? T.success : T.danger, whiteSpace: "nowrap", letterSpacing: "-0.01em", lineHeight: 1.2 }}>
                                   {isIncome ? "+" : "-"}{fmtVND(Math.abs(Number(tx.amount || 0)))}
                                 </div>
                               </div>
