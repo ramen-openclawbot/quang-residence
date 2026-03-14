@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, ChevronLeft, ImagePlus, Loader2, UploadCloud, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
@@ -35,8 +35,10 @@ export default function TransactionForm({ onClose, onSuccess }) {
     transaction_code: "",
     transaction_date: new Date().toISOString().slice(0, 10),
     notes: "",
+    fund_id: "",
   });
 
+  const [funds, setFunds] = useState([]);
   const [slipImage, setSlipImage] = useState(null);
   const [supportingImages, setSupportingImages] = useState([]);
   const [supportingPreviews, setSupportingPreviews] = useState([]);
@@ -47,6 +49,23 @@ export default function TransactionForm({ onClose, onSuccess }) {
   const [saving, setSaving] = useState(false);
 
   const updateField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadFunds() {
+      const { data, error } = await supabase.from("funds").select("id, name, fund_type").order("id");
+      if (error) {
+        console.error("Load funds error:", error);
+        return;
+      }
+      if (!mounted) return;
+      setFunds(data || []);
+    }
+    loadFunds();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const fileToBase64 = (file) =>
     new Promise((resolve, reject) => {
@@ -192,6 +211,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
       const payload = {
         type,
         amount: Number(form.amount || 0),
+        fund_id: form.fund_id ? Number(form.fund_id) : null,
         description: form.description || null,
         recipient_name: form.recipient_name || null,
         bank_name: form.bank_name || null,
@@ -235,6 +255,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
         transaction_code: "",
         transaction_date: new Date().toISOString().slice(0, 10),
         notes: "",
+        fund_id: "",
       });
       setSlipImage(null);
       setSupportingImages([]);
@@ -377,6 +398,19 @@ export default function TransactionForm({ onClose, onSuccess }) {
           <div style={sectionCardStyle}>
             <div style={labelStyle}>Amount</div>
             <input value={form.amount} onChange={(e) => updateField("amount", e.target.value)} inputMode="numeric" placeholder="0" style={inputStyle} />
+          </div>
+
+          <div style={sectionCardStyle}>
+            <div style={labelStyle}>Fund</div>
+            <select value={form.fund_id} onChange={(e) => updateField("fund_id", e.target.value)} style={selectStyle}>
+              <option value="">Select fund</option>
+              {funds.map((fund) => (
+                <option key={fund.id} value={fund.id}>{fund.name}</option>
+              ))}
+            </select>
+            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 8 }}>
+              Approved transactions will update this fund balance.
+            </div>
           </div>
 
           <div style={sectionCardStyle}>
@@ -543,6 +577,13 @@ const dateInputStyle = {
   WebkitAppearance: "none",
   appearance: "none",
   paddingRight: 14,
+};
+
+const selectStyle = {
+  ...inputStyle,
+  appearance: "none",
+  WebkitAppearance: "none",
+  lineHeight: "normal",
 };
 
 const segBtnStyle = {

@@ -77,11 +77,41 @@ export async function PATCH(request) {
       return NextResponse.json({ error: "Cannot review your own transaction" }, { status: 403 });
     }
 
+    if (tx.status !== "pending") {
+      return NextResponse.json({ error: "Only pending transactions can be reviewed" }, { status: 400 });
+    }
+
     const submitterName = tx.profiles?.full_name || "Staff";
     const amountStr = Number(tx.amount || 0).toLocaleString("vi-VN") + "đ";
 
     if (action === "approve") {
       const reviewedAt = new Date().toISOString();
+
+      if (tx.fund_id) {
+        const { data: fund, error: fundErr } = await supabaseAdmin
+          .from("funds")
+          .select("id, current_balance, name")
+          .eq("id", tx.fund_id)
+          .single();
+
+        if (fundErr || !fund) {
+          return NextResponse.json({ error: "Linked fund not found" }, { status: 404 });
+        }
+
+        const currentBalance = Number(fund.current_balance || 0);
+        const amount = Number(tx.amount || 0);
+        const nextBalance = tx.type === "income" ? currentBalance + amount : currentBalance - amount;
+
+        const { error: fundUpdateError } = await supabaseAdmin
+          .from("funds")
+          .update({ current_balance: nextBalance })
+          .eq("id", tx.fund_id);
+
+        if (fundUpdateError) {
+          return NextResponse.json({ error: fundUpdateError.message }, { status: 500 });
+        }
+      }
+
       // Mark as approved
       const { error } = await supabaseAdmin
         .from("transactions")
@@ -105,7 +135,7 @@ export async function PATCH(request) {
           `Your ${tx.type} of ${amountStr} — "${tx.description || "no description"}" has been approved by ${profile.full_name}.`,
           "info",
           "/transactions",
-          { transaction_id }
+          { transaction_id, fund_id: tx.fund_id || null }
         );
       }
 
