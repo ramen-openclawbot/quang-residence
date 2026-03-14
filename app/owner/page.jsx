@@ -225,7 +225,7 @@ export default function OwnerPage() {
               </div>
 
               {loading ? (
-                <div style={{ fontSize: 13, color: T.textMuted }}>Đang tải dữ liệu...</div>
+                <div style={{ fontSize: 13, color: T.textMuted }}>Loading...</div>
               ) : (
                 <>
                   <div style={{ ...cardStyle, padding: 18, marginBottom: 14, background: "linear-gradient(135deg,#1f331b 0%, #2b4b24 58%, #3d6b30 100%)", color: "white", overflow: "hidden", position: "relative" }}>
@@ -234,16 +234,16 @@ export default function OwnerPage() {
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                         <div>
                           <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Estate overview</div>
-                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Tổng quan vận hành</div>
+                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Quiet control</div>
                         </div>
                         <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Owner</div>
                       </div>
-                      <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Tài chính, nhà cửa, nhân sự và lịch trình trong một màn nhìn</div>
+                      <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Finance, estate, team, and rhythm.</div>
                       <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 16 }}>{fmtVND(totalBalance)}</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Pending duyệt</div><div style={{ fontSize: 18, fontWeight: 800 }}>{pendingTransactions.length}</div></div>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Task mở</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Quỹ hoạt động</div><div style={{ fontSize: 18, fontWeight: 800 }}>{funds.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Pending</div><div style={{ fontSize: 18, fontWeight: 800 }}>{pendingTransactions.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Open tasks</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Active funds</div><div style={{ fontSize: 18, fontWeight: 800 }}>{funds.length}</div></div>
                       </div>
                     </div>
                   </div>
@@ -256,7 +256,7 @@ export default function OwnerPage() {
                   <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                       <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Wealth snapshot</div>
-                      <button onClick={() => setTab("wealth")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở wealth</button>
+                      <button onClick={() => setTab("wealth")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     </div>
                     <div style={{ display: "grid", gap: 12 }}>
                       {topFunds.map((fund) => {
@@ -283,8 +283,8 @@ export default function OwnerPage() {
 
                   <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Ambiance snapshot</div>
-                      <button onClick={() => setTab("ambiance")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở ambiance</button>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Ambience</div>
+                      <button onClick={() => setTab("ambiance")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div style={{ ...cardStyle, padding: 14 }}>
@@ -322,10 +322,32 @@ export default function OwnerPage() {
                     </div>
                   </div>
 
+                  <div style={{ ...cardStyle, padding: 16, marginBottom: 16 }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Collected pieces</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 168, background: "linear-gradient(135deg,#d9d1c3,#8d7555)" }}>
+                        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top right, rgba(255,255,255,0.45), transparent 35%)" }} />
+                        <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Art holding</div>
+                          <div style={{ fontSize: 16, fontWeight: 800, marginTop: 4 }}>Ceramic horse</div>
+                          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>Quiet value, warm materiality.</div>
+                        </div>
+                      </div>
+                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 168, background: "linear-gradient(135deg,#304432,#0f1f12)" }}>
+                        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top left, rgba(255,255,255,0.22), transparent 35%)" }} />
+                        <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Private collection</div>
+                          <div style={{ fontSize: 16, fontWeight: 800, marginTop: 4 }}>Ink landscape</div>
+                          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>A slower, calmer dashboard note.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div style={{ ...cardStyle, padding: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Agenda highlights</div>
-                      <button onClick={() => setTab("agenda")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở agenda</button>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Agenda</div>
+                      <button onClick={() => setTab("agenda")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     </div>
                     {recentTasks.length === 0 ? (
                       <div style={{ fontSize: 13, color: T.textMuted }}>Chưa có task nào để hiển thị.</div>
