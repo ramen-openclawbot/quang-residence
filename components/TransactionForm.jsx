@@ -394,7 +394,12 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
           <div style={sectionCardStyle}>
             <div style={labelStyle}>Date</div>
-            <input type="date" value={form.transaction_date} onChange={(e) => updateField("transaction_date", e.target.value)} style={inputStyle} />
+            <input
+              type="date"
+              value={form.transaction_date}
+              onChange={(e) => updateField("transaction_date", e.target.value)}
+              style={dateInputStyle}
+            />
           </div>
 
           <div style={sectionCardStyle}>
@@ -508,14 +513,24 @@ const helperTextStyle = {
 const inputStyle = {
   width: "100%",
   minHeight: 46,
+  height: 46,
   borderRadius: 12,
   border: `1px solid ${T.border}`,
   background: "white",
   padding: "0 14px",
   fontSize: 14,
+  lineHeight: "46px",
   color: T.text,
   boxSizing: "border-box",
   fontFamily: T.font,
+};
+
+const dateInputStyle = {
+  ...inputStyle,
+  display: "block",
+  WebkitAppearance: "none",
+  appearance: "none",
+  paddingRight: 14,
 };
 
 const segBtnStyle = {
