@@ -112,11 +112,19 @@ function statusTone(status) {
   return { bg: "#eef4ff", color: T.blue };
 }
 
+function taskProgress(status) {
+  if (status === "done" || status === "completed") return 100;
+  if (status === "in_progress") return 60;
+  return 0;
+}
+
 export default function DriverPage() {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, getToken } = useAuth();
   const [tab, setTab] = useState("home");
   const [loading, setLoading] = useState(true);
   const [showTxForm, setShowTxForm] = useState(false);
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [taskSubmitting, setTaskSubmitting] = useState(false);
   const [activePanel, setActivePanel] = useState("");
   const [selectedTrip, setSelectedTrip] = useState(null);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
@@ -124,6 +132,12 @@ export default function DriverPage() {
   const [trips, setTrips] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [newTask, setNewTask] = useState({
+    title: "",
+    description: "",
+    priority: "medium",
+    due_date: "",
+  });
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -133,14 +147,31 @@ export default function DriverPage() {
   async function fetchData() {
     setLoading(true);
     try {
-      const [tripsRes, txRes, tasksRes] = await Promise.all([
-        supabase.from("driving_trips").select("*").eq("assigned_to", profile.id).order("scheduled_time", { ascending: true }),
-        supabase.from("transactions").select("*").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(30),
-        supabase.from("tasks").select("*").or(`assigned_to.eq.${profile.id},created_by.eq.${profile.id}`).order("due_date", { ascending: true }),
-      ]);
-      setTrips(tripsRes.data || []);
-      setTransactions(txRes.data || []);
-      setTasks(tasksRes.data || []);
+      const token = await getToken();
+      let loaded = false;
+      if (token) {
+        const res = await fetch("/api/dashboard/driver", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          setTrips(json.trips || []);
+          setTransactions(json.transactions || []);
+          setTasks(json.tasks || []);
+          loaded = true;
+        }
+      }
+
+      if (!loaded) {
+        const [tripsRes, txRes, tasksRes] = await Promise.all([
+          supabase.from("driving_trips").select("*").eq("assigned_to", profile.id).order("scheduled_time", { ascending: true }),
+          supabase.from("transactions").select("*").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(80),
+          supabase.from("tasks").select("*").or(`assigned_to.eq.${profile.id},created_by.eq.${profile.id}`).order("due_date", { ascending: true }),
+        ]);
+        setTrips(tripsRes.data || []);
+        setTransactions(txRes.data || []);
+        setTasks(tasksRes.data || []);
+      }
     } catch (error) {
       console.error("Driver fetchData error:", error);
     } finally {
@@ -156,10 +187,60 @@ export default function DriverPage() {
     if (!error) fetchData();
   }
 
-  async function updateTaskStatus(task) {
-    const next = task.status === "pending" ? "in_progress" : task.status === "in_progress" ? "done" : "pending";
-    const { error } = await supabase.from("tasks").update({ status: next }).eq("id", task.id);
-    if (!error) fetchData();
+  async function notifyTaskEvent(taskId, eventType, status) {
+    try {
+      const token = await getToken();
+      if (!token || !taskId) return;
+      await fetch("/api/tasks/notify-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ task_id: taskId, event_type: eventType, status }),
+      });
+    } catch (error) {
+      console.warn("Driver notifyTaskEvent failed:", error);
+    }
+  }
+
+  async function handleCreateTask(e) {
+    e.preventDefault();
+    if (!newTask.title.trim() || !profile?.id || taskSubmitting) return;
+    setTaskSubmitting(true);
+    try {
+      const { data, error } = await supabase.from("tasks").insert({
+        title: newTask.title.trim(),
+        description: newTask.description || null,
+        priority: newTask.priority,
+        due_date: newTask.due_date || null,
+        status: "pending",
+        task_type: "driving",
+        assigned_to: profile.id,
+        created_by: profile.id,
+      }).select("id").single();
+      if (error) {
+        console.error("Driver create task error:", error);
+        return;
+      }
+
+      setNewTask({ title: "", description: "", priority: "medium", due_date: "" });
+      setShowTaskForm(false);
+      await notifyTaskEvent(data?.id, "created", "pending");
+      fetchData();
+    } finally {
+      setTaskSubmitting(false);
+    }
+  }
+
+  async function updateTaskStatus(task, nextStatus = null) {
+    const next = nextStatus || (task.status === "pending" ? "in_progress" : task.status === "in_progress" ? "done" : "pending");
+    const patch = {
+      status: next,
+      completed_at: next === "done" ? new Date().toISOString() : null,
+    };
+    const { error } = await supabase.from("tasks").update(patch).eq("id", task.id);
+    if (!error) {
+      await notifyTaskEvent(task.id, "status_changed", next);
+      fetchData();
+    }
   }
 
   const today = useMemo(() => {
@@ -187,10 +268,17 @@ export default function DriverPage() {
   const activeTrip = useMemo(() => trips.find((t) => t.status === "in_progress") || null, [trips]);
   const openTasks = useMemo(() => tasks.filter((t) => t.status !== "done"), [tasks]);
   const isCurrentDayTransaction = (t) => getLocalDateKey(t.transaction_date) === today || getLocalDateKey(t.created_at) === today;
-  const todayExpense = useMemo(() => transactions.filter((t) => t.type === "expense" && isCurrentDayTransaction(t)).reduce((s, t) => s + Number(t.amount || 0), 0), [transactions, today]);
+  const getSignedAmount = (tx) => {
+    const amount = Math.abs(Number(tx.amount || 0));
+    const type = String(tx.type || "").toLowerCase();
+    if (type === "income") return amount;
+    if (type === "expense") return -amount;
+    return -amount;
+  };
+  const todayExpense = useMemo(() => transactions.filter((t) => isCurrentDayTransaction(t)).reduce((s, t) => s + Math.abs(Math.min(0, getSignedAmount(t))), 0), [transactions, today]);
   const monthExpense = useMemo(() => {
     const monthKey = today.slice(0, 7);
-    return transactions.filter((t) => t.type === "expense" && [getLocalDateKey(t.transaction_date), getLocalDateKey(t.created_at)].some((key) => key.startsWith(monthKey))).reduce((s, t) => s + Number(t.amount || 0), 0);
+    return transactions.filter((t) => [getLocalDateKey(t.transaction_date), getLocalDateKey(t.created_at)].some((key) => key.startsWith(monthKey))).reduce((s, t) => s + Math.abs(Math.min(0, getSignedAmount(t))), 0);
   }, [transactions, today]);
 
   return (
@@ -398,13 +486,17 @@ Complete trip
 
               {tab === "tasks" && (
                 <div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 14 }}>Tasks</div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Tasks</div>
+                    <button onClick={() => setShowTaskForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Create</button>
+                  </div>
                   {tasks.length === 0 ? (
                     <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No tasks yet.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {tasks.map((task) => {
                         const tone = statusTone(task.status);
+                        const progress = taskProgress(task.status);
                         return (
                           <button key={task.id} onClick={() => { setSelectedTask(task); setActivePanel("task-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
                             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
@@ -412,6 +504,7 @@ Complete trip
                                 <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
                                 {task.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description}</div>}
                                 <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{task.due_date ? `Due: ${fmtDate(task.due_date)}` : "No deadline"}</div>
+                                <div style={{ fontSize: 11, color: T.textMuted, marginTop: 6 }}>Progress {progress}%</div>
                               </div>
                               <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
                             </div>
@@ -493,11 +586,54 @@ Complete trip
                   </div>
                   <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}>
                     <div>Status: <strong>{selectedTask.status}</strong></div>
+                    <div>Progress: <strong>{taskProgress(selectedTask.status)}%</strong></div>
                     <div>{selectedTask.description || "No notes"}</div>
                   </div>
-                  <button onClick={() => { updateTaskStatus(selectedTask); setActivePanel(""); }} style={primaryBtn}>Update status</button>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {selectedTask.status !== "pending" && <button onClick={() => { updateTaskStatus(selectedTask, "pending"); setActivePanel(""); }} style={primaryBtn}>Mark pending</button>}
+                    {selectedTask.status !== "in_progress" && <button onClick={() => { updateTaskStatus(selectedTask, "in_progress"); setActivePanel(""); }} style={primaryBtn}>Mark in progress</button>}
+                    {selectedTask.status !== "done" && <button onClick={() => { updateTaskStatus(selectedTask, "done"); setActivePanel(""); }} style={primaryBtn}>Mark done</button>}
+                  </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {showTaskForm && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 200, display: "flex", alignItems: "flex-end" }}>
+            <div style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "24px 24px 0 0", padding: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>New task</div>
+                <button onClick={() => setShowTaskForm(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
+                  <MIcon name="close" size={22} color={T.textMuted} />
+                </button>
+              </div>
+              <form onSubmit={handleCreateTask}>
+                <label htmlFor="driver-task-title" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Task title</label>
+                <input id="driver-task-title" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="Task title" required style={inputStyle} />
+                <label htmlFor="driver-task-notes" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginTop: 10, marginBottom: 6 }}>Notes</label>
+                <textarea id="driver-task-notes" value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} placeholder="Notes" style={{ ...inputStyle, minHeight: 90, resize: "none", paddingTop: 12, paddingBottom: 12 }} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
+                  <div>
+                    <label htmlFor="driver-task-priority" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Priority</label>
+                    <select id="driver-task-priority" value={newTask.priority} onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })} style={inputStyle}>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="driver-task-due" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Due date</label>
+                    <input id="driver-task-due" type="date" value={newTask.due_date} onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })} style={inputStyle} />
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
+                  <button type="button" onClick={() => setShowTaskForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Cancel</button>
+                  <button type="submit" disabled={taskSubmitting} style={{ height: 46, borderRadius: 12, border: "none", background: taskSubmitting ? "#93e06e" : T.primary, color: "white", cursor: taskSubmitting ? "default" : "pointer", fontWeight: 800 }}>{taskSubmitting ? "Creating..." : "Create"}</button>
+                </div>
+              </form>
             </div>
           </div>
         )}
@@ -540,4 +676,15 @@ const primaryBtn = {
   fontWeight: 800,
   padding: "0 14px",
   cursor: "pointer",
+};
+
+const inputStyle = {
+  width: "100%",
+  height: 46,
+  borderRadius: 12,
+  border: `1px solid ${T.border}`,
+  background: "white",
+  padding: "0 14px",
+  fontSize: 14,
+  boxSizing: "border-box",
 };

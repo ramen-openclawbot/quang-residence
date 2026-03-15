@@ -95,6 +95,9 @@ export default function OwnerPage() {
   const [tab, setTab] = useState("home");
   const [loading, setLoading] = useState(true);
   const [activePanel, setActivePanel] = useState("");
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [pendingNotifTaskId, setPendingNotifTaskId] = useState(null);
+  const [notifReturnTab, setNotifReturnTab] = useState(null);
   const [accountLoading, setAccountLoading] = useState(false);
   const [accountUsers, setAccountUsers] = useState([]);
   const [accountMsg, setAccountMsg] = useState("");
@@ -104,24 +107,49 @@ export default function OwnerPage() {
   const [funds, setFunds] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [staffProfiles, setStaffProfiles] = useState([]);
   const [settingsData, setSettingsData] = useState([]);
 
   useEffect(() => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const urlTab = params.get("tab");
+    const urlTask = params.get("task");
+    if (urlTab && NAV_TABS.some((item) => item.id === urlTab)) setTab(urlTab);
+    if (urlTask) {
+      setTab("agenda");
+      setPendingNotifTaskId(urlTask);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!pendingNotifTaskId || !tasks.length) return;
+    const match = tasks.find((task) => String(task.id) === String(pendingNotifTaskId));
+    if (match) {
+      setSelectedTask(match);
+      setActivePanel("task-detail");
+      setPendingNotifTaskId(null);
+    }
+  }, [pendingNotifTaskId, tasks]);
+
   async function fetchData() {
     try {
       setLoading(true);
-      const [fundsRes, txRes, tasksRes, settingsRes] = await Promise.all([
+      const [fundsRes, txRes, tasksRes, profilesRes, settingsRes] = await Promise.all([
         supabase.from("funds").select("*").order("id"),
         supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(30),
         supabase.from("tasks").select("*").order("due_date", { ascending: true }).limit(20),
+        supabase.from("profiles").select("id, full_name, role"),
         supabase.from("home_settings").select("*").order("setting_key"),
       ]);
       setFunds(fundsRes.data || []);
       setTransactions(txRes.data || []);
       setTasks(tasksRes.data || []);
+      setStaffProfiles(profilesRes.data || []);
       setSettingsData(settingsRes.data || []);
     } catch (error) {
       console.error("Owner fetchData error:", error);
@@ -285,6 +313,7 @@ export default function OwnerPage() {
   const incomeThisMonth = useMemo(() => transactions.filter((tx) => tx.type === "income" && [getLocalDateKey(tx.transaction_date), getLocalDateKey(tx.created_at)].some((key) => key.startsWith(thisMonthKey))).reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [transactions, thisMonthKey]);
   const topFunds = useMemo(() => [...funds].sort((a, b) => Number(b.current_balance || 0) - Number(a.current_balance || 0)).slice(0, 4), [funds]);
   const recentTasks = useMemo(() => tasks.slice(0, 4), [tasks]);
+  const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);
 
   const securitySetting = settingsData.find((x) => x.setting_key === "security")?.setting_value || {};
   const lightingSetting = settingsData.find((x) => x.setting_key === "lighting")?.setting_value || {};
@@ -308,6 +337,14 @@ export default function OwnerPage() {
                 </div>
                 <NotificationCenter userId={profile?.id} onOpenNotification={(notif) => {
                   const txId = notif?.payload?.transaction_id;
+                  const taskId = notif?.payload?.task_id;
+                  if (taskId) {
+                    const match = tasks.find((t) => String(t.id) === String(taskId));
+                    setTab("agenda");
+                    if (match) setSelectedTask(match);
+                    setActivePanel("task-detail");
+                    return;
+                  }
                   const target = txId ? `/transactions?tx=${txId}&from=owner` : (notif?.link || null);
                   if (target && typeof window !== "undefined") window.location.href = target;
                 }} />
@@ -504,6 +541,14 @@ export default function OwnerPage() {
               <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Ambiance</div>
               <NotificationCenter userId={profile?.id} onOpenNotification={(notif) => {
                 const txId = notif?.payload?.transaction_id;
+                const taskId = notif?.payload?.task_id;
+                if (taskId) {
+                  const match = tasks.find((t) => String(t.id) === String(taskId));
+                  setTab("agenda");
+                  if (match) setSelectedTask(match);
+                  setActivePanel("task-detail");
+                  return;
+                }
                 const target = txId ? `/transactions?tx=${txId}&from=owner` : (notif?.link || null);
                 if (target && typeof window !== "undefined") window.location.href = target;
               }} />
@@ -568,17 +613,22 @@ export default function OwnerPage() {
             </div>
 
             <div style={{ display: "grid", gap: 12 }}>
-              {tasks.slice(0, 10).map((task) => (
-                <div key={task.id} style={{ ...cardStyle, padding: 16 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
-                      <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.due_date ? fmtDate(task.due_date) : "No deadline"}</div>
+              {tasks.slice(0, 10).map((task) => {
+                const tone = task.status === "done" ? { bg: "#e9fff5", color: T.success } : task.status === "in_progress" ? { bg: "#fff7e6", color: T.amber } : { bg: "#eef4ff", color: T.blue };
+                const assignee = staffById[task.assigned_to]?.full_name || staffById[task.created_by]?.full_name || "Unassigned";
+                return (
+                  <button key={task.id} onClick={() => { setSelectedTask(task); setActivePanel("task-detail"); }} style={{ ...cardStyle, padding: 16, width: "100%", textAlign: "left", cursor: "pointer" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
+                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.due_date ? fmtDate(task.due_date) : "No deadline"}</div>
+                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Assignee: {assignee}</div>
+                      </div>
+                      <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
                     </div>
-                    <div style={{ padding: "6px 10px", borderRadius: 999, background: task.status === "done" ? "#e9fff5" : task.status === "in_progress" ? "#fff7e6" : "#eef4ff", color: task.status === "done" ? T.success : task.status === "in_progress" ? T.amber : T.blue, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
-                  </div>
-                </div>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -633,6 +683,7 @@ export default function OwnerPage() {
                   {activePanel === "theme" && "Display & Theme"}
                   {activePanel === "help" && "Help Center"}
                   {activePanel === "agenda-help" && "Agenda Tips"}
+                  {activePanel === "task-detail" && "Task detail"}
                 </div>
                 <button onClick={() => setActivePanel("")} style={{ border: "none", background: "transparent", cursor: "pointer" }}><MIcon name="close" size={22} color={T.textMuted} /></button>
               </div>
@@ -726,6 +777,22 @@ export default function OwnerPage() {
                 <div style={{ display: "grid", gap: 12 }}>
                   <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Agenda view</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Agenda surfaces the nearest tasks already stored in the system.</div></div>
                   <button onClick={() => { setActivePanel(""); setTab("agenda"); }} style={{ ...panelBtn }}>Open Agenda</button>
+                </div>
+              )}
+
+              {activePanel === "task-detail" && selectedTask && (
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ ...softCard, padding: 14 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTask.title}</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedTask.due_date ? fmtDate(selectedTask.due_date) : "No deadline"}</div>
+                  </div>
+                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}>
+                    <div>Status: <strong>{selectedTask.status}</strong></div>
+                    <div>Assignee: <strong>{staffById[selectedTask.assigned_to]?.full_name || staffById[selectedTask.created_by]?.full_name || "Unassigned"}</strong></div>
+                    <div>Priority: <strong>{selectedTask.priority || "medium"}</strong></div>
+                    <div style={{ marginTop: 8 }}>{selectedTask.description || "No notes"}</div>
+                  </div>
+                  <button onClick={() => setActivePanel("")} style={{ ...panelBtn }}>Back</button>
                 </div>
               )}
             </div>
