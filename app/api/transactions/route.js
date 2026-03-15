@@ -45,6 +45,31 @@ async function notify(userId, title, body, type = "info", link = null, payload =
   });
 }
 
+// ─── GET: list transactions for owner / secretary ──────────────────────
+export async function GET(request) {
+  try {
+    const auth = await resolveUser(request);
+    if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    const { profile } = auth;
+
+    if (!["owner", "secretary"].includes(profile.role)) {
+      return NextResponse.json({ error: "Not authorised" }, { status: 403 });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("transactions")
+      .select("*, profiles!created_by(id, full_name, role), approved_by_profile:profiles!approved_by(id, full_name), reviewed_by_profile:profiles!reviewed_by(id, full_name)")
+      .order("created_at", { ascending: false })
+      .limit(300);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true, data: data || [] });
+  } catch (err) {
+    console.error("Transaction GET error:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
 // ─── PATCH: approve or reject a transaction ──────────────────────
 export async function PATCH(request) {
   try {

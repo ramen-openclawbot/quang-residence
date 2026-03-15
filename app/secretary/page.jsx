@@ -286,18 +286,35 @@ export default function SecretaryPage() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [fundsRes, txRes, tasksRes] = await Promise.all([
+      const { data: { session } } = await supabase.auth.getSession();
+      const [fundsRes, tasksRes, txApiRes] = await Promise.all([
         supabase.from("funds").select("*").order("id"),
-        supabase.from("transactions").select("*, profiles!created_by(id, full_name, role), approved_by_profile:profiles!approved_by(id, full_name), reviewed_by_profile:profiles!reviewed_by(id, full_name)").order("created_at", { ascending: false }).limit(120),
         supabase.from("tasks").select("*").order("due_date", { ascending: true }),
+        fetch("/api/transactions", {
+          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+        }),
       ]);
+
+      let txRows = [];
+      if (txApiRes.ok) {
+        const txJson = await txApiRes.json();
+        txRows = txJson.data || [];
+      } else {
+        const txFallback = await supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(120);
+        txRows = txFallback.data || [];
+      }
+
       setFunds(fundsRes.data || []);
-      setTransactions(txRes.data || []);
+      setTransactions(txRows);
       setTasks(tasksRes.data || []);
     } catch (err) {
       console.error("Secretary loadData error:", err);
-      const txFallback = await supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(120);
-      setTransactions(txFallback.data || []);
+      try {
+        const txFallback = await supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(120);
+        setTransactions(txFallback.data || []);
+      } catch (_) {
+        setTransactions([]);
+      }
     } finally {
       setLoading(false);
     }
