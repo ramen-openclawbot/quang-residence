@@ -45,6 +45,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
   const [proofLinksText, setProofLinksText] = useState("");
   const [proofNote, setProofNote] = useState("");
   const [ocrData, setOcrData] = useState(null);
+  const [ocrError, setOcrError] = useState("");
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -75,12 +76,18 @@ export default function TransactionForm({ onClose, onSuccess }) {
       reader.readAsDataURL(file);
     });
 
-  const compressImageIfNeeded = async (file) => {
+  const compressImageIfNeeded = async (file, options = {}) => {
+    const { forceJpeg = false } = options;
     const MAX_BYTES = 1024 * 1024;
     const MAX_DIMENSION = 1600;
     const JPEG_QUALITY = 0.82;
 
-    if (!file || file.size <= MAX_BYTES || !file.type.startsWith("image/")) return file;
+    if (!file || !file.type.startsWith("image/")) return file;
+
+    const mime = (file.type || "").toLowerCase();
+    const shouldConvertForOCR = forceJpeg || !["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(mime);
+    const shouldProcess = shouldConvertForOCR || file.size > MAX_BYTES;
+    if (!shouldProcess) return file;
 
     const imageUrl = URL.createObjectURL(file);
     try {
@@ -110,12 +117,13 @@ export default function TransactionForm({ onClose, onSuccess }) {
       if (!blob) return file;
 
       const baseName = file.name.replace(/\.[^.]+$/, "");
-      const compressed = new File([blob], `${baseName}.jpg`, {
+      const normalized = new File([blob], `${baseName}.jpg`, {
         type: "image/jpeg",
         lastModified: Date.now(),
       });
 
-      return compressed.size < file.size ? compressed : file;
+      if (shouldConvertForOCR) return normalized;
+      return normalized.size < file.size ? normalized : file;
     } finally {
       URL.revokeObjectURL(imageUrl);
     }
@@ -124,6 +132,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
   const parseReceipt = async (file) => {
     try {
       setScanning(true);
+      setOcrError("");
       const imageBase64 = await fileToBase64(file);
       const res = await fetch("/api/ocr", {
         method: "POST",
@@ -146,6 +155,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
       }));
     } catch (err) {
       console.error("OCR parse failed:", err);
+      setOcrError(err.message || "OCR failed");
     } finally {
       setScanning(false);
     }
@@ -154,7 +164,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
   const handleImageSelect = async (e) => {
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
-    const file = await compressImageIfNeeded(rawFile);
+    const file = await compressImageIfNeeded(rawFile, { forceJpeg: true });
     setSlipImage(file);
     await parseReceipt(file);
   };
@@ -368,7 +378,12 @@ export default function TransactionForm({ onClose, onSuccess }) {
             {scanning && (
               <div style={{ marginTop: 10, ...rowStyle, gap: 8 }}>
                 <Loader2 size={16} color={T.primary} className="spin" />
-                <span style={{ color: T.textMuted, fontSize: 13 }}>Preparing image...</span>
+                <span style={{ color: T.textMuted, fontSize: 13 }}>Scanning bank slip...</span>
+              </div>
+            )}
+            {!!ocrError && (
+              <div style={{ marginTop: 10, fontSize: 12, color: T.danger, lineHeight: 1.45 }}>
+                OCR could not read this slip automatically. Anh/chị vẫn có thể nhập tay các trường bên dưới.
               </div>
             )}
           </div>
