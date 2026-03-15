@@ -1,6 +1,6 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-16 01:30 GMT+7_
+_Last updated: 2026-03-16 02:15 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
@@ -263,6 +263,14 @@ Key commit:
 - **Notifications PATCH:** Returns 404 if notification not found instead of silent success
 - **Date filtering fix:** `/api/transactions` GET now filters by `transaction_date` (not `created_at`) to match display
 - **Frontend:** Empty states now have icons, form labels added for a11y, ESC key dismisses modals, task form has loading state, sheet border radius normalized to 24px
+
+### Performance optimization — secretary home (2026-03-16)
+- **Font preloading:** `app/layout.jsx` now uses `preconnect` + `preload` for Google Fonts (Manrope + Material Symbols) to eliminate DNS+TLS latency on first load
+- **Session token caching:** `lib/auth.js` added `tokenRef` (useRef) to cache `access_token` in memory. New `getToken()` callback avoids redundant `supabase.auth.getSession()` network round-trips on every API call
+- **Polling elimination:** `NotificationCenter.jsx` removed 60-second polling interval — now relies on initial fetch + Supabase Realtime subscription only
+- **Bundle reduction:** Replaced all `lucide-react` icon imports (~40KB) with already-loaded Material Symbols via `MIcon` component in `TransactionForm.jsx`. Removed `lucide-react` from `package.json` entirely
+- **Reduced initial data load:** Secretary `loadFullTransactions` default limit reduced from 200 to 30 rows
+- **Auth for OCR:** `TransactionForm.jsx` updated to pass bearer token to `/api/ocr` (required after security hardening) and uses `getToken()` for notify-submit call
 
 ### DB / config
 - `supabase/schema.sql`

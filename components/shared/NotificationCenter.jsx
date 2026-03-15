@@ -69,7 +69,8 @@ export default function NotificationCenter({ userId, onOpenNotification }) {
     setLoading(false);
   };
 
-  useEffect(() => { fetchNotifs(); const iv = setInterval(fetchNotifs, 60000); return () => clearInterval(iv); }, [userId]);
+  // Fetch once on mount — Realtime subscription handles subsequent updates (no polling)
+  useEffect(() => { fetchNotifs(); }, [userId]);
 
   useEffect(() => {
     if (!userId) return;

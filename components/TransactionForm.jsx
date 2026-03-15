@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, ChevronLeft, ImagePlus, Loader2, UploadCloud, X } from "lucide-react";
+import { MIcon } from "./shared/StaffShell";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 
@@ -17,11 +17,11 @@ const T = {
   danger: "#dc2626",
   dangerSoft: "#fef2f2",
   shadow: "0 8px 30px rgba(16,24,16,0.04)",
-  font: "Inter, system-ui, sans-serif",
+  font: "'Manrope', 'Inter', -apple-system, sans-serif",
 };
 
 export default function TransactionForm({ onClose, onSuccess }) {
-  const { profile } = useAuth();
+  const { profile, getToken } = useAuth();
   const fileRef = useRef(null);
   const supportingFileRef = useRef(null);
 
@@ -134,9 +134,13 @@ export default function TransactionForm({ onClose, onSuccess }) {
       setScanning(true);
       setOcrError("");
       const imageBase64 = await fileToBase64(file);
+      const token = await getToken();
       const res = await fetch("/api/ocr", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ imageBase64, imageMimeType: file.type || "image/jpeg" }),
       });
       const data = await res.json();
@@ -246,11 +250,11 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
       // Notify reviewers after submit
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token && inserted?.id) {
+        const notifyToken = await getToken();
+        if (notifyToken && inserted?.id) {
           const notifyRes = await fetch("/api/transactions/notify-submit", {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${notifyToken}` },
             body: JSON.stringify({ transaction_id: inserted.id, amount: payload.amount, type: payload.type, description: payload.description }),
           });
           if (!notifyRes.ok) {
@@ -310,7 +314,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
       <div style={sheetStyle}>
         <div style={topBarStyle}>
           <button onClick={onClose} style={backBtnStyle}>
-            <ChevronLeft size={20} color={T.text} /> Back
+            <MIcon name="chevron_left" size={20} color={T.text} /> Back
           </button>
           <span style={{ fontSize: 16, fontWeight: 700, color: T.text }}>New transaction</span>
           <div style={{ width: 48 }} />
@@ -349,7 +353,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
             <input ref={fileRef} type="file" accept="image/*" onChange={handleImageSelect} style={{ display: "none" }} />
             {!slipImage ? (
               <button type="button" onClick={() => fileRef.current?.click()} style={uploadBoxStyle}>
-                <UploadCloud size={20} color={T.primary} />
+                <MIcon name="cloud_upload" size={20} color={T.primary} />
                 <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Upload bank slip</div>
                 <div style={{ fontSize: 12, color: T.textMuted }}>UNC / transfer receipt</div>
               </button>
@@ -357,7 +361,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
               <div style={compactUploadCardStyle}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                   <div style={compactUploadIconStyle}>
-                    <CheckCircle2 size={20} color={T.primary} />
+                    <MIcon name="check_circle" size={20} color={T.primary} />
                   </div>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: T.text, wordBreak: "break-word" }}>{slipImage.name}</div>
@@ -377,7 +381,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
             )}
             {scanning && (
               <div style={{ marginTop: 10, ...rowStyle, gap: 8 }}>
-                <Loader2 size={16} color={T.primary} className="spin" />
+                <MIcon name="progress_activity" size={16} color={T.primary} style={{ animation: "spin 0.8s linear infinite" }} />
                 <span style={{ color: T.textMuted, fontSize: 13 }}>Scanning bank slip...</span>
               </div>
             )}
@@ -398,7 +402,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
             <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 10 }}>Up to 10 extra images: invoice, received item, chat proof, or related evidence.</div>
             <input ref={supportingFileRef} type="file" accept="image/*" multiple onChange={handleSupportingSelect} style={{ display: "none" }} />
             <button type="button" onClick={() => supportingFileRef.current?.click()} style={uploadBoxStyle}>
-              <ImagePlus size={20} color={T.primary} />
+              <MIcon name="add_photo_alternate" size={20} color={T.primary} />
               <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Add supporting images</div>
               <div style={{ fontSize: 12, color: T.textMuted }}>{supportingImages.length}/10 selected</div>
             </button>
@@ -408,7 +412,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
                   <div key={index} style={{ position: "relative" }}>
                     <img src={src} alt={`Proof ${index + 1}`} style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: 12, border: `1px solid ${T.border}` }} />
                     <button type="button" onClick={() => removeSupportingImage(index)} style={removeProofBtnStyle}>
-                      <X size={14} />
+                      <MIcon name="close" size={14} color="white" />
                     </button>
                   </div>
                 ))}

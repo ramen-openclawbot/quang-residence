@@ -101,7 +101,7 @@ function QuickAction({ icon, label, sub, onClick, primary }) {
 /* ImageLightbox + TransactionDetail are now shared — see components/shared/ */
 
 export default function SecretaryPage() {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, getToken } = useAuth();
   const [tab, setTab] = useState("home");
   const [loading, setLoading] = useState(true);
   const [showTxForm, setShowTxForm] = useState(false);
@@ -148,9 +148,9 @@ export default function SecretaryPage() {
   const loadSummary = useCallback(async () => {
     try {
       setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
+      const token = await getToken();
       const res = await fetch("/api/dashboard/secretary", {
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
         const json = await res.json();
@@ -174,14 +174,14 @@ export default function SecretaryPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getToken]);
 
   /* ── Full transactions: loaded only when Transactions tab is first opened ── */
-  const loadFullTransactions = useCallback(async (limit = 200) => {
+  const loadFullTransactions = useCallback(async (limit = 30) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const token = await getToken();
       const txApiRes = await fetch(`/api/transactions?limit=${limit}`, {
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (txApiRes.ok) {
         const txJson = await txApiRes.json();
@@ -194,7 +194,7 @@ export default function SecretaryPage() {
     } catch (err) {
       console.error("Secretary loadFullTransactions error:", err);
     }
-  }, []);
+  }, [getToken]);
 
   /* Convenience reload used after mutations (task create, audit action, tx submit) */
   const reloadAll = useCallback(async () => {
