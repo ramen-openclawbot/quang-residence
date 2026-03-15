@@ -125,6 +125,8 @@ export default function SecretaryPage() {
   });
 
   const [txFullLoaded, setTxFullLoaded] = useState(false);
+  const [txPage, setTxPage] = useState(0);
+  const TX_PER_PAGE = 5;
 
   const [serverSummary, setServerSummary] = useState(null);
 
@@ -298,6 +300,13 @@ export default function SecretaryPage() {
       tx.type,
     ].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
   }, [txMonthFiltered, txSearch]);
+
+  /* Reset page when filters change */
+  useEffect(() => { setTxPage(0); }, [txSearch, selectedMonth, selectedYear]);
+
+  const txTotalPages = Math.max(1, Math.ceil(txFiltered.length / TX_PER_PAGE));
+  const txPageItems = useMemo(() => txFiltered.slice(txPage * TX_PER_PAGE, (txPage + 1) * TX_PER_PAGE), [txFiltered, txPage]);
+
   const txIncomeTotal = useMemo(() => txMonthFiltered.filter((tx) => tx.type === "income").reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [txMonthFiltered]);
   const txExpenseTotal = useMemo(() => txMonthFiltered.filter((tx) => tx.type === "expense").reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [txMonthFiltered]);
   const txPendingCount = useMemo(() => txMonthFiltered.filter((tx) => tx.status === "pending").length, [txMonthFiltered]);
@@ -546,38 +555,91 @@ export default function SecretaryPage() {
                       No transactions found.
                     </div>
                   ) : (
-                    <div style={{ display: "grid", gap: 8 }}>
-                      {txFiltered.map((tx) => {
-                        const isIncome = tx.type === "income";
-                        const statusColor = tx.status === "approved" ? T.success : tx.status === "pending" ? T.amber : T.danger;
-                        return (
-                          <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("transaction-detail"); }} style={{ ...cardStyle, padding: 14, width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, border: `1px solid ${T.border}` }}>
-                            <div style={{ width: 42, height: 42, borderRadius: 12, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                              <MIcon name={isIncome ? "trending_up" : "trending_down"} size={20} color={isIncome ? T.success : T.danger} />
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", columnGap: 12, alignItems: "start" }}>
-                              <div style={{ minWidth: 0 }}>
-                                <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                  {tx.description || tx.recipient_name || (isIncome ? "Income" : "Expense")}
+                    <>
+                      <div style={{ display: "grid", gap: 8 }}>
+                        {txPageItems.map((tx) => {
+                          const isIncome = tx.type === "income";
+                          const statusColor = tx.status === "approved" ? T.success : tx.status === "pending" ? T.amber : T.danger;
+                          return (
+                            <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("transaction-detail"); }} style={{ ...cardStyle, padding: 14, width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, border: `1px solid ${T.border}` }}>
+                              <div style={{ width: 42, height: 42, borderRadius: 12, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                <MIcon name={isIncome ? "trending_up" : "trending_down"} size={20} color={isIncome ? T.success : T.danger} />
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", columnGap: 12, alignItems: "start" }}>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {tx.description || tx.recipient_name || (isIncome ? "Income" : "Expense")}
+                                  </div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, minWidth: 0, flexWrap: "wrap" }}>
+                                    <div style={{ fontSize: 12, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                      {tx.profiles?.full_name || "—"} · {fmtDate(tx.transaction_date || tx.created_at)}
+                                    </div>
+                                    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, background: `${statusColor}15`, color: statusColor, fontSize: 10, fontWeight: 700, textTransform: "uppercase", flexShrink: 0 }}>
+                                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: statusColor }} />
+                                      {tx.status}
+                                    </div>
+                                  </div>
                                 </div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, minWidth: 0, flexWrap: "wrap" }}>
-                                  <div style={{ fontSize: 12, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                    {tx.profiles?.full_name || "—"} · {fmtDate(tx.transaction_date || tx.created_at)}
-                                  </div>
-                                  <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, background: `${statusColor}15`, color: statusColor, fontSize: 10, fontWeight: 700, textTransform: "uppercase", flexShrink: 0 }}>
-                                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: statusColor }} />
-                                    {tx.status}
-                                  </div>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: isIncome ? T.success : T.danger, whiteSpace: "nowrap", textAlign: "right", alignSelf: "center" }}>
+                                  {isIncome ? "+" : "−"}{fmtVND(Math.abs(Number(tx.amount || 0)))}
                                 </div>
                               </div>
-                              <div style={{ fontSize: 14, fontWeight: 800, color: isIncome ? T.success : T.danger, whiteSpace: "nowrap", textAlign: "right", alignSelf: "center" }}>
-                                {isIncome ? "+" : "−"}{fmtVND(Math.abs(Number(tx.amount || 0)))}
-                              </div>
-                            </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Pagination controls */}
+                      {txTotalPages > 1 && (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 16 }}>
+                          <button
+                            onClick={() => setTxPage((p) => Math.max(0, p - 1))}
+                            disabled={txPage === 0}
+                            style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${T.border}`, background: T.card, cursor: txPage === 0 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: txPage === 0 ? 0.35 : 1 }}
+                          >
+                            <MIcon name="chevron_left" size={18} color={T.text} />
                           </button>
-                        );
-                      })}
-                    </div>
+
+                          {Array.from({ length: txTotalPages }, (_, i) => {
+                            /* Show max 5 page buttons: first, last, current ±1 */
+                            if (txTotalPages <= 5 || i === 0 || i === txTotalPages - 1 || Math.abs(i - txPage) <= 1) {
+                              return (
+                                <button
+                                  key={i}
+                                  onClick={() => setTxPage(i)}
+                                  style={{
+                                    minWidth: 36, height: 36, borderRadius: 10, border: "none",
+                                    background: i === txPage ? T.primary : T.card,
+                                    color: i === txPage ? "white" : T.text,
+                                    fontSize: 13, fontWeight: 800, cursor: "pointer",
+                                    boxShadow: i === txPage ? "none" : `inset 0 0 0 1px ${T.border}`,
+                                  }}
+                                >
+                                  {i + 1}
+                                </button>
+                              );
+                            }
+                            /* Render "..." ellipsis only once between gaps */
+                            if (i === 1 && txPage > 2) return <span key={i} style={{ fontSize: 13, color: T.textMuted, padding: "0 2px" }}>...</span>;
+                            if (i === txTotalPages - 2 && txPage < txTotalPages - 3) return <span key={i} style={{ fontSize: 13, color: T.textMuted, padding: "0 2px" }}>...</span>;
+                            return null;
+                          })}
+
+                          <button
+                            onClick={() => setTxPage((p) => Math.min(txTotalPages - 1, p + 1))}
+                            disabled={txPage >= txTotalPages - 1}
+                            style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${T.border}`, background: T.card, cursor: txPage >= txTotalPages - 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: txPage >= txTotalPages - 1 ? 0.35 : 1 }}
+                          >
+                            <MIcon name="chevron_right" size={18} color={T.text} />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Page info */}
+                      <div style={{ textAlign: "center", fontSize: 12, color: T.textMuted, marginTop: 8 }}>
+                        {txFiltered.length} transactions · Page {txPage + 1} of {txTotalPages}
+                      </div>
+                    </>
                   )}
                 </div>
               )}
