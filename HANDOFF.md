@@ -1,6 +1,6 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-15 21:46 GMT+7_
+_Last updated: 2026-03-16 00:30 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
@@ -232,17 +232,23 @@ Key commit:
 - Notification items related to transactions should deep-link with context so back-navigation stays correct. Current behavior:
   - Secretary opens transaction notifications in-place inside `/secretary` (Transactions tab + detail overlay)
   - Owner opens transaction notifications via `/transactions?tx=<id>&from=owner`
-- Performance note: after merging Audit Ledger into Secretary → Transactions, load cost increased. Future work should prioritize a **performance pass** instead of more UI polish. Recommended direction:
-  - load data by tab instead of loading deep transaction data on initial dashboard render
-  - keep initial transaction payload small (e.g. 20–40 rows)
-  - fetch full transaction detail only when a card is opened
-  - split transaction summary/list/detail APIs instead of using one heavy fetch for all purposes
-  - consider pagination or load-more for ledger-style screens
-  - keep server API loading for secretary transactions as the safer production path; do not revert to client-only query logic without re-checking RLS behavior
+- **Performance pass completed.** After merging Audit Ledger into Secretary → Transactions, load cost had increased. The following optimizations were applied:
+  - **Shared components:** `ImageLightbox` and `TransactionDetail` extracted into `components/shared/` — used by both `/secretary` and `/transactions` pages
+  - **Lazy-load by tab:** Secretary Home tab loads only summary data (funds + tasks + 10 recent tx via `/api/dashboard/secretary`). Full transaction list loads only when the Transactions tab is first opened
+  - **Server-side summary API:** `GET /api/dashboard/secretary` returns pre-computed dashboard data (funds, tasks, recent tx, today income/expense, pending count) in a single request
+  - **Transaction pagination:** `/api/transactions` now supports `offset` + `limit` + optional `month`/`year` query params with total count. The `/transactions` ledger page uses 30-row pages with a "Load more" button
+  - Server API loading remains the safer production path; client-side Supabase querying is only used as fallback
 - Transaction audit behavior was upgraded in phases:
   - **Phase 1:** rejected transactions are preserved instead of deleted
   - **Phase 2:** approved transactions can update `funds.current_balance` when `fund_id` is set
   - **Phase 3:** owner/secretary balance cards now prefer real fund balances and explicitly label when they are still using ledger fallback
+
+### Shared components (new)
+- `components/shared/ImageLightbox.jsx` — full-screen image viewer with touch swipe + keyboard nav
+- `components/shared/TransactionDetail.jsx` — transaction detail panel with audit actions (approve/reject)
+
+### Performance / API (new)
+- `app/api/dashboard/secretary/route.js` — lightweight summary endpoint for secretary Home tab
 
 ### DB / config
 - `supabase/schema.sql`

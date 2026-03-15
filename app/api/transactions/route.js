@@ -57,16 +57,30 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(Math.max(Number(searchParams.get("limit") || 120), 1), 300);
+    const limit = Math.min(Math.max(Number(searchParams.get("limit") || 40), 1), 300);
+    const offset = Math.max(Number(searchParams.get("offset") || 0), 0);
 
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from("transactions")
-      .select("*, profiles!created_by(id, full_name, role), approved_by_profile:profiles!approved_by(id, full_name), reviewed_by_profile:profiles!reviewed_by(id, full_name)")
+      .select("*, profiles!created_by(id, full_name, role), approved_by_profile:profiles!approved_by(id, full_name), reviewed_by_profile:profiles!reviewed_by(id, full_name)", { count: "exact" })
       .order("created_at", { ascending: false })
-      .limit(limit);
+      .range(offset, offset + limit - 1);
+
+    // Optional month/year filter
+    const month = searchParams.get("month");
+    const year = searchParams.get("year");
+    if (month !== null && year !== null) {
+      const m = Number(month);
+      const y = Number(year);
+      const startDate = new Date(y, m, 1).toISOString();
+      const endDate = new Date(y, m + 1, 0, 23, 59, 59).toISOString();
+      query = query.gte("created_at", startDate).lte("created_at", endDate);
+    }
+
+    const { data, error, count } = await query;
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ success: true, data: data || [] });
+    return NextResponse.json({ success: true, data: data || [], total: count, hasMore: (offset + limit) < (count || 0) });
   } catch (err) {
     console.error("Transaction GET error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });

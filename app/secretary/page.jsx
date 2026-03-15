@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import StaffShell, { MIcon } from "../../components/shared/StaffShell";
 import NotificationCenter from "../../components/shared/NotificationCenter";
+import TransactionDetail from "../../components/shared/TransactionDetail";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
@@ -97,168 +98,7 @@ function QuickAction({ icon, label, sub, onClick, primary }) {
   );
 }
 
-function ImageLightbox({ images, startIndex, onClose }) {
-  const [idx, setIdx] = useState(startIndex || 0);
-  const [touchStart, setTouchStart] = useState(null);
-
-  const prev = () => setIdx((i) => (i - 1 + images.length) % images.length);
-  const next = () => setIdx((i) => (i + 1) % images.length);
-
-  const handleTouchStart = (e) => setTouchStart(e.touches[0].clientX);
-  const handleTouchEnd = (e) => {
-    if (touchStart === null) return;
-    const diff = e.changedTouches[0].clientX - touchStart;
-    if (diff > 60) prev();
-    else if (diff < -60) next();
-    setTouchStart(null);
-  };
-
-  useEffect(() => {
-    const h = (e) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft") prev();
-      if (e.key === "ArrowRight") next();
-    };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, []);
-
-  return (
-    <div onClick={onClose} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.92)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
-      <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer" }}>
-        <MIcon name="close" size={28} color="white" />
-      </button>
-      <img src={images[idx]} alt={`Image ${idx + 1}`} onClick={(e) => e.stopPropagation()} style={{ maxWidth: "92vw", maxHeight: "82vh", objectFit: "contain", borderRadius: 8 }} />
-      <div style={{ color: "white", marginTop: 12, fontSize: 14, fontWeight: 600 }}>{idx + 1} / {images.length}</div>
-      {images.length > 1 && (
-        <>
-          <button onClick={(e) => { e.stopPropagation(); prev(); }} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 44, height: 44, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <MIcon name="chevron_left" size={28} color="white" />
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); next(); }} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 44, height: 44, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <MIcon name="chevron_right" size={28} color="white" />
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
-function SecretaryTransactionDetail({ tx, profile, onClose, onAction }) {
-  const [rejectReason, setRejectReason] = useState("");
-  const [showRejectInput, setShowRejectInput] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [lightbox, setLightbox] = useState(null);
-
-  const supportingUrls = tx.ocr_raw_data?.supporting_proof_urls || [];
-  const proofLinks = tx.ocr_raw_data?.proof_links || [];
-  const proofNote = tx.ocr_raw_data?.proof_note || "";
-  const allImages = [tx.slip_image_url, ...supportingUrls].filter(Boolean);
-
-  const canReview = tx.status === "pending" && (profile.role === "owner" || (profile.role === "secretary" && tx.created_by !== profile.id));
-  const statusColor = tx.status === "approved" ? T.success : tx.status === "rejected" ? T.danger : T.amber;
-  const statusLabel = tx.status === "approved" ? "Approved" : tx.status === "rejected" ? "Rejected" : "Pending review";
-
-  const doAction = async (action) => {
-    setLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch("/api/transactions", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ transaction_id: tx.id, action, reject_reason: rejectReason }),
-      });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Action failed");
-      onAction(action, tx.id);
-    } catch (err) {
-      alert(err.message || "Action failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const InfoRow = ({ label, value, mono }) => value ? (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 14, color: T.text, fontWeight: 500, fontFamily: mono ? "monospace" : "inherit" }}>{value}</div>
-    </div>
-  ) : null;
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(8,15,8,0.32)", display: "flex", justifyContent: "center", alignItems: "flex-end" }}>
-      {lightbox && <ImageLightbox images={lightbox.images} startIndex={lightbox.index} onClose={() => setLightbox(null)} />}
-      <div style={{ width: "100%", maxWidth: 430, background: T.bg, borderRadius: "24px 24px 0 0", maxHeight: "94vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px 14px", background: T.card, borderBottom: `1px solid ${T.border}` }}>
-          <button onClick={onClose} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", cursor: "pointer", color: T.text, fontSize: 15, fontWeight: 600 }}>
-            <MIcon name="arrow_back" size={20} /> Back
-          </button>
-          <span style={{ fontSize: 16, fontWeight: 700, color: T.text }}>Transaction detail</span>
-          <div style={{ width: 48 }} />
-        </div>
-        <div style={{ flex: 1, overflowY: "auto", padding: 18, display: "grid", gap: 14 }}>
-          <div style={{ ...cardStyle, padding: 20, textAlign: "center" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: tx.type === "income" ? T.success : T.danger }}>{tx.type === "income" ? "Income" : "Expense"}</div>
-            <div style={{ fontSize: 32, fontWeight: 900, color: T.text, marginTop: 6 }}>{fmtVND(tx.amount)}</div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 10, padding: "4px 12px", borderRadius: 999, background: `${statusColor}15`, color: statusColor, fontSize: 12, fontWeight: 700 }}>
-              <div style={{ width: 7, height: 7, borderRadius: "50%", background: statusColor }} />{statusLabel}
-            </div>
-          </div>
-          <div style={{ ...cardStyle, padding: 18 }}>
-            <InfoRow label="Description" value={tx.description} />
-            <InfoRow label="Recipient" value={tx.recipient_name} />
-            <InfoRow label="Bank" value={tx.bank_name} />
-            <InfoRow label="Account number" value={tx.bank_account} mono />
-            <InfoRow label="Transaction code" value={tx.transaction_code} mono />
-            <InfoRow label="Date" value={fmtDate(tx.transaction_date)} />
-            <InfoRow label="Submitted" value={`${fmtDate(tx.created_at)} ${fmtRelative(tx.created_at)}`} />
-            <InfoRow label="Submitted by" value={tx.profiles?.full_name || "—"} />
-            <InfoRow label="Notes" value={tx.notes} />
-          </div>
-          {allImages.length > 0 && (
-            <div style={{ ...cardStyle, padding: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 12 }}>Attachments</div>
-              <div style={{ display: "grid", gridTemplateColumns: allImages.length === 1 ? "1fr" : "1fr 1fr", gap: 10 }}>
-                {allImages.map((url, i) => (
-                  <div key={i} onClick={() => setLightbox({ images: allImages, index: i })} style={{ cursor: "pointer", position: "relative" }}>
-                    <img src={url} alt={i === 0 ? "Bank slip" : `Proof ${i}`} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 14, border: `1px solid ${T.border}` }} />
-                    <div style={{ position: "absolute", bottom: 8, left: 8, padding: "2px 8px", borderRadius: 6, background: "rgba(0,0,0,0.6)", color: "white", fontSize: 10, fontWeight: 700 }}>{i === 0 ? "Slip" : `Proof ${i}`}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {proofLinks.length > 0 && (
-            <div style={{ ...cardStyle, padding: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 10 }}>Proof links</div>
-              {proofLinks.map((link, i) => <a key={i} href={link} target="_blank" rel="noopener noreferrer" style={{ display: "block", fontSize: 13, color: T.primary, marginBottom: 6, wordBreak: "break-all" }}>{link}</a>)}
-            </div>
-          )}
-          {proofNote && <div style={{ ...cardStyle, padding: 18 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 6 }}>Proof note</div><div style={{ fontSize: 14, color: T.text, lineHeight: 1.5 }}>{proofNote}</div></div>}
-          {canReview && (
-            <div style={{ ...cardStyle, padding: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 14 }}>Audit</div>
-              {!showRejectInput ? (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <button onClick={() => doAction("approve")} disabled={loading} style={{ height: 46, borderRadius: 12, border: "none", background: T.primary, color: "white", fontWeight: 800, cursor: "pointer", fontSize: 14, opacity: loading ? 0.6 : 1 }}>{loading ? "..." : "Approve"}</button>
-                  <button onClick={() => setShowRejectInput(true)} disabled={loading} style={{ height: 46, borderRadius: 12, border: `1.5px solid ${T.danger}`, background: "white", color: T.danger, fontWeight: 800, cursor: "pointer", fontSize: 14 }}>Reject</button>
-                </div>
-              ) : (
-                <div style={{ display: "grid", gap: 10 }}>
-                  <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Why is this transaction rejected? This note will be sent to the submitter." style={{ width: "100%", minHeight: 80, borderRadius: 12, border: `1px solid ${T.border}`, padding: 14, fontSize: 14, boxSizing: "border-box", resize: "vertical" }} />
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    <button onClick={() => setShowRejectInput(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", color: T.text, fontWeight: 700, cursor: "pointer", fontSize: 14 }}>Cancel</button>
-                    <button onClick={() => doAction("reject")} disabled={loading || !rejectReason.trim()} style={{ height: 46, borderRadius: 12, border: "none", background: T.danger, color: "white", fontWeight: 800, cursor: "pointer", fontSize: 14, opacity: loading || !rejectReason.trim() ? 0.5 : 1 }}>{loading ? "..." : "Confirm reject"}</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+/* ImageLightbox + TransactionDetail are now shared — see components/shared/ */
 
 export default function SecretaryPage() {
   const { profile, signOut } = useAuth();
@@ -284,53 +124,81 @@ export default function SecretaryPage() {
     due_date: "",
   });
 
-  const loadData = useCallback(async (txLimit = 40) => {
+  const [txFullLoaded, setTxFullLoaded] = useState(false);
+
+  const [serverSummary, setServerSummary] = useState(null);
+
+  /* ── Home summary: single API call for dashboard data ── */
+  const loadSummary = useCallback(async () => {
     try {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      const [fundsRes, tasksRes, txApiRes] = await Promise.all([
-        supabase.from("funds").select("*").order("id"),
-        supabase.from("tasks").select("*").order("due_date", { ascending: true }),
-        fetch(`/api/transactions?limit=${txLimit}`, {
-          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
-        }),
-      ]);
-
-      let txRows = [];
-      if (txApiRes.ok) {
-        const txJson = await txApiRes.json();
-        txRows = txJson.data || [];
+      const res = await fetch("/api/dashboard/secretary", {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setFunds(json.funds || []);
+        setTasks(json.tasks || []);
+        setTransactions(json.recentTx || []);
+        setServerSummary({ todaySummary: json.todaySummary, pendingCount: json.pendingCount });
       } else {
-        const txFallback = await supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(120);
-        txRows = txFallback.data || [];
+        /* Fallback: direct Supabase queries */
+        const [fundsRes, tasksRes, txRes] = await Promise.all([
+          supabase.from("funds").select("*").order("id"),
+          supabase.from("tasks").select("*").order("due_date", { ascending: true }),
+          supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(20),
+        ]);
+        setFunds(fundsRes.data || []);
+        setTasks(tasksRes.data || []);
+        setTransactions(txRes.data || []);
       }
-
-      setFunds(fundsRes.data || []);
-      setTransactions(txRows);
-      setTasks(tasksRes.data || []);
     } catch (err) {
-      console.error("Secretary loadData error:", err);
-      try {
-        const txFallback = await supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(120);
-        setTransactions(txFallback.data || []);
-      } catch (_) {
-        setTransactions([]);
-      }
+      console.error("Secretary loadSummary error:", err);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    if (!profile?.id) return;
-    loadData(40);
-  }, [profile?.id, loadData]);
+  /* ── Full transactions: loaded only when Transactions tab is first opened ── */
+  const loadFullTransactions = useCallback(async (limit = 200) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const txApiRes = await fetch(`/api/transactions?limit=${limit}`, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
+      if (txApiRes.ok) {
+        const txJson = await txApiRes.json();
+        setTransactions(txJson.data || []);
+      } else {
+        const txFallback = await supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(limit);
+        setTransactions(txFallback.data || []);
+      }
+      setTxFullLoaded(true);
+    } catch (err) {
+      console.error("Secretary loadFullTransactions error:", err);
+    }
+  }, []);
+
+  /* Convenience reload used after mutations (task create, audit action, tx submit) */
+  const reloadAll = useCallback(async () => {
+    if (txFullLoaded) {
+      await Promise.all([loadSummary(), loadFullTransactions()]);
+    } else {
+      await loadSummary();
+    }
+  }, [txFullLoaded, loadSummary, loadFullTransactions]);
 
   useEffect(() => {
-    if (tab !== "transactions") return;
-    if (transactions.length >= 100) return;
-    loadData(200);
-  }, [tab]);
+    if (!profile?.id) return;
+    loadSummary();
+  }, [profile?.id, loadSummary]);
+
+  /* Lazy-load full transactions on first visit to Transactions tab */
+  useEffect(() => {
+    if (tab !== "transactions" || txFullLoaded) return;
+    loadFullTransactions();
+  }, [tab, txFullLoaded, loadFullTransactions]);
 
   useEffect(() => {
     if (!pendingNotifTxId || !transactions.length) return;
@@ -359,13 +227,13 @@ export default function SecretaryPage() {
     }
     setNewTask({ title: "", description: "", priority: "medium", due_date: "" });
     setShowTaskForm(false);
-    loadData();
+    reloadAll();
   }
 
   async function toggleTaskStatus(task) {
     const next = task.status === "pending" ? "in_progress" : task.status === "in_progress" ? "done" : "pending";
     const { error } = await supabase.from("tasks").update({ status: next }).eq("id", task.id);
-    if (!error) loadData();
+    if (!error) reloadAll();
   }
 
   const fundsBalance = useMemo(() => funds.reduce((s, f) => s + Number(f.current_balance || 0), 0), [funds]);
@@ -452,8 +320,8 @@ export default function SecretaryPage() {
     const transactionKey = getLocalDateKey(t.transaction_date);
     return createdKey === today || transactionKey === today;
   };
-  const incomeToday = useMemo(() => transactions.filter((t) => t.type === "income" && isTodayTransaction(t)).reduce((s, t) => s + Number(t.amount || 0), 0), [transactions, today]);
-  const expenseToday = useMemo(() => transactions.filter((t) => t.type === "expense" && isTodayTransaction(t)).reduce((s, t) => s + Number(t.amount || 0), 0), [transactions, today]);
+  const incomeToday = useMemo(() => serverSummary?.todaySummary?.income ?? transactions.filter((t) => t.type === "income" && isTodayTransaction(t)).reduce((s, t) => s + Number(t.amount || 0), 0), [serverSummary, transactions, today]);
+  const expenseToday = useMemo(() => serverSummary?.todaySummary?.expense ?? transactions.filter((t) => t.type === "expense" && isTodayTransaction(t)).reduce((s, t) => s + Number(t.amount || 0), 0), [serverSummary, transactions, today]);
   const upcomingItems = useMemo(() => tasks.filter((t) => t.due_date).slice().sort((a, b) => (a.due_date || "").localeCompare(b.due_date || "")), [tasks]);
 
   return (
@@ -481,7 +349,7 @@ export default function SecretaryPage() {
                       setActivePanel("transaction-detail");
                     } else {
                       setPendingNotifTxId(txId);
-                      loadData(200);
+                      loadFullTransactions(200);
                     }
                     return;
                   }
@@ -772,7 +640,7 @@ export default function SecretaryPage() {
           )}
         </div>
 
-        {showTxForm && <TransactionForm onClose={() => setShowTxForm(false)} onSuccess={() => { setShowTxForm(false); loadData(); }} />}
+        {showTxForm && <TransactionForm onClose={() => setShowTxForm(false)} onSuccess={() => { setShowTxForm(false); reloadAll(); }} />}
 
         {activePanel && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 220, display: "flex", alignItems: "flex-end" }} onClick={() => setActivePanel("")}>
@@ -796,14 +664,14 @@ export default function SecretaryPage() {
               )}
 
               {activePanel === "transaction-detail" && selectedTransaction && (
-                <SecretaryTransactionDetail
+                <TransactionDetail
                   tx={selectedTransaction}
                   profile={profile}
                   onClose={() => setActivePanel("")}
                   onAction={() => {
                     setActivePanel("");
                     setSelectedTransaction(null);
-                    loadData();
+                    reloadAll();
                   }}
                 />
               )}
