@@ -1,12 +1,12 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-15 21:08 GMT+7_
+_Last updated: 2026-03-15 21:46 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
 - GitHub: `https://github.com/ramen-openclawbot/quang-residence.git`
 - Branch: `main`
-- Current pushed commit: `403feac`
+- Current pushed commit: `a7ecf54`
 
 ## Current product state
 ZenHome is now in a **product-hardening + CRUD-completion** phase, not an auth/firefighting phase.
@@ -229,7 +229,16 @@ Key commit:
 - Secretary received a visible notification center so submitted transactions from driver / housekeeper can surface in-role instead of only existing in backend data.
 - Secretary transaction cards went through multiple iterations; final direction is to mirror the Audit Ledger typography rhythm and keep the transaction amount visibly pinned on the right.
 - A later merge moved Audit Ledger capabilities into Secretary → Transactions. Important lesson: do **not** rely only on client-side Supabase queries for secretary transaction data on production, because RLS / relation differences can make the UI look empty even when data exists. Current safer direction is to load secretary transaction data via the authenticated server API route (`GET /api/transactions`) and only use client-side querying as fallback.
-- Notification items related to transactions should deep-link to `/transactions?tx=<id>` so owner/secretary can open the transaction detail screen directly from the notification center.
+- Notification items related to transactions should deep-link with context so back-navigation stays correct. Current behavior:
+  - Secretary opens transaction notifications in-place inside `/secretary` (Transactions tab + detail overlay)
+  - Owner opens transaction notifications via `/transactions?tx=<id>&from=owner`
+- Performance note: after merging Audit Ledger into Secretary → Transactions, load cost increased. Future work should prioritize a **performance pass** instead of more UI polish. Recommended direction:
+  - load data by tab instead of loading deep transaction data on initial dashboard render
+  - keep initial transaction payload small (e.g. 20–40 rows)
+  - fetch full transaction detail only when a card is opened
+  - split transaction summary/list/detail APIs instead of using one heavy fetch for all purposes
+  - consider pagination or load-more for ledger-style screens
+  - keep server API loading for secretary transactions as the safer production path; do not revert to client-only query logic without re-checking RLS behavior
 - Transaction audit behavior was upgraded in phases:
   - **Phase 1:** rejected transactions are preserved instead of deleted
   - **Phase 2:** approved transactions can update `funds.current_balance` when `fund_id` is set
