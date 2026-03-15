@@ -321,6 +321,14 @@ export default function TransactionsPage() {
 
   useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const targetTx = new URLSearchParams(window.location.search).get("tx");
+    if (!targetTx || !transactions.length || detail) return;
+    const matched = transactions.find((tx) => String(tx.id) === String(targetTx));
+    if (matched) setDetail(matched);
+  }, [transactions, detail]);
+
   // Realtime subscription for new/updated/deleted transactions
   useEffect(() => {
     const ch = supabase

@@ -1,12 +1,12 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-15 11:28 GMT+7_
+_Last updated: 2026-03-15 21:08 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
 - GitHub: `https://github.com/ramen-openclawbot/quang-residence.git`
 - Branch: `main`
-- Current pushed commit: `dfa9d7c`
+- Current pushed commit: `403feac`
 
 ## Current product state
 ZenHome is now in a **product-hardening + CRUD-completion** phase, not an auth/firefighting phase.
@@ -228,6 +228,8 @@ Key commit:
 - Owner Home layout was later adjusted so `Collected pieces` appears above `Ambience`, matching the preferred visual hierarchy.
 - Secretary received a visible notification center so submitted transactions from driver / housekeeper can surface in-role instead of only existing in backend data.
 - Secretary transaction cards went through multiple iterations; final direction is to mirror the Audit Ledger typography rhythm and keep the transaction amount visibly pinned on the right.
+- A later merge moved Audit Ledger capabilities into Secretary → Transactions. Important lesson: do **not** rely only on client-side Supabase queries for secretary transaction data on production, because RLS / relation differences can make the UI look empty even when data exists. Current safer direction is to load secretary transaction data via the authenticated server API route (`GET /api/transactions`) and only use client-side querying as fallback.
+- Notification items related to transactions should deep-link to `/transactions?tx=<id>` so owner/secretary can open the transaction detail screen directly from the notification center.
 - Transaction audit behavior was upgraded in phases:
   - **Phase 1:** rejected transactions are preserved instead of deleted
   - **Phase 2:** approved transactions can update `funds.current_balance` when `fund_id` is set
@@ -282,10 +284,10 @@ All household financial transactions flow through a centralized audit pipeline. 
 
 ```
 Submit (pending) → Review → Approve (accepted into system)
-                         → Reject (deleted permanently + submitter notified)
+                         → Reject (status=rejected + submitter notified)
 ```
 
-A rejected transaction is **permanently removed** from the database. The submitter receives a real-time notification with the rejection reason and must create a new transaction from scratch if needed.
+A rejected transaction is **preserved for audit trail** in the database. The submitter receives a real-time notification with the rejection reason and can review/resubmit if needed.
 
 ### Real-time notifications
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "../../lib/supabase";
 import { T } from "../../lib/tokens";
 
-function NotifItem({ notif, onRead }) {
+function NotifItem({ notif, onRead, onOpen }) {
   const typeIcon = { report: "bar_chart", pending_approval: "schedule", warning: "warning", reminder: "notifications", info: "info" };
   const typeColor = { report: "#3b82f6", pending_approval: "#f59e0b", warning: "#ef4444", reminder: T.primary, info: "#64748b" };
 
@@ -18,8 +18,13 @@ function NotifItem({ notif, onRead }) {
     return `${Math.floor(hrs / 24)}d ago`;
   };
 
+  const handleClick = async () => {
+    if (!notif.read_at) await onRead(notif.id);
+    onOpen?.(notif);
+  };
+
   return (
-    <div onClick={() => !notif.read_at && onRead(notif.id)} style={{
+    <div onClick={handleClick} style={{
       padding: "14px 16px", borderBottom: `1px solid ${T.border}`,
       background: notif.read_at ? "#fff" : "#f8fdf5",
       cursor: notif.read_at ? "default" : "pointer", transition: "background 0.2s",
@@ -49,7 +54,7 @@ function NotifItem({ notif, onRead }) {
   );
 }
 
-export default function NotificationCenter({ userId }) {
+export default function NotificationCenter({ userId, onOpenNotification }) {
   const [open, setOpen] = useState(false);
   const [notifs, setNotifs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -82,6 +87,21 @@ export default function NotificationCenter({ userId }) {
     const now = new Date().toISOString();
     await supabase.from("notifications").update({ read_at: now }).eq("id", id);
     setNotifs((p) => p.map((n) => n.id === id ? { ...n, read_at: now } : n));
+  };
+
+  const openNotification = (notif) => {
+    if (onOpenNotification) {
+      onOpenNotification(notif);
+      setOpen(false);
+      return;
+    }
+
+    const txId = notif?.payload?.transaction_id;
+    const target = txId ? `/transactions?tx=${txId}` : (notif?.link || null);
+    if (target && typeof window !== "undefined") {
+      window.location.href = target;
+      setOpen(false);
+    }
   };
 
   const markAllRead = async () => {
@@ -138,7 +158,7 @@ export default function NotificationCenter({ userId }) {
             {Object.entries(groupByDate()).map(([label, items]) => (
               <div key={label}>
                 <div style={{ padding: "10px 16px 6px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: T.textMuted }}>{label}</div>
-                {items.map((n) => <NotifItem key={n.id} notif={n} onRead={markRead} />)}
+                {items.map((n) => <NotifItem key={n.id} notif={n} onRead={markRead} onOpen={openNotification} />)}
               </div>
             ))}
           </div>
