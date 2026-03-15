@@ -1,12 +1,12 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-14 22:49 GMT+7_
+_Last updated: 2026-03-15 11:28 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
 - GitHub: `https://github.com/ramen-openclawbot/quang-residence.git`
 - Branch: `main`
-- Current pushed commit: `0ba70fa`
+- Current pushed commit: `dfa9d7c`
 
 ## Current product state
 ZenHome is now in a **product-hardening + CRUD-completion** phase, not an auth/firefighting phase.
@@ -98,6 +98,7 @@ Key owner-related commits:
 - `10902b0` — refine dashboard balance source display
 - `595dea3` — add curated decorative imagery across role dashboards
 - `0ba70fa` — polish decorative card art direction
+- `dfa9d7c` — reorder owner home modules (Collected pieces above Ambience)
 
 ### Secretary
 Secretary now has:
@@ -118,6 +119,8 @@ Secretary now has:
 - secretary home no longer shows `Top funds`; the dashboard now stays focused on operational items instead of fund reporting
 - curated 1stDibs imagery was added to the secretary `Art note` and `Collection` cards for a more premium visual layer
 - balance source labeling now distinguishes between `Synced from funds` and `Ledger fallback`
+- secretary now has a visible NotificationCenter on the dashboard so driver/housekeeper transaction alerts can surface in UI
+- secretary transaction cards were iterated several times and finally aligned to the Audit Ledger typography rhythm while keeping amount visibly pinned on the right
 
 Key commits:
 - `3de89e9`
@@ -132,6 +135,11 @@ Key commits:
 - `10902b0` — refine dashboard balance source display
 - `189170d` — optimize secretary curated asset images for faster loading
 - `0ba70fa` — polish decorative card art direction
+- `fa6e95e` — add secretary notification center for transaction alerts
+- `53448d3` — fix decorative image rendering and ledger fallback query
+- `7d1862d` — ensure secretary transaction amount stays visible
+- `599ea17` — match secretary transaction cards to ledger rhythm
+- `7059f54` — align secretary transaction card typography with ledger
 
 ### Driver
 Driver now has:
@@ -206,7 +214,7 @@ Key commit:
 - `app/housekeeper/page.jsx`
 - `components/TransactionForm.jsx`
 
-### Latest UI + logic notes (2026-03-14 evening)
+### Latest UI + logic notes (2026-03-15 morning)
 - Secretary transaction form was adjusted based on direct feedback comparing the new form against the older upload UX.
 - The new direction is: keep overall modern styling, but preserve old UX behavior where it improves mobile usability.
 - Specifically, do **not** show the bank slip as a large preview block after upload on mobile.
@@ -217,6 +225,9 @@ Key commit:
 - `Art note` / `Collection` cards on secretary home now use curated image assets from 1stDibs-hosted CDN downloads stored in `public/art-blocks/`.
 - Decorative cards across driver / housekeeper / owner were later upgraded to use the same curated-image strategy, so all role dashboards now share a more premium and consistent visual language.
 - Decorative assets were compressed down for faster mobile loading, then polished with improved focal-point cropping and more cinematic overlay tuning.
+- Owner Home layout was later adjusted so `Collected pieces` appears above `Ambience`, matching the preferred visual hierarchy.
+- Secretary received a visible notification center so submitted transactions from driver / housekeeper can surface in-role instead of only existing in backend data.
+- Secretary transaction cards went through multiple iterations; final direction is to mirror the Audit Ledger typography rhythm and keep the transaction amount visibly pinned on the right.
 - Transaction audit behavior was upgraded in phases:
   - **Phase 1:** rejected transactions are preserved instead of deleted
   - **Phase 2:** approved transactions can update `funds.current_balance` when `fund_id` is set
