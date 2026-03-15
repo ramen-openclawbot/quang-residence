@@ -110,6 +110,8 @@ export default function SecretaryPage() {
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [pendingNotifTxId, setPendingNotifTxId] = useState(null);
+  const [pendingNotifTaskId, setPendingNotifTaskId] = useState(null);
+  const [notifReturnTab, setNotifReturnTab] = useState(null);
   const [txSearch, setTxSearch] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -210,6 +212,18 @@ export default function SecretaryPage() {
     loadSummary();
   }, [profile?.id, loadSummary]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const urlTab = params.get("tab");
+    const urlTask = params.get("task");
+    if (urlTab && TABS.some((item) => item.id === urlTab)) setTab(urlTab);
+    if (urlTask) {
+      setPendingNotifTaskId(urlTask);
+      setTab("tasks");
+    }
+  }, []);
+
   /* Lazy-load full transactions on first visit to Transactions tab */
   useEffect(() => {
     if (tab !== "transactions" || txFullLoaded) return;
@@ -226,25 +240,50 @@ export default function SecretaryPage() {
     }
   }, [pendingNotifTxId, transactions]);
 
+  useEffect(() => {
+    if (!pendingNotifTaskId || !tasks.length) return;
+    const match = tasks.find((task) => String(task.id) === String(pendingNotifTaskId));
+    if (match) {
+      setSelectedTask(match);
+      setActivePanel("task-detail");
+      setPendingNotifTaskId(null);
+    }
+  }, [pendingNotifTaskId, tasks]);
+
+  async function notifyTaskEvent(taskId, eventType, status) {
+    try {
+      const token = await getToken();
+      if (!token || !taskId) return;
+      await fetch("/api/tasks/notify-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ task_id: taskId, event_type: eventType, status }),
+      });
+    } catch (error) {
+      console.warn("Secretary notifyTaskEvent failed:", error);
+    }
+  }
+
   async function handleCreateTask(e) {
     e.preventDefault();
     if (!newTask.title.trim() || !profile?.id || taskSubmitting) return;
     setTaskSubmitting(true);
     try {
-      const { error } = await supabase.from("tasks").insert({
+      const { data, error } = await supabase.from("tasks").insert({
         title: newTask.title,
         description: newTask.description || null,
         priority: newTask.priority,
         due_date: newTask.due_date || null,
         created_by: profile.id,
         status: "pending",
-      });
+      }).select("id").single();
       if (error) {
         console.error(error);
         return;
       }
       setNewTask({ title: "", description: "", priority: "medium", due_date: "" });
       setShowTaskForm(false);
+      await notifyTaskEvent(data?.id, "created", "pending");
       reloadAll();
     } finally {
       setTaskSubmitting(false);
@@ -254,7 +293,10 @@ export default function SecretaryPage() {
   async function toggleTaskStatus(task) {
     const next = task.status === "pending" ? "in_progress" : task.status === "in_progress" ? "done" : "pending";
     const { error } = await supabase.from("tasks").update({ status: next }).eq("id", task.id);
-    if (!error) reloadAll();
+    if (!error) {
+      await notifyTaskEvent(task.id, "status_changed", next);
+      reloadAll();
+    }
   }
 
   const fundsBalance = useMemo(() => funds.reduce((s, f) => s + Number(f.current_balance || 0), 0), [funds]);
@@ -369,6 +411,7 @@ export default function SecretaryPage() {
                 userId={profile?.id}
                 onOpenNotification={(notif) => {
                   const txId = notif?.payload?.transaction_id;
+                  const taskId = notif?.payload?.task_id;
                   if (txId) {
                     setTab("transactions");
                     const match = transactions.find((tx) => String(tx.id) === String(txId));
@@ -378,6 +421,20 @@ export default function SecretaryPage() {
                     } else {
                       setPendingNotifTxId(txId);
                       loadFullTransactions(200);
+                    }
+                    return;
+                  }
+                  if (taskId) {
+                    const previousTab = tab;
+                    setNotifReturnTab(previousTab);
+                    setTab("tasks");
+                    const matchTask = tasks.find((task) => String(task.id) === String(taskId));
+                    if (matchTask) {
+                      setSelectedTask(matchTask);
+                      setActivePanel("task-detail");
+                    } else {
+                      setPendingNotifTaskId(taskId);
+                      loadSummary();
                     }
                     return;
                   }
@@ -775,6 +832,7 @@ export default function SecretaryPage() {
                   <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTask.title}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedTask.due_date ? fmtDate(selectedTask.due_date) : "No deadline"}</div></div>
                   <div style={{ ...subtleCard, padding: 14, fontSize: 13, color: T.text }}>Status: <strong>{selectedTask.status}</strong><br/>Priority: {selectedTask.priority || "medium"}<br/>{selectedTask.description || "No notes"}</div>
                   <button onClick={() => { toggleTaskStatus(selectedTask); setActivePanel(""); }} style={panelBtn}>Update status</button>
+                  {notifReturnTab && <button onClick={() => { setActivePanel(""); setTab(notifReturnTab); setNotifReturnTab(null); }} style={{ ...panelBtn, background: "white", border: `1px solid ${T.border}`, color: T.text }}>Back to previous tab</button>}
                 </div>
               )}
             </div>
@@ -807,7 +865,7 @@ export default function SecretaryPage() {
                   </div>
                   <div>
                     <label htmlFor="task-due" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Due date</label>
-                    <input id="task-due" type="date" value={newTask.due_date} onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })} style={inputStyle} />
+                    <input id="task-due" type="date" value={newTask.due_date} onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })} style={dateInputStyle} />
                   </div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
@@ -856,7 +914,16 @@ const inputStyle = {
   background: "white",
   padding: "0 14px",
   fontSize: 14,
+  lineHeight: "46px",
   boxSizing: "border-box",
+};
+
+const dateInputStyle = {
+  ...inputStyle,
+  display: "block",
+  WebkitAppearance: "none",
+  appearance: "none",
+  paddingRight: 14,
 };
 
 const panelBtn = {

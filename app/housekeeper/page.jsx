@@ -550,7 +550,7 @@ export default function HousekeeperPage() {
                 </select>
                 <input value={familyFormData.family_member} onChange={(e) => setFamilyFormData({ ...familyFormData, family_member: e.target.value })} placeholder="Member" style={{ ...inputStyle, marginTop: 10 }} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
-                  <input type="date" value={familyFormData.event_date} onChange={(e) => setFamilyFormData({ ...familyFormData, event_date: e.target.value })} required style={inputStyle} />
+                  <input type="date" value={familyFormData.event_date} onChange={(e) => setFamilyFormData({ ...familyFormData, event_date: e.target.value })} required style={dateInputStyle} />
                   <input type="time" value={familyFormData.event_time} onChange={(e) => setFamilyFormData({ ...familyFormData, event_time: e.target.value })} style={inputStyle} />
                 </div>
                 <textarea value={familyFormData.notes} onChange={(e) => setFamilyFormData({ ...familyFormData, notes: e.target.value })} placeholder="Notes" style={{ ...inputStyle, minHeight: 90, resize: "none", marginTop: 10 }} />
@@ -595,12 +595,22 @@ export default function HousekeeperPage() {
 const inputStyle = {
   width: "100%",
   minHeight: 46,
+  height: 46,
   borderRadius: 12,
   border: `1px solid ${T.border}`,
   background: "white",
   padding: "0 14px",
   fontSize: 14,
+  lineHeight: "46px",
   boxSizing: "border-box",
+};
+
+const dateInputStyle = {
+  ...inputStyle,
+  display: "block",
+  WebkitAppearance: "none",
+  appearance: "none",
+  paddingRight: 14,
 };
 
 const panelBtn = {
