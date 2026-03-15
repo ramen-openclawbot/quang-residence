@@ -1,0 +1,6 @@
+{
+  "eval_id": 1,
+  "eval_name": "transactions-qa-review",
+  "prompt": "QA review trang transactions/page.jsx — tìm bugs, performance issues, và đánh giá code quality.",
+  "assertions": []
+}

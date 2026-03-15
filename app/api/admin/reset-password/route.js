@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { requireOwner, supabaseAdmin } from "../_auth";
 
 function generateTemporaryPassword() {
-  const rand = Math.random().toString(36).slice(-6);
-  return `Zen@${rand}9`;
+  const bytes = crypto.randomBytes(9);
+  return "Zen@" + bytes.toString("base64url").slice(0, 10);
 }
 
 export async function POST(request) {
@@ -25,9 +26,12 @@ export async function POST(request) {
     });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Reset password error:", error);
+      return NextResponse.json({ error: "Failed to reset password. Please try again." }, { status: 500 });
     }
 
+    // NOTE: Temporary password returned so owner can share it securely.
+    // In production, consider sending via email/SMS instead.
     return NextResponse.json({
       success: true,
       temporary_password: temporaryPassword,
@@ -35,6 +39,6 @@ export async function POST(request) {
     });
   } catch (err) {
     console.error("Reset password error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: "An error occurred while resetting the password." }, { status: 500 });
   }
 }

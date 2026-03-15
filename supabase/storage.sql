@@ -34,7 +34,16 @@ WITH CHECK (
 CREATE POLICY "auth_read_bank_slips"
 ON storage.objects FOR SELECT
 TO authenticated
-USING (bucket_id = 'bank-slips');
+USING (
+  bucket_id = 'bank-slips'
+  AND (
+    (storage.foldername(name))[1] = auth.uid()::text
+    OR EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role IN ('owner', 'secretary')
+    )
+  )
+);
 
 CREATE POLICY "auth_delete_own_slips"
 ON storage.objects FOR DELETE

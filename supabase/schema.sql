@@ -388,7 +388,9 @@ DROP POLICY IF EXISTS "home_settings_select" ON public.home_settings;
 CREATE POLICY "home_settings_select" ON public.home_settings FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "home_settings_update" ON public.home_settings;
-CREATE POLICY "home_settings_update" ON public.home_settings FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "home_settings_update" ON public.home_settings FOR UPDATE
+USING (public.get_user_role() = 'owner')
+WITH CHECK (public.get_user_role() = 'owner');
 
 DROP POLICY IF EXISTS "monthly_data_select" ON public.monthly_data;
 CREATE POLICY "monthly_data_select" ON public.monthly_data FOR SELECT USING (true);

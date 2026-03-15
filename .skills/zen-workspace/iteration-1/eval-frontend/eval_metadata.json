@@ -1,0 +1,6 @@
+{
+  "eval_id": 0,
+  "eval_name": "secretary-ui-review",
+  "prompt": "Review giao diện trang secretary/page.jsx — kiểm tra xem có tuân thủ design system không, có vấn đề responsive nào không, đề xuất cải thiện UI.",
+  "assertions": []
+}

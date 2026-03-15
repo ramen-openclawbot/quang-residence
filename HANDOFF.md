@@ -1,6 +1,6 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-16 00:30 GMT+7_
+_Last updated: 2026-03-16 01:30 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
@@ -249,6 +249,20 @@ Key commit:
 
 ### Performance / API (new)
 - `app/api/dashboard/secretary/route.js` — lightweight summary endpoint for secretary Home tab
+
+### Security hardening (2026-03-16)
+- **OCR endpoint auth:** `/api/ocr` now requires bearer token authentication
+- **Password generation:** Upgraded from `Math.random` (36^6 entropy) to `crypto.randomBytes` (base64url, 10 chars)
+- **Amount validation:** Transaction approval validates amount is finite positive number before fund mutation
+- **Idempotency guard:** PATCH `/api/transactions` returns 409 if tx already approved/rejected
+- **Reject reason length:** Max 500 chars enforced server-side
+- **Sanitized errors:** All API routes return generic error messages, internal details logged server-side only
+- **Security headers:** `next.config.js` now sets X-Frame-Options, X-Content-Type-Options, HSTS, Referrer-Policy, Permissions-Policy
+- **Bank slip storage:** SELECT policy restricted to own folder or owner/secretary role
+- **home_settings RLS:** UPDATE restricted to owner role only
+- **Notifications PATCH:** Returns 404 if notification not found instead of silent success
+- **Date filtering fix:** `/api/transactions` GET now filters by `transaction_date` (not `created_at`) to match display
+- **Frontend:** Empty states now have icons, form labels added for a11y, ESC key dismisses modals, task form has loading state, sheet border radius normalized to 24px
 
 ### DB / config
 - `supabase/schema.sql`

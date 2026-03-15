@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { requireOwner, supabaseAdmin } from "../_auth";
 
 const VALID_ROLES = ["owner", "secretary", "housekeeper", "driver"];
 
 function generateTemporaryPassword() {
-  const rand = Math.random().toString(36).slice(-6);
-  return `Zen@${rand}9`;
+  const bytes = crypto.randomBytes(9);
+  return "Zen@" + bytes.toString("base64url").slice(0, 10);
 }
 
 export async function POST(request) {
@@ -35,7 +36,8 @@ export async function POST(request) {
     });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Create user error:", error);
+      return NextResponse.json({ error: "Failed to create user. Please try again." }, { status: 500 });
     }
 
     // Upsert profile (trigger handles creation, but upsert ensures role is set)
@@ -46,9 +48,12 @@ export async function POST(request) {
     }, { onConflict: "id" });
 
     if (profileError) {
-      return NextResponse.json({ error: profileError.message }, { status: 500 });
+      console.error("Profile upsert error:", profileError);
+      return NextResponse.json({ error: "User created but profile setup failed." }, { status: 500 });
     }
 
+    // NOTE: Temporary password returned so owner can share it securely with the new member.
+    // In production, consider sending via email/SMS instead.
     return NextResponse.json({
       success: true,
       message: `Created ${email} with a temporary password.`,
@@ -57,6 +62,6 @@ export async function POST(request) {
     });
   } catch (err) {
     console.error("Create user error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: "An error occurred while creating the user." }, { status: 500 });
   }
 }

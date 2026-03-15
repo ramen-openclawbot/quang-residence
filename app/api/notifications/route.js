@@ -22,7 +22,10 @@ export async function GET(request) {
     .order("created_at", { ascending: false })
     .limit(30);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("Notifications GET error:", error);
+    return NextResponse.json({ error: "Failed to fetch notifications." }, { status: 500 });
+  }
 
   const unread = data?.filter((n) => !n.read_at).length || 0;
   return NextResponse.json({ notifications: data || [], unread });
@@ -45,11 +48,17 @@ export async function PATCH(request) {
       .eq("user_id", user.id)
       .is("read_at", null);
   } else if (notification_id) {
-    await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from("notifications")
       .update({ read_at: now })
       .eq("id", notification_id)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .select("id");
+    if (!data || data.length === 0) {
+      return NextResponse.json({ error: "Notification not found" }, { status: 404 });
+    }
+  } else {
+    return NextResponse.json({ error: "notification_id or mark_all required" }, { status: 400 });
   }
 
   return NextResponse.json({ success: true });

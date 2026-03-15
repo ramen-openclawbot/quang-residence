@@ -26,12 +26,13 @@ export async function POST(request) {
       .eq("id", user_id);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Update role error:", error);
+      return NextResponse.json({ error: "Failed to update role." }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, role });
   } catch (err) {
     console.error("Update role error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: "An error occurred while updating the role." }, { status: 500 });
   }
 }

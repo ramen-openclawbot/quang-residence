@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 const SYSTEM_PROMPT = `You are a Vietnamese bank transfer slip OCR system.
 Analyze the image of a bank transfer confirmation/receipt and extract structured data.
@@ -39,6 +44,17 @@ export async function POST(request) {
   }
 
   try {
+    // AUTH CHECK — verify bearer token
+    const authHeader = request.headers.get("authorization") || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!token) {
+      return NextResponse.json({ error: "Missing bearer token" }, { status: 401 });
+    }
+    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
+    if (authErr || !user) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+    }
+
     const { imageBase64, imageMimeType } = await request.json();
 
     if (!imageBase64) {
@@ -112,7 +128,7 @@ export async function POST(request) {
   } catch (err) {
     console.error("OCR route error:", err);
     return NextResponse.json(
-      { error: err.message || "Internal server error" },
+      { error: "An error occurred while processing your request." },
       { status: 500 }
     );
   }

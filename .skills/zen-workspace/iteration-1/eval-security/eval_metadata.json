@@ -1,0 +1,6 @@
+{
+  "eval_id": 2,
+  "eval_name": "api-security-audit",
+  "prompt": "Audit bảo mật toàn bộ API routes của ZenHome — đánh giá security grade SME.",
+  "assertions": []
+}

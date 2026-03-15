@@ -129,6 +129,20 @@ export default function SecretaryPage() {
   const TX_PER_PAGE = 5;
 
   const [serverSummary, setServerSummary] = useState(null);
+  const [taskSubmitting, setTaskSubmitting] = useState(false);
+
+  /* ESC key handler for modals */
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (activePanel) setActivePanel("");
+        else if (showTaskForm) setShowTaskForm(false);
+        else if (showTxForm) setShowTxForm(false);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [activePanel, showTaskForm, showTxForm]);
 
   /* ── Home summary: single API call for dashboard data ── */
   const loadSummary = useCallback(async () => {
@@ -214,22 +228,27 @@ export default function SecretaryPage() {
 
   async function handleCreateTask(e) {
     e.preventDefault();
-    if (!newTask.title.trim() || !profile?.id) return;
-    const { error } = await supabase.from("tasks").insert({
-      title: newTask.title,
-      description: newTask.description || null,
-      priority: newTask.priority,
-      due_date: newTask.due_date || null,
-      created_by: profile.id,
-      status: "pending",
-    });
-    if (error) {
-      console.error(error);
-      return;
+    if (!newTask.title.trim() || !profile?.id || taskSubmitting) return;
+    setTaskSubmitting(true);
+    try {
+      const { error } = await supabase.from("tasks").insert({
+        title: newTask.title,
+        description: newTask.description || null,
+        priority: newTask.priority,
+        due_date: newTask.due_date || null,
+        created_by: profile.id,
+        status: "pending",
+      });
+      if (error) {
+        console.error(error);
+        return;
+      }
+      setNewTask({ title: "", description: "", priority: "medium", due_date: "" });
+      setShowTaskForm(false);
+      reloadAll();
+    } finally {
+      setTaskSubmitting(false);
     }
-    setNewTask({ title: "", description: "", priority: "medium", due_date: "" });
-    setShowTaskForm(false);
-    reloadAll();
   }
 
   async function toggleTaskStatus(task) {
@@ -475,7 +494,10 @@ export default function SecretaryPage() {
                       <button onClick={() => setTab("tasks")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     </div>
                     {todayTasks.length === 0 ? (
-                      <div style={{ fontSize: 13, color: T.textMuted }}>No tasks due today.</div>
+                      <div style={{ textAlign: "center", padding: "12px 0" }}>
+                        <MIcon name="event_available" size={28} color={T.textMuted} />
+                        <div style={{ fontSize: 13, color: T.textMuted, marginTop: 6 }}>No tasks due today.</div>
+                      </div>
                     ) : todayTasks.slice(0, 3).map((task) => (
                       <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
                         <div style={{ width: 10, height: 10, borderRadius: 999, background: task.priority === "urgent" ? T.danger : task.priority === "high" ? T.amber : T.primary, marginTop: 5, flexShrink: 0 }} />
@@ -493,7 +515,10 @@ export default function SecretaryPage() {
                       <button onClick={() => setTab("transactions")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     </div>
                     {recentTransactions.length === 0 ? (
-                      <div style={{ fontSize: 13, color: T.textMuted }}>No transactions yet.</div>
+                      <div style={{ textAlign: "center", padding: "12px 0" }}>
+                        <MIcon name="receipt_long" size={28} color={T.textMuted} />
+                        <div style={{ fontSize: 13, color: T.textMuted, marginTop: 6 }}>No transactions yet.</div>
+                      </div>
                     ) : recentTransactions.slice(0, 5).map((tx) => (
                       <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
@@ -551,8 +576,9 @@ export default function SecretaryPage() {
                   </div>
 
                   {txFiltered.length === 0 ? (
-                    <div style={{ ...cardStyle, padding: 24, textAlign: "center", color: T.textMuted }}>
-                      No transactions found.
+                    <div style={{ ...cardStyle, padding: 24, textAlign: "center" }}>
+                      <MIcon name="search_off" size={32} color={T.textMuted} />
+                      <div style={{ fontSize: 13, color: T.textMuted, marginTop: 8 }}>No transactions found.</div>
                     </div>
                   ) : (
                     <>
@@ -653,7 +679,10 @@ export default function SecretaryPage() {
                     </button>
                   </div>
                   {tasks.length === 0 ? (
-                    <div style={{ ...cardStyle, padding: 24, textAlign: "center", color: T.textMuted }}>No tasks yet.</div>
+                    <div style={{ ...cardStyle, padding: 24, textAlign: "center" }}>
+                      <MIcon name="task_alt" size={32} color={T.textMuted} />
+                      <div style={{ fontSize: 13, color: T.textMuted, marginTop: 8 }}>No tasks yet.</div>
+                    </div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {tasks.map((task) => (
@@ -685,7 +714,10 @@ export default function SecretaryPage() {
                 <div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 14 }}>Upcoming</div>
                   {upcomingItems.length === 0 ? (
-                    <div style={{ ...cardStyle, padding: 24, textAlign: "center", color: T.textMuted }}>No upcoming items.</div>
+                    <div style={{ ...cardStyle, padding: 24, textAlign: "center" }}>
+                      <MIcon name="calendar_month" size={32} color={T.textMuted} />
+                      <div style={{ fontSize: 13, color: T.textMuted, marginTop: 8 }}>No upcoming items.</div>
+                    </div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {upcomingItems.map((item) => (
@@ -706,7 +738,7 @@ export default function SecretaryPage() {
 
         {activePanel && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 220, display: "flex", alignItems: "flex-end" }} onClick={() => setActivePanel("")}>
-            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18, maxHeight: "78vh", overflowY: "auto" }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "24px 24px 0 0", padding: 18, maxHeight: "78vh", overflowY: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>
                   {activePanel === "help" && "Secretary Guide"}
@@ -751,7 +783,7 @@ export default function SecretaryPage() {
 
         {showTaskForm && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 200, display: "flex", alignItems: "flex-end" }}>
-            <div style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18 }}>
+            <div style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "24px 24px 0 0", padding: 18 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>New task</div>
                 <button onClick={() => setShowTaskForm(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
@@ -759,20 +791,28 @@ export default function SecretaryPage() {
                 </button>
               </div>
               <form onSubmit={handleCreateTask}>
-                <input value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="Task title" required style={inputStyle} />
-                <textarea value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} placeholder="Notes" style={{ ...inputStyle, minHeight: 90, resize: "none", marginTop: 10 }} />
+                <label htmlFor="task-title" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Task title</label>
+                <input id="task-title" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="Task title" required style={inputStyle} />
+                <label htmlFor="task-notes" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginTop: 10, marginBottom: 6 }}>Notes</label>
+                <textarea id="task-notes" value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} placeholder="Notes" style={{ ...inputStyle, minHeight: 90, resize: "none" }} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
-                  <select value={newTask.priority} onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })} style={inputStyle}>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
-                  <input type="date" value={newTask.due_date} onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })} style={inputStyle} />
+                  <div>
+                    <label htmlFor="task-priority" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Priority</label>
+                    <select id="task-priority" value={newTask.priority} onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })} style={inputStyle}>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="task-due" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Due date</label>
+                    <input id="task-due" type="date" value={newTask.due_date} onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })} style={inputStyle} />
+                  </div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
                   <button type="button" onClick={() => setShowTaskForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Cancel</button>
-                  <button type="submit" style={{ height: 46, borderRadius: 12, border: "none", background: T.primary, color: "white", cursor: "pointer", fontWeight: 800 }}>Create</button>
+                  <button type="submit" disabled={taskSubmitting} style={{ height: 46, borderRadius: 12, border: "none", background: taskSubmitting ? "#93e06e" : T.primary, color: "white", cursor: taskSubmitting ? "default" : "pointer", fontWeight: 800 }}>{taskSubmitting ? "Creating..." : "Create"}</button>
                 </div>
               </form>
             </div>

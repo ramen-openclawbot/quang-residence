@@ -45,6 +45,8 @@ async function notify(userId, title, body, type = "info", link = null, payload =
   });
 }
 
+const MAX_REJECT_REASON_LENGTH = 500;
+
 // ─── GET: list transactions for owner / secretary ──────────────────────
 export async function GET(request) {
   try {
@@ -66,7 +68,7 @@ export async function GET(request) {
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
-    // Optional month/year filter
+    // Optional month/year filter — use transaction_date for consistency with display
     const month = searchParams.get("month");
     const year = searchParams.get("year");
     if (month !== null && year !== null) {
@@ -74,16 +76,21 @@ export async function GET(request) {
       const y = Number(year);
       const startDate = new Date(y, m, 1).toISOString();
       const endDate = new Date(y, m + 1, 0, 23, 59, 59).toISOString();
-      query = query.gte("created_at", startDate).lte("created_at", endDate);
+      query = query
+        .gte("transaction_date", startDate)
+        .lte("transaction_date", endDate);
     }
 
     const { data, error, count } = await query;
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error("Transaction GET error:", error);
+      return NextResponse.json({ error: "Failed to fetch transactions." }, { status: 500 });
+    }
     return NextResponse.json({ success: true, data: data || [], total: count, hasMore: (offset + limit) < (count || 0) });
   } catch (err) {
     console.error("Transaction GET error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: "An error occurred while fetching transactions." }, { status: 500 });
   }
 }
 
@@ -99,8 +106,13 @@ export async function PATCH(request) {
     }
 
     const { transaction_id, action, reject_reason } = await request.json();
-    if (!transaction_id || !["approve", "reject"].includes(action)) {
-      return NextResponse.json({ error: "transaction_id and action (approve|reject) required" }, { status: 400 });
+
+    // Validate transaction_id format
+    if (!transaction_id || (typeof transaction_id !== "number" && typeof transaction_id !== "string")) {
+      return NextResponse.json({ error: "Valid transaction_id is required" }, { status: 400 });
+    }
+    if (!["approve", "reject"].includes(action)) {
+      return NextResponse.json({ error: "action must be approve or reject" }, { status: 400 });
     }
 
     // Fetch the transaction
@@ -119,12 +131,20 @@ export async function PATCH(request) {
       return NextResponse.json({ error: "Cannot review your own transaction" }, { status: 403 });
     }
 
+    // Idempotency guard — prevent double-approval / double-rejection
     if (tx.status !== "pending") {
-      return NextResponse.json({ error: "Only pending transactions can be reviewed" }, { status: 400 });
+      return NextResponse.json({ error: `Transaction is already ${tx.status}` }, { status: 409 });
     }
 
     const submitterName = tx.profiles?.full_name || "Staff";
-    const amountStr = Number(tx.amount || 0).toLocaleString("vi-VN") + "đ";
+    const amount = Number(tx.amount || 0);
+
+    // Validate amount is a valid positive number
+    if (!isFinite(amount) || amount <= 0) {
+      return NextResponse.json({ error: "Transaction has invalid amount" }, { status: 422 });
+    }
+
+    const amountStr = amount.toLocaleString("vi-VN") + "đ";
 
     if (action === "approve") {
       const reviewedAt = new Date().toISOString();
@@ -137,11 +157,11 @@ export async function PATCH(request) {
           .single();
 
         if (fundErr || !fund) {
+          console.error("Fund lookup failed", { fund_id: tx.fund_id, fundErr, transaction_id });
           return NextResponse.json({ error: "Linked fund not found" }, { status: 404 });
         }
 
         const currentBalance = Number(fund.current_balance || 0);
-        const amount = Number(tx.amount || 0);
         const nextBalance = tx.type === "income" ? currentBalance + amount : currentBalance - amount;
 
         const { error: fundUpdateError } = await supabaseAdmin
@@ -150,7 +170,8 @@ export async function PATCH(request) {
           .eq("id", tx.fund_id);
 
         if (fundUpdateError) {
-          return NextResponse.json({ error: fundUpdateError.message }, { status: 500 });
+          console.error("Fund update failed", { fund_id: tx.fund_id, fundUpdateError });
+          return NextResponse.json({ error: "Failed to update fund balance." }, { status: 500 });
         }
       }
 
@@ -167,7 +188,13 @@ export async function PATCH(request) {
         })
         .eq("id", transaction_id);
 
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) {
+        // CRITICAL: Fund was updated but transaction approval failed — log for manual recovery
+        console.error("CRITICAL: Fund updated but transaction approval failed", {
+          transaction_id, fund_id: tx.fund_id, error
+        });
+        return NextResponse.json({ error: "Failed to approve transaction." }, { status: 500 });
+      }
 
       // Notify submitter
       if (tx.created_by) {
@@ -188,6 +215,9 @@ export async function PATCH(request) {
       if (!reject_reason?.trim()) {
         return NextResponse.json({ error: "reject_reason is required" }, { status: 400 });
       }
+      if (reject_reason.trim().length > MAX_REJECT_REASON_LENGTH) {
+        return NextResponse.json({ error: `reject_reason must be under ${MAX_REJECT_REASON_LENGTH} characters` }, { status: 400 });
+      }
 
       const reviewedAt = new Date().toISOString();
 
@@ -202,7 +232,10 @@ export async function PATCH(request) {
         })
         .eq("id", transaction_id);
 
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) {
+        console.error("Transaction reject error:", error);
+        return NextResponse.json({ error: "Failed to reject transaction." }, { status: 500 });
+      }
 
       // Notify submitter after the audit state is stored.
       if (tx.created_by) {
@@ -220,6 +253,6 @@ export async function PATCH(request) {
     }
   } catch (err) {
     console.error("Transaction audit error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: "An error occurred while processing the transaction." }, { status: 500 });
   }
 }
