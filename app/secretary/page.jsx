@@ -303,6 +303,11 @@ export default function SecretaryPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!profile?.id) return;
+    loadData();
+  }, [profile?.id, loadData]);
+
   async function handleCreateTask(e) {
     e.preventDefault();
     if (!newTask.title.trim() || !profile?.id) return;
