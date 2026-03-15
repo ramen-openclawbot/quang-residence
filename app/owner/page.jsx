@@ -306,7 +306,11 @@ export default function OwnerPage() {
                     <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Mr. Quang"}</div>
                   </div>
                 </div>
-                <NotificationCenter userId={profile?.id} />
+                <NotificationCenter userId={profile?.id} onOpenNotification={(notif) => {
+                  const txId = notif?.payload?.transaction_id;
+                  const target = txId ? `/transactions?tx=${txId}&from=owner` : (notif?.link || null);
+                  if (target && typeof window !== "undefined") window.location.href = target;
+                }} />
               </div>
 
               {loading ? (
@@ -498,7 +502,11 @@ export default function OwnerPage() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <button onClick={() => setTab("home")} style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${T.border}`, background: "white", cursor: "pointer" }}><MIcon name="arrow_back" size={20} color={T.text} /></button>
               <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Ambiance</div>
-              <NotificationCenter userId={profile?.id} />
+              <NotificationCenter userId={profile?.id} onOpenNotification={(notif) => {
+                const txId = notif?.payload?.transaction_id;
+                const target = txId ? `/transactions?tx=${txId}&from=owner` : (notif?.link || null);
+                if (target && typeof window !== "undefined") window.location.href = target;
+              }} />
             </div>
 
             <div style={{ display: "grid", gap: 16 }}>

@@ -56,11 +56,14 @@ export async function GET(request) {
       return NextResponse.json({ error: "Not authorised" }, { status: 403 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(Math.max(Number(searchParams.get("limit") || 120), 1), 300);
+
     const { data, error } = await supabaseAdmin
       .from("transactions")
       .select("*, profiles!created_by(id, full_name, role), approved_by_profile:profiles!approved_by(id, full_name), reviewed_by_profile:profiles!reviewed_by(id, full_name)")
       .order("created_at", { ascending: false })
-      .limit(300);
+      .limit(limit);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true, data: data || [] });

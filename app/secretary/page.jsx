@@ -269,6 +269,7 @@ export default function SecretaryPage() {
   const [activePanel, setActivePanel] = useState("");
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [pendingNotifTxId, setPendingNotifTxId] = useState(null);
   const [txSearch, setTxSearch] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -283,14 +284,14 @@ export default function SecretaryPage() {
     due_date: "",
   });
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (txLimit = 40) => {
     try {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       const [fundsRes, tasksRes, txApiRes] = await Promise.all([
         supabase.from("funds").select("*").order("id"),
         supabase.from("tasks").select("*").order("due_date", { ascending: true }),
-        fetch("/api/transactions", {
+        fetch(`/api/transactions?limit=${txLimit}`, {
           headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
         }),
       ]);
@@ -322,8 +323,24 @@ export default function SecretaryPage() {
 
   useEffect(() => {
     if (!profile?.id) return;
-    loadData();
+    loadData(40);
   }, [profile?.id, loadData]);
+
+  useEffect(() => {
+    if (tab !== "transactions") return;
+    if (transactions.length >= 100) return;
+    loadData(200);
+  }, [tab]);
+
+  useEffect(() => {
+    if (!pendingNotifTxId || !transactions.length) return;
+    const match = transactions.find((tx) => String(tx.id) === String(pendingNotifTxId));
+    if (match) {
+      setSelectedTransaction(match);
+      setActivePanel("transaction-detail");
+      setPendingNotifTxId(null);
+    }
+  }, [pendingNotifTxId, transactions]);
 
   async function handleCreateTask(e) {
     e.preventDefault();
@@ -452,7 +469,25 @@ export default function SecretaryPage() {
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <NotificationCenter userId={profile?.id} />
+              <NotificationCenter
+                userId={profile?.id}
+                onOpenNotification={(notif) => {
+                  const txId = notif?.payload?.transaction_id;
+                  if (txId) {
+                    setTab("transactions");
+                    const match = transactions.find((tx) => String(tx.id) === String(txId));
+                    if (match) {
+                      setSelectedTransaction(match);
+                      setActivePanel("transaction-detail");
+                    } else {
+                      setPendingNotifTxId(txId);
+                      loadData(200);
+                    }
+                    return;
+                  }
+                  if (notif?.link && typeof window !== "undefined") window.location.href = notif.link;
+                }}
+              />
               <button onClick={() => setActivePanel("help")} style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}>
                 <MIcon name="help" size={22} color={T.textMuted} />
               </button>

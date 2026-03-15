@@ -398,7 +398,18 @@ export default function TransactionsPage() {
               <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Audit Ledger</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: T.text }}>Transactions</div>
             </div>
-            <button onClick={() => window.history.back()} style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${T.border}`, background: T.card, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <button onClick={() => {
+              const from = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("from") : null;
+              if (from === "owner") {
+                window.location.href = "/owner";
+                return;
+              }
+              if (from === "secretary") {
+                window.location.href = "/secretary";
+                return;
+              }
+              window.history.back();
+            }} style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${T.border}`, background: T.card, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <MIcon name="arrow_back" size={20} color={T.text} />
             </button>
           </div>
