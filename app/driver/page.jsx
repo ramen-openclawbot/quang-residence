@@ -626,7 +626,7 @@ Complete trip
                   </div>
                   <div>
                     <label htmlFor="driver-task-due" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Due date</label>
-                    <input id="driver-task-due" type="date" value={newTask.due_date} onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })} style={inputStyle} />
+                    <input id="driver-task-due" type="date" value={newTask.due_date} onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })} style={dateInputStyle} />
                   </div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
@@ -686,5 +686,14 @@ const inputStyle = {
   background: "white",
   padding: "0 14px",
   fontSize: 14,
+  lineHeight: "46px",
   boxSizing: "border-box",
+};
+
+const dateInputStyle = {
+  ...inputStyle,
+  display: "block",
+  WebkitAppearance: "none",
+  appearance: "none",
+  paddingRight: 14,
 };
