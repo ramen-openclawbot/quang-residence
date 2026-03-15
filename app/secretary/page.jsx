@@ -374,8 +374,13 @@ export default function SecretaryPage() {
   const todayTasks = useMemo(() => tasks.filter((t) => (t.due_date || "").startsWith(today)), [tasks, today]);
   const overdueTasks = useMemo(() => tasks.filter((t) => t.status !== "done" && t.due_date && t.due_date.slice(0, 10) < today), [tasks, today]);
   const recentTransactions = useMemo(() => transactions.slice(0, 8), [transactions]);
+  const getTxFilterDate = (tx) => {
+    const candidate = tx.transaction_date || tx.created_at;
+    const d = new Date(candidate || Date.now());
+    return Number.isNaN(d.getTime()) ? new Date() : d;
+  };
   const txMonthFiltered = useMemo(() => transactions.filter((tx) => {
-    const base = new Date(tx.created_at || tx.transaction_date || Date.now());
+    const base = getTxFilterDate(tx);
     return base.getMonth() === selectedMonth && base.getFullYear() === selectedYear;
   }), [transactions, selectedMonth, selectedYear]);
   const txFiltered = useMemo(() => {
@@ -394,6 +399,20 @@ export default function SecretaryPage() {
   const txIncomeTotal = useMemo(() => txMonthFiltered.filter((tx) => tx.type === "income").reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [txMonthFiltered]);
   const txExpenseTotal = useMemo(() => txMonthFiltered.filter((tx) => tx.type === "expense").reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [txMonthFiltered]);
   const txPendingCount = useMemo(() => txMonthFiltered.filter((tx) => tx.status === "pending").length, [txMonthFiltered]);
+
+  useEffect(() => {
+    if (!transactions.length) return;
+    const latest = getTxFilterDate(transactions[0]);
+    const hasCurrentSelection = transactions.some((tx) => {
+      const d = getTxFilterDate(tx);
+      return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+    });
+    if (!hasCurrentSelection) {
+      setSelectedMonth(latest.getMonth());
+      setSelectedYear(latest.getFullYear());
+    }
+  }, [transactions]);
+
   const isTodayTransaction = (t) => {
     const createdKey = getLocalDateKey(t.created_at);
     const transactionKey = getLocalDateKey(t.transaction_date);
