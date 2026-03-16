@@ -205,16 +205,20 @@ export async function PATCH(request) {
         return NextResponse.json({ error: "Failed to approve transaction." }, { status: 500 });
       }
 
-      // Notify submitter
+      // Notify submitter (non-fatal)
       if (tx.created_by) {
-        await notify(
-          tx.created_by,
-          "Transaction approved",
-          `Your ${txLabel} of ${amountStr} — "${tx.description || "no description"}" has been approved by ${profile.full_name}.`,
-          "info",
-          "/transactions",
-          { transaction_id, fund_id: tx.fund_id || null }
-        );
+        try {
+          await notify(
+            tx.created_by,
+            "Transaction approved",
+            `Your ${txLabel} of ${amountStr} — "${tx.description || "no description"}" has been approved by ${profile.full_name}.`,
+            "info",
+            "/transactions",
+            { transaction_id, fund_id: tx.fund_id || null }
+          );
+        } catch (notifyErr) {
+          console.warn("Transaction approve notify failed:", notifyErr);
+        }
       }
 
       return NextResponse.json({ success: true, action: "approved" });
@@ -246,16 +250,20 @@ export async function PATCH(request) {
         return NextResponse.json({ error: "Failed to reject transaction." }, { status: 500 });
       }
 
-      // Notify submitter after the audit state is stored.
+      // Notify submitter after the audit state is stored (non-fatal).
       if (tx.created_by) {
-        await notify(
-          tx.created_by,
-          "Transaction rejected",
-          `Your ${txLabel} of ${amountStr} — "${tx.description || "no description"}" was rejected by ${profile.full_name}. Reason: ${reject_reason.trim()}. Please review and resubmit if needed.`,
-          "warning",
-          "/transactions",
-          { transaction_id, reject_reason: reject_reason.trim(), original_amount: tx.amount, original_description: tx.description }
-        );
+        try {
+          await notify(
+            tx.created_by,
+            "Transaction rejected",
+            `Your ${txLabel} of ${amountStr} — "${tx.description || "no description"}" was rejected by ${profile.full_name}. Reason: ${reject_reason.trim()}. Please review and resubmit if needed.`,
+            "warning",
+            "/transactions",
+            { transaction_id, reject_reason: reject_reason.trim(), original_amount: tx.amount, original_description: tx.description }
+          );
+        } catch (notifyErr) {
+          console.warn("Transaction reject notify failed:", notifyErr);
+        }
       }
 
       return NextResponse.json({ success: true, action: "rejected" });
