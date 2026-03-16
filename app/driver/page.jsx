@@ -318,6 +318,9 @@ export default function DriverPage() {
     const amount = Math.abs(Number(tx.amount || 0));
     const type = String(tx.type || "").toLowerCase();
     if (type === "income") return amount;
+    if (type === "adjustment") {
+      return tx.adjustment_direction === "increase" ? amount : -amount;
+    }
     if (type === "expense") return -amount;
     return -amount;
   };
