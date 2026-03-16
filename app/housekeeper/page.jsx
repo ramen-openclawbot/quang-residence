@@ -125,6 +125,7 @@ export default function HousekeeperPage() {
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [selectedMaintenance, setSelectedMaintenance] = useState(null);
   const [selectedFamilyItem, setSelectedFamilyItem] = useState(null);
+  const [revealedItemKey, setRevealedItemKey] = useState(null);
 
   const [transactions, setTransactions] = useState([]);
   const [maintenanceItems, setMaintenanceItems] = useState([]);
@@ -145,10 +146,42 @@ export default function HousekeeperPage() {
     notes: "",
   });
 
+  const getToken = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || null;
+  };
+
   useEffect(() => {
     if (!profile?.id) return;
     fetchData();
   }, [profile?.id]);
+
+  const getSwipeHandlers = (itemKey, canDelete) => {
+    let startX = 0;
+    return {
+      onTouchStart: (e) => {
+        startX = e.changedTouches[0]?.clientX || 0;
+      },
+      onTouchEnd: (e) => {
+        if (!canDelete) return;
+        const endX = e.changedTouches[0]?.clientX || 0;
+        const deltaX = endX - startX;
+        if (deltaX < -50) setRevealedItemKey(itemKey);
+        if (deltaX > 35) setRevealedItemKey(null);
+      },
+    };
+  };
+
+  async function deleteOwnedItem(kind, id) {
+    const token = await getToken();
+    const res = await fetch("/api/items/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ kind, id }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to delete item");
+  }
 
   async function fetchData() {
     if (!profile?.id) return;
@@ -416,17 +449,33 @@ export default function HousekeeperPage() {
                     <div style={{ display: "grid", gap: 12 }}>
                       {maintenanceItems.map((item) => {
                         const s = tone(item.status);
+                        const canDelete = item.reported_by === profile?.id;
+                        const itemKey = `maintenance-${item.id}`;
+                        const swipe = getSwipeHandlers(itemKey, canDelete);
                         return (
-                          <button key={item.id} onClick={() => { setSelectedMaintenance(item); setActivePanel("maintenance-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
-                            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                              <div>
-                                <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
-                                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{item.location_in_house}</div>
-                                {item.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{item.description}</div>}
+                          <div key={item.id} style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
+                            {canDelete && (
+                              <button onClick={async () => {
+                                const ok = window.confirm("Delete this item?");
+                                if (!ok) return;
+                                try {
+                                  await deleteOwnedItem("maintenance", item.id);
+                                  setMaintenanceItems((prev) => prev.filter((m) => m.id !== item.id));
+                                  setRevealedItemKey(null);
+                                } catch (err) { alert(err.message); }
+                              }} style={{ position: "absolute", inset: 0, marginLeft: "auto", width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>Delete</button>
+                            )}
+                            <button {...swipe} onClick={() => { setSelectedMaintenance(item); setActivePanel("maintenance-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, position: "relative", transform: canDelete && revealedItemKey === itemKey ? "translateX(-88px)" : "translateX(0)", transition: "transform 180ms ease" }}>
+                              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                                <div>
+                                  <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
+                                  <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{item.location_in_house}</div>
+                                  {item.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{item.description}</div>}
+                                </div>
+                                <div style={{ padding: "6px 10px", borderRadius: 999, background: s.bg, color: s.color, fontSize: 11, fontWeight: 800 }}>{item.status}</div>
                               </div>
-                              <div style={{ padding: "6px 10px", borderRadius: 999, background: s.bg, color: s.color, fontSize: 11, fontWeight: 800 }}>{item.status}</div>
-                            </div>
-                          </button>
+                            </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -444,18 +493,36 @@ export default function HousekeeperPage() {
                     <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No events yet.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
-                      {familySchedule.map((item) => (
-                        <button key={item.id} onClick={() => { setSelectedFamilyItem(item); setActivePanel("family-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
-                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                            <div>
-                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
-                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(item.event_date)}{item.event_time ? ` • ${item.event_time}` : ""}</div>
-                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{item.schedule_type} • {item.family_member}</div>
-                              {item.notes && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{item.notes}</div>}
-                            </div>
+                      {familySchedule.map((item) => {
+                        const canDelete = item.created_by === profile?.id;
+                        const itemKey = `family-${item.id}`;
+                        const swipe = getSwipeHandlers(itemKey, canDelete);
+                        return (
+                          <div key={item.id} style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
+                            {canDelete && (
+                              <button onClick={async () => {
+                                const ok = window.confirm("Delete this event?");
+                                if (!ok) return;
+                                try {
+                                  await deleteOwnedItem("family", item.id);
+                                  setFamilySchedule((prev) => prev.filter((f) => f.id !== item.id));
+                                  setRevealedItemKey(null);
+                                } catch (err) { alert(err.message); }
+                              }} style={{ position: "absolute", inset: 0, marginLeft: "auto", width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>Delete</button>
+                            )}
+                            <button {...swipe} onClick={() => { setSelectedFamilyItem(item); setActivePanel("family-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, position: "relative", transform: canDelete && revealedItemKey === itemKey ? "translateX(-88px)" : "translateX(0)", transition: "transform 180ms ease" }}>
+                              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                                <div>
+                                  <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
+                                  <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(item.event_date)}{item.event_time ? ` • ${item.event_time}` : ""}</div>
+                                  <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{item.schedule_type} • {item.family_member}</div>
+                                  {item.notes && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{item.notes}</div>}
+                                </div>
+                              </div>
+                            </button>
                           </div>
-                        </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

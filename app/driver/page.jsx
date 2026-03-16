@@ -222,9 +222,15 @@ export default function DriverPage() {
     if (!profile?.id || task.created_by !== profile.id) return;
     const ok = typeof window === "undefined" ? true : window.confirm("Delete this task?");
     if (!ok) return;
-    const { error } = await supabase.from("tasks").delete().eq("id", task.id).eq("created_by", profile.id);
-    if (error) {
-      alert(error.message || "Failed to delete task");
+    const token = await getToken();
+    const res = await fetch("/api/tasks/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ task_id: task.id }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || "Failed to delete task");
       return;
     }
     setTasks((prev) => prev.filter((t) => t.id !== task.id));
