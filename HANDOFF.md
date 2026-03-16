@@ -1,12 +1,12 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-16 02:15 GMT+7_
+_Last updated: 2026-03-16 09:12 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
 - GitHub: `https://github.com/ramen-openclawbot/quang-residence.git`
 - Branch: `main`
-- Current pushed commit: `a7ecf54`
+- Current pushed commit: `82edd6a`
 
 ## Current product state
 ZenHome is now in a **product-hardening + CRUD-completion** phase, not an auth/firefighting phase.
@@ -238,6 +238,7 @@ Key commit:
   - **Server-side summary API:** `GET /api/dashboard/secretary` returns pre-computed dashboard data (funds, tasks, recent tx, today income/expense, pending count) in a single request
   - **Transaction pagination:** `/api/transactions` now supports `offset` + `limit` + optional `month`/`year` query params with total count. The `/transactions` ledger page uses 30-row pages with a "Load more" button
   - Server API loading remains the safer production path; client-side Supabase querying is only used as fallback
+- **Important failed attempt (do not repeat blindly):** a later experiment tried to delay Owner/Secretary Home balance + transaction loading behind a greeting CTA ("Tap here to view your balance"). The JSX was modified in-place and introduced broken nesting / compile failures in both `app/owner/page.jsx` and `app/secretary/page.jsx`. That attempt was explicitly **rolled back** with `git checkout -- app/secretary/page.jsx app/owner/page.jsx`, and the repo was confirmed build-clean afterward. If this UX idea is revisited, it should be implemented as a dedicated performance task with smaller isolated refactors instead of patching large JSX branches inline.
 - Transaction audit behavior was upgraded in phases:
   - **Phase 1:** rejected transactions are preserved instead of deleted
   - **Phase 2:** approved transactions can update `funds.current_balance` when `fund_id` is set
