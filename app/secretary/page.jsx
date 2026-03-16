@@ -133,6 +133,7 @@ export default function SecretaryPage() {
   const [serverSummary, setServerSummary] = useState(null);
   const [taskSubmitting, setTaskSubmitting] = useState(false);
   const [revealedTaskId, setRevealedTaskId] = useState(null);
+  const [balanceRevealed, setBalanceRevealed] = useState(false);
 
   /* ESC key handler for modals */
   useEffect(() => {
@@ -224,6 +225,11 @@ export default function SecretaryPage() {
       setTab("tasks");
     }
   }, []);
+
+  /* Auto-hide balance when leaving home tab (privacy) */
+  useEffect(() => {
+    if (tab !== "home") setBalanceRevealed(false);
+  }, [tab]);
 
   /* Lazy-load full transactions on first visit to Transactions tab */
   useEffect(() => {
@@ -502,49 +508,145 @@ export default function SecretaryPage() {
             <>
               {tab === "home" && (
                 <div>
-                  <div style={{ ...cardStyle, padding: 18, marginBottom: 14, background: "linear-gradient(135deg,#20341d 0%, #2b4b24 58%, #3d6b30 100%)", color: "white", overflow: "hidden", position: "relative" }}>
-                    <div style={{ position: "absolute", right: -28, top: -24, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                    <div style={{ position: "relative", zIndex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                        <div>
-                          <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Desk overview</div>
-                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Desk calm</div>
-                        </div>
-                        <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Secretary</div>
-                      </div>
-                      <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Tracked balance</div>
-                      <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 10 }}>{fmtVND(totalBalance)}</div>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,0.12)", fontSize: 11, fontWeight: 700, marginBottom: 16 }}>
-                        <div style={{ width: 6, height: 6, borderRadius: 999, background: usingLedgerFallback ? "#fbbf24" : "#86efac" }} />
-                        {usingLedgerFallback ? "Ledger fallback" : "Synced from funds"}
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                        <div>
-                          <div style={{ fontSize: 11, opacity: 0.7 }}>Pending</div>
-                          <div style={{ fontSize: 18, fontWeight: 800 }}>{pendingTx.length}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 11, opacity: 0.7 }}>Today</div>
-                          <div style={{ fontSize: 18, fontWeight: 800 }}>{todayTasks.length}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 11, opacity: 0.7 }}>Overdue</div>
-                          <div style={{ fontSize: 18, fontWeight: 800 }}>{overdueTasks.length}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  {/* Desk overview card — tap to reveal balance */}
+                  <button
+                    type="button"
+                    onClick={() => setBalanceRevealed((v) => !v)}
+                    style={{ ...cardStyle, padding: 0, marginBottom: 14, background: "linear-gradient(135deg,#20341d 0%, #2b4b24 58%, #3d6b30 100%)", color: "white", overflow: "hidden", position: "relative", width: "100%", textAlign: "left", cursor: "pointer", border: "none" }}
+                  >
+                    {/* Water ripple animation CSS */}
+                    <style>{`
+                      @keyframes zenRipple1 {
+                        0% { transform: translate(-50%,-50%) scale(0.3); opacity: 0.6; }
+                        100% { transform: translate(-50%,-50%) scale(2.8); opacity: 0; }
+                      }
+                      @keyframes zenRipple2 {
+                        0% { transform: translate(-50%,-50%) scale(0.3); opacity: 0.5; }
+                        100% { transform: translate(-50%,-50%) scale(2.4); opacity: 0; }
+                      }
+                      @keyframes zenRipple3 {
+                        0% { transform: translate(-50%,-50%) scale(0.3); opacity: 0.4; }
+                        100% { transform: translate(-50%,-50%) scale(2.0); opacity: 0; }
+                      }
+                      @keyframes zenDrop {
+                        0% { transform: translateY(-18px) scale(1); opacity: 0.8; }
+                        40% { transform: translateY(0px) scale(1); opacity: 0.9; }
+                        50% { transform: translateY(0px) scale(1.3, 0.6); opacity: 0.3; }
+                        60% { transform: translateY(0px) scale(0); opacity: 0; }
+                        100% { transform: translateY(0px) scale(0); opacity: 0; }
+                      }
+                      @keyframes zenFloat {
+                        0%, 100% { transform: translateY(0); }
+                        50% { transform: translateY(-4px); }
+                      }
+                      @keyframes zenFadeIn {
+                        0% { opacity: 0; transform: translateY(8px); }
+                        100% { opacity: 1; transform: translateY(0); }
+                      }
+                    `}</style>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-                    <div style={{ ...subtleCard, padding: 14 }}>
-                      <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>In today</div>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: T.success, marginTop: 6 }}>{fmtVND(incomeToday)}</div>
+                    <div style={{ position: "absolute", right: -28, top: -24, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+
+                    {!balanceRevealed ? (
+                      /* ── ZEN STATE: water ripple animation ── */
+                      <div style={{ position: "relative", zIndex: 1, padding: 18, minHeight: 180 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                          <div>
+                            <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Desk overview</div>
+                            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Desk calm</div>
+                          </div>
+                          <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Secretary</div>
+                        </div>
+
+                        {/* Water drop + ripple animation */}
+                        <div style={{ position: "relative", height: 80, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {/* Drop */}
+                          <div style={{
+                            width: 8, height: 12,
+                            background: "rgba(134,239,172,0.7)",
+                            borderRadius: "50% 50% 50% 50% / 60% 60% 40% 40%",
+                            position: "absolute",
+                            animation: "zenDrop 3.5s ease-in-out infinite",
+                          }} />
+                          {/* Ripple circles */}
+                          {[
+                            { delay: "0.0s", dur: "3.5s", anim: "zenRipple1" },
+                            { delay: "0.3s", dur: "3.5s", anim: "zenRipple2" },
+                            { delay: "0.6s", dur: "3.5s", anim: "zenRipple3" },
+                          ].map((r, i) => (
+                            <div key={i} style={{
+                              position: "absolute",
+                              width: 40, height: 40,
+                              borderRadius: "50%",
+                              border: "1.5px solid rgba(134,239,172,0.35)",
+                              left: "50%", top: "55%",
+                              animation: `${r.anim} ${r.dur} ease-out ${r.delay} infinite`,
+                            }} />
+                          ))}
+                        </div>
+
+                        <div style={{ textAlign: "center", fontSize: 12, opacity: 0.55, fontWeight: 600, animation: "zenFloat 3s ease-in-out infinite" }}>
+                          Tap to reveal
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── REVEALED STATE: balance + stats ── */
+                      <div style={{ position: "relative", zIndex: 1, padding: 18, animation: "zenFadeIn 0.4s ease-out" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                          <div>
+                            <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Desk overview</div>
+                            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Desk calm</div>
+                          </div>
+                          <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Secretary</div>
+                        </div>
+                        <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Tracked balance</div>
+                        <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 10 }}>{fmtVND(totalBalance)}</div>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,0.12)", fontSize: 11, fontWeight: 700, marginBottom: 16 }}>
+                          <div style={{ width: 6, height: 6, borderRadius: 999, background: usingLedgerFallback ? "#fbbf24" : "#86efac" }} />
+                          {usingLedgerFallback ? "Ledger fallback" : "Synced from funds"}
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                          <div>
+                            <div style={{ fontSize: 11, opacity: 0.7 }}>Pending</div>
+                            <div style={{ fontSize: 18, fontWeight: 800 }}>{pendingTx.length}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 11, opacity: 0.7 }}>Today</div>
+                            <div style={{ fontSize: 18, fontWeight: 800 }}>{todayTasks.length}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 11, opacity: 0.7 }}>Overdue</div>
+                            <div style={{ fontSize: 18, fontWeight: 800 }}>{overdueTasks.length}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </button>
+
+                  {/* In/Out today cards — also hidden until revealed */}
+                  {balanceRevealed ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14, animation: "zenFadeIn 0.5s ease-out 0.1s both" }}>
+                      <div style={{ ...subtleCard, padding: 14 }}>
+                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>In today</div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: T.success, marginTop: 6 }}>{fmtVND(incomeToday)}</div>
+                      </div>
+                      <div style={{ ...subtleCard, padding: 14 }}>
+                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Out today</div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: T.danger, marginTop: 6 }}>{fmtVND(expenseToday)}</div>
+                      </div>
                     </div>
-                    <div style={{ ...subtleCard, padding: 14 }}>
-                      <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Out today</div>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: T.danger, marginTop: 6 }}>{fmtVND(expenseToday)}</div>
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+                      <div style={{ ...subtleCard, padding: 14 }}>
+                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>In today</div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: T.textMuted, marginTop: 6, opacity: 0.3 }}>• • •</div>
+                      </div>
+                      <div style={{ ...subtleCard, padding: 14 }}>
+                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Out today</div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: T.textMuted, marginTop: 6, opacity: 0.3 }}>• • •</div>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
                     <QuickAction icon="upload_file" label="Upload slip" sub="Scan receipt and log transaction" onClick={() => setShowTxForm(true)} primary />
