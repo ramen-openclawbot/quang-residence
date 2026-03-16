@@ -467,8 +467,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
                   type="button"
                   onClick={() => {
                     setType(item.id);
-                    if (item.id === "adjustment") setStep("details");
-                    else if (slipImages.length === 0) setStep("upload");
+                    setStep(item.id === "adjustment" ? "details" : (slipImages.length === 0 ? "upload" : "details"));
                   }}
                   disabled={step !== "upload"}
                   style={{
