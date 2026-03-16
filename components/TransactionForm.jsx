@@ -27,6 +27,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
   // Form state
   const [type, setType] = useState("expense");
   const [adjustmentDirection, setAdjustmentDirection] = useState("increase");
+  const [adjustmentDirection, setAdjustmentDirection] = useState("increase");
   const [step, setStep] = useState("upload"); // "upload" | "scanning" | "review"
   const [funds, setFunds] = useState([]);
 
@@ -430,6 +431,13 @@ export default function TransactionForm({ onClose, onSuccess }) {
       tone: T.success,
       soft: T.successSoft,
       border: "rgba(22, 163, 74, 0.18)",
+    },
+    {
+      id: "adjustment",
+      label: "Adjust",
+      tone: "#2563eb",
+      soft: "#eff6ff",
+      border: "rgba(37, 99, 235, 0.18)",
     },
   ];
 
