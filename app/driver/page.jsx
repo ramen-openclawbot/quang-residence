@@ -125,6 +125,7 @@ export default function DriverPage() {
   const [showTxForm, setShowTxForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskSubmitting, setTaskSubmitting] = useState(false);
+  const [revealedTaskId, setRevealedTaskId] = useState(null);
   const [activePanel, setActivePanel] = useState("");
   const [selectedTrip, setSelectedTrip] = useState(null);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
@@ -198,6 +199,39 @@ export default function DriverPage() {
       });
     } catch (error) {
       console.warn("Driver notifyTaskEvent failed:", error);
+    }
+  }
+
+  const getSwipeHandlers = (task) => {
+    let startX = 0;
+    return {
+      onTouchStart: (e) => {
+        startX = e.changedTouches[0]?.clientX || 0;
+      },
+      onTouchEnd: (e) => {
+        const endX = e.changedTouches[0]?.clientX || 0;
+        const deltaX = endX - startX;
+        if (task.created_by !== profile?.id) return;
+        if (deltaX < -50) setRevealedTaskId(task.id);
+        if (deltaX > 35) setRevealedTaskId(null);
+      },
+    };
+  };
+
+  async function handleDeleteTask(task) {
+    if (!profile?.id || task.created_by !== profile.id) return;
+    const ok = typeof window === "undefined" ? true : window.confirm("Delete this task?");
+    if (!ok) return;
+    const { error } = await supabase.from("tasks").delete().eq("id", task.id).eq("created_by", profile.id);
+    if (error) {
+      alert(error.message || "Failed to delete task");
+      return;
+    }
+    setTasks((prev) => prev.filter((t) => t.id !== task.id));
+    setRevealedTaskId(null);
+    if (selectedTask?.id === task.id) {
+      setSelectedTask(null);
+      setActivePanel("");
     }
   }
 
@@ -497,18 +531,27 @@ Complete trip
                       {tasks.map((task) => {
                         const tone = statusTone(task.status);
                         const progress = taskProgress(task.status);
+                        const canDelete = task.created_by === profile?.id;
+                        const swipe = getSwipeHandlers(task);
                         return (
-                          <button key={task.id} onClick={() => { setSelectedTask(task); setActivePanel("task-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
-                            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                              <div>
-                                <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
-                                {task.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description}</div>}
-                                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{task.due_date ? `Due: ${fmtDate(task.due_date)}` : "No deadline"}</div>
-                                <div style={{ fontSize: 11, color: T.textMuted, marginTop: 6 }}>Progress {progress}%</div>
+                          <div key={task.id} style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
+                            {canDelete && (
+                              <button onClick={() => handleDeleteTask(task)} style={{ position: "absolute", inset: 0, marginLeft: "auto", width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
+                                Delete
+                              </button>
+                            )}
+                            <button {...swipe} onClick={() => { setSelectedTask(task); setActivePanel("task-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, position: "relative", transform: canDelete && revealedTaskId === task.id ? "translateX(-88px)" : "translateX(0)", transition: "transform 180ms ease" }}>
+                              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                                <div>
+                                  <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
+                                  {task.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description}</div>}
+                                  <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{task.due_date ? `Due: ${fmtDate(task.due_date)}` : "No deadline"}</div>
+                                  <div style={{ fontSize: 11, color: T.textMuted, marginTop: 6 }}>Progress {progress}%</div>
+                                </div>
+                                <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
                               </div>
-                              <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
-                            </div>
-                          </button>
+                            </button>
+                          </div>
                         );
                       })}
                     </div>
