@@ -235,6 +235,8 @@ export async function PATCH(request) {
       const reviewedAt = new Date().toISOString();
 
       // Keep the transaction for audit trail, mark it as rejected instead of deleting.
+      let rejectUpdateError = null;
+
       const { error } = await supabaseAdmin
         .from("transactions")
         .update({
@@ -245,9 +247,27 @@ export async function PATCH(request) {
         })
         .eq("id", transaction_id);
 
-      if (error) {
-        console.error("Transaction reject error:", error);
-        return NextResponse.json({ error: "Failed to reject transaction." }, { status: 500 });
+      rejectUpdateError = error;
+
+      // Fallback for production schema drift / FK mismatch on audit fields:
+      // still allow the rejection state to be stored even if reviewed_by/reviewed_at fails.
+      if (rejectUpdateError) {
+        console.error("Transaction reject full audit update error:", rejectUpdateError);
+
+        const { error: fallbackError } = await supabaseAdmin
+          .from("transactions")
+          .update({
+            status: "rejected",
+            reject_reason: reject_reason.trim(),
+          })
+          .eq("id", transaction_id);
+
+        if (fallbackError) {
+          console.error("Transaction reject fallback update error:", fallbackError);
+          return NextResponse.json({
+            error: fallbackError.message || rejectUpdateError.message || "Failed to reject transaction.",
+          }, { status: 500 });
+        }
       }
 
       // Notify submitter after the audit state is stored (non-fatal).
