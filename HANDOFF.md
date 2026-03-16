@@ -1,12 +1,12 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-16 10:53 GMT+7_
+_Last updated: 2026-03-16 11:30 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
 - GitHub: `https://github.com/ramen-openclawbot/quang-residence.git`
 - Branch: `main`
-- Current pushed commit: `1185a5a`
+- Current pushed commit: `e6ccaf2`
 
 ## Current product state
 ZenHome is now in a **product-hardening + CRUD-completion** phase, not an auth/firefighting phase.
@@ -244,6 +244,12 @@ Key commit:
   - **Transaction pagination:** `/api/transactions` now supports `offset` + `limit` + optional `month`/`year` query params with total count. The `/transactions` ledger page uses 30-row pages with a "Load more" button
   - Server API loading remains the safer production path; client-side Supabase querying is only used as fallback
 - **Important failed attempt (do not repeat blindly):** a later experiment tried to delay Owner/Secretary Home balance + transaction loading behind a greeting CTA ("Tap here to view your balance"). The JSX was modified in-place and introduced broken nesting / compile failures in both `app/owner/page.jsx` and `app/secretary/page.jsx`. That attempt was explicitly **rolled back** with `git checkout -- app/secretary/page.jsx app/owner/page.jsx`, and the repo was confirmed build-clean afterward. If this UX idea is revisited, it should be implemented as a dedicated performance task with smaller isolated refactors instead of patching large JSX branches inline.
+- Manual Adjustment is now part of the transaction model. It exists specifically to avoid direct balance edits in DB when operators need to reconcile reality vs recorded transactions.
+  - Implemented via `transactions.type = 'adjustment'`
+  - Additional fields: `adjustment_direction`, `reason`, `linked_transaction_id`
+  - Shared transaction form now exposes **Adjust** mode for Secretary / Driver / Housekeeper because all three roles reuse `components/TransactionForm.jsx`
+  - Approval logic updates `funds.current_balance` using `adjustment_direction` (`increase` adds, `decrease` subtracts)
+  - Secretary transaction detail shows adjustment metadata so review stays auditable
 - Transaction audit behavior was upgraded in phases:
   - **Phase 1:** rejected transactions are preserved instead of deleted
   - **Phase 2:** approved transactions can update `funds.current_balance` when `fund_id` is set
