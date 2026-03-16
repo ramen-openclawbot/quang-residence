@@ -98,6 +98,7 @@ export default function OwnerPage() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [pendingNotifTaskId, setPendingNotifTaskId] = useState(null);
   const [notifReturnTab, setNotifReturnTab] = useState(null);
+  const [balanceRevealed, setBalanceRevealed] = useState(false);
   const [accountLoading, setAccountLoading] = useState(false);
   const [accountUsers, setAccountUsers] = useState([]);
   const [accountMsg, setAccountMsg] = useState("");
@@ -135,6 +136,11 @@ export default function OwnerPage() {
       setPendingNotifTaskId(null);
     }
   }, [pendingNotifTaskId, tasks]);
+
+  /* Auto-hide balance when leaving home tab (privacy) */
+  useEffect(() => {
+    if (tab !== "home") setBalanceRevealed(false);
+  }, [tab]);
 
   async function fetchData() {
     try {
@@ -362,34 +368,129 @@ export default function OwnerPage() {
                 <div style={{ fontSize: 13, color: T.textMuted }}>Loading...</div>
               ) : (
                 <>
-                  <div style={{ ...cardStyle, padding: 18, marginBottom: 14, background: "linear-gradient(135deg,#1f331b 0%, #2b4b24 58%, #3d6b30 100%)", color: "white", overflow: "hidden", position: "relative" }}>
-                    <div style={{ position: "absolute", right: -22, top: -22, width: 110, height: 110, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                    <div style={{ position: "relative", zIndex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                        <div>
-                          <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Estate overview</div>
-                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Quiet control</div>
+                  <button
+                    type="button"
+                    onClick={() => setBalanceRevealed((v) => !v)}
+                    style={{ ...cardStyle, padding: 0, marginBottom: 14, background: "linear-gradient(135deg,#1a2b18 0%, #243822 40%, #2f5228 72%, #1a2b18 100%)", color: "white", overflow: "hidden", position: "relative", width: "100%", textAlign: "left", cursor: "pointer", border: "none" }}
+                  >
+                    {/* Premium aurora mist animations */}
+                    <style>{`
+                      @keyframes ownerMist1 {
+                        0%, 100% { opacity: 0.06; transform: translate(0, 0) scale(1); }
+                        33% { opacity: 0.12; transform: translate(12px, -8px) scale(1.15); }
+                        66% { opacity: 0.08; transform: translate(-8px, 4px) scale(1.08); }
+                      }
+                      @keyframes ownerMist2 {
+                        0%, 100% { opacity: 0.05; transform: translate(0, 0) scale(1.1); }
+                        50% { opacity: 0.10; transform: translate(-14px, 6px) scale(1.25); }
+                      }
+                      @keyframes ownerGlow {
+                        0%, 100% { opacity: 0.04; }
+                        50% { opacity: 0.09; }
+                      }
+                      @keyframes ownerBreath {
+                        0%, 100% { transform: translateY(0); }
+                        50% { transform: translateY(-3px); }
+                      }
+                      @keyframes ownerFadeIn {
+                        0% { opacity: 0; transform: translateY(6px); }
+                        100% { opacity: 1; transform: translateY(0); }
+                      }
+                    `}</style>
+
+                    {/* Decorative orb */}
+                    <div style={{ position: "absolute", right: -28, top: -24, width: 130, height: 130, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
+
+                    {!balanceRevealed ? (
+                      /* ── ZEN STATE: premium aurora mist ── */
+                      <div style={{ position: "relative", zIndex: 1, padding: 18, minHeight: 180 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                          <div>
+                            <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Estate overview</div>
+                            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Quiet control</div>
+                          </div>
+                          <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Owner</div>
                         </div>
-                        <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Owner</div>
+
+                        {/* Aurora mist layers */}
+                        <div style={{ position: "relative", height: 80, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {/* Mist orb 1 — soft green */}
+                          <div style={{
+                            position: "absolute",
+                            width: 100, height: 60,
+                            borderRadius: "50%",
+                            background: "radial-gradient(ellipse, rgba(86,201,29,0.18) 0%, transparent 70%)",
+                            left: "20%", top: "10%",
+                            animation: "ownerMist1 8s ease-in-out infinite",
+                            willChange: "transform, opacity",
+                          }} />
+                          {/* Mist orb 2 — cool emerald */}
+                          <div style={{
+                            position: "absolute",
+                            width: 80, height: 50,
+                            borderRadius: "50%",
+                            background: "radial-gradient(ellipse, rgba(134,239,172,0.14) 0%, transparent 70%)",
+                            right: "18%", top: "20%",
+                            animation: "ownerMist2 10s ease-in-out infinite",
+                            willChange: "transform, opacity",
+                          }} />
+                          {/* Center glow pulse */}
+                          <div style={{
+                            width: 6, height: 6,
+                            borderRadius: "50%",
+                            background: "rgba(134,239,172,0.5)",
+                            boxShadow: "0 0 20px 8px rgba(134,239,172,0.12), 0 0 40px 16px rgba(86,201,29,0.06)",
+                            animation: "ownerGlow 4s ease-in-out infinite",
+                          }} />
+                        </div>
+
+                        <div style={{ textAlign: "center", fontSize: 12, opacity: 0.5, fontWeight: 600, animation: "ownerBreath 4s ease-in-out infinite" }}>
+                          Tap to reveal
+                        </div>
                       </div>
-                      <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Finance, estate, team, and rhythm.</div>
-                      <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 10 }}>{fmtVND(totalBalance)}</div>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,0.12)", fontSize: 11, fontWeight: 700, marginBottom: 16 }}>
-                        <div style={{ width: 6, height: 6, borderRadius: 999, background: usingLedgerFallback ? "#fbbf24" : "#86efac" }} />
-                        {usingLedgerFallback ? "Ledger fallback" : "Synced from funds"}
+                    ) : (
+                      /* ── REVEALED STATE: balance + stats ── */
+                      <div style={{ position: "relative", zIndex: 1, padding: 18, animation: "ownerFadeIn 0.4s ease-out" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                          <div>
+                            <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Estate overview</div>
+                            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Quiet control</div>
+                          </div>
+                          <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Owner</div>
+                        </div>
+                        <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Finance, estate, team, and rhythm.</div>
+                        <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 10 }}>{fmtVND(totalBalance)}</div>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,0.12)", fontSize: 11, fontWeight: 700, marginBottom: 16 }}>
+                          <div style={{ width: 6, height: 6, borderRadius: 999, background: usingLedgerFallback ? "#fbbf24" : "#86efac" }} />
+                          {usingLedgerFallback ? "Ledger fallback" : "Synced from funds"}
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                          <div><div style={{ fontSize: 11, opacity: 0.7 }}>Pending</div><div style={{ fontSize: 18, fontWeight: 800 }}>{pendingTransactions.length}</div></div>
+                          <div><div style={{ fontSize: 11, opacity: 0.7 }}>Open tasks</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
+                          <div><div style={{ fontSize: 11, opacity: 0.7 }}>Active funds</div><div style={{ fontSize: 18, fontWeight: 800 }}>{activeFunds}</div></div>
+                        </div>
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Pending</div><div style={{ fontSize: 18, fontWeight: 800 }}>{pendingTransactions.length}</div></div>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Open tasks</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Active funds</div><div style={{ fontSize: 18, fontWeight: 800 }}>{activeFunds}</div></div>
+                    )}
+                  </button>
+
+                  {/* Spent / Income monthly cards — hidden until revealed */}
+                  {balanceRevealed ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14, animation: "ownerFadeIn 0.5s ease-out 0.1s both" }}>
+                      <SmallStat label="Spent this month" value={fmtVND(spentThisMonth)} color={T.danger} />
+                      <SmallStat label="Income this month" value={fmtVND(incomeThisMonth)} color={T.success} />
+                    </div>
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+                      <div style={{ ...softCard, padding: 14 }}>
+                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Spent this month</div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: T.textMuted, marginTop: 6, opacity: 0.3 }}>• • •</div>
+                      </div>
+                      <div style={{ ...softCard, padding: 14 }}>
+                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Income this month</div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: T.textMuted, marginTop: 6, opacity: 0.3 }}>• • •</div>
                       </div>
                     </div>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-                    <SmallStat label="Spent this month" value={fmtVND(spentThisMonth)} color={T.danger} />
-                    <SmallStat label="Income this month" value={fmtVND(incomeThisMonth)} color={T.success} />
-                  </div>
+                  )}
 
 
                   <div style={{ ...cardStyle, padding: 16, marginBottom: 16 }}>

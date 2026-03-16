@@ -252,6 +252,30 @@ Key commit:
   - Secretary transaction detail shows adjustment metadata so review stays auditable
   - Important lesson: for `TransactionForm`, a new mode is not done just because the segmented control appears. Verify the full state machine (`type`, `step`, conditional render branches) and confirm that the intended body actually appears after switching mode.
   - Another lesson: do not report commit hashes from memory or partial local state. Always confirm with `git log -1 --oneline HEAD` and `git log -1 --oneline origin/main` before telling the user what GitHub / Vercel is actually running.
+  - **Critical production lesson:** feature work here repeatedly hit **schema drift** between repo code and production Supabase. UI or API fixes alone were not enough. Before claiming transaction review / adjustment is fixed, verify production DB has all required columns and constraints.
+    - For manual adjustment, production must support at least:
+      - `transactions.type` allowing `'adjustment'`
+      - `adjustment_direction`
+      - `reason`
+      - `linked_transaction_id`
+    - For secretary review/reject, production must support at least:
+      - `reviewed_by`
+      - `reviewed_at`
+      - `reject_reason`
+    - Notifications schema lives in `supabase/storage.sql`, not only `supabase/schema.sql`; do not assume `notifications` is covered just because `schema.sql` looks complete.
+    - A real failure observed in production: secretary reject kept failing until the missing `transactions.reject_reason` column was added via SQL. Error text explicitly said the column was absent from the schema cache.
+  - **Signed amount lesson:** do not hardcode transaction sign logic as `income => positive, else => negative` anymore.
+    - Correct rule is:
+      - `income` => positive
+      - `expense` => negative
+      - `adjustment + increase` => positive
+      - `adjustment + decrease` => negative
+    - This bug surfaced separately across multiple surfaces (Secretary, Owner, Driver, ledger summaries, daily report), so future changes should centralize or at least systematically re-check every screen that computes totals, colors, arrows, or amount signs.
+- NotificationCenter settings icon now has live behavior without UI changes:
+  - Clicking the small settings icon inside the notification dropdown should ask for confirmation, then delete **all notifications belonging only to the current authenticated user**.
+  - Implementation uses `DELETE /api/notifications` on the server, authenticated by bearer token, and the delete query must stay scoped to `.eq("user_id", user.id)` so one user can never wipe another user's notifications.
+  - Important regression lesson: after wiring a new click handler in `components/shared/NotificationCenter.jsx`, verify the referenced function actually exists in the client component. A real production-facing bug occurred where the dropdown crashed because `deleteAllNotifs` was referenced by the settings button but missing at runtime.
+  - If notification dropdown starts crashing after edits, check `components/shared/NotificationCenter.jsx` first for missing handlers / duplicated trailing fragments before assuming API or DB problems.
 - Transaction audit behavior was upgraded in phases:
   - **Phase 1:** rejected transactions are preserved instead of deleted
   - **Phase 2:** approved transactions can update `funds.current_balance` when `fund_id` is set
