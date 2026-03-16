@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { requireRole, supabaseAdmin } from "../../../../lib/api-auth";
+import { getSignedAmount } from "../../../../lib/transaction";
 
 /**
  * GET /api/dashboard/secretary
@@ -20,22 +16,8 @@ const supabaseAdmin = createClient(
  */
 export async function GET(request) {
   try {
-    const authHeader = request.headers.get("authorization") || "";
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    if (!token) return NextResponse.json({ error: "Missing bearer token" }, { status: 401 });
-
-    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-    if (authErr || !user) return NextResponse.json({ error: "Invalid session" }, { status: 401 });
-
-    const { data: profile } = await supabaseAdmin
-      .from("profiles")
-      .select("id, role, full_name")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile || !["owner", "secretary"].includes(profile.role)) {
-      return NextResponse.json({ error: "Not authorised" }, { status: 403 });
-    }
+    const auth = await requireRole(request, ["owner", "secretary"]);
+    if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
     // Compute today's date in server local time (same timezone as DB seed data)
     const now = new Date();
@@ -62,12 +44,14 @@ export async function GET(request) {
         .eq("status", "pending"),
     ]);
 
-    const todayIncome = (todayTxRes.data || [])
-      .filter((t) => t.type === "income")
-      .reduce((s, t) => s + Number(t.amount || 0), 0);
-    const todayExpense = (todayTxRes.data || [])
-      .filter((t) => t.type === "expense")
-      .reduce((s, t) => s + Number(t.amount || 0), 0);
+    const todayIncome = (todayTxRes.data || []).reduce((s, t) => {
+      const signed = getSignedAmount(t);
+      return signed > 0 ? s + signed : s;
+    }, 0);
+    const todayExpense = (todayTxRes.data || []).reduce((s, t) => {
+      const signed = getSignedAmount(t);
+      return signed < 0 ? s + Math.abs(signed) : s;
+    }, 0);
 
     return NextResponse.json({
       success: true,

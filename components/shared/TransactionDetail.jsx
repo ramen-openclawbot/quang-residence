@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MIcon } from "./StaffShell";
 import ImageLightbox from "./ImageLightbox";
 import { supabase } from "../../lib/supabase";
+import { fmtAmountVND as fmtVND, fmtDateEN as fmtDate, fmtTime } from "../../lib/format";
 
 /* ─── design tokens (match app-wide palette) ─── */
 const T = {
@@ -27,16 +28,6 @@ const cardStyle = {
 };
 
 /* ─── helpers ─── */
-const fmtVND = (n) => Number(n || 0).toLocaleString("vi-VN") + "đ";
-const fmtDate = (d) => {
-  if (!d) return "—";
-  const dt = new Date(d);
-  return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-};
-const fmtTime = (d) => {
-  if (!d) return "";
-  return new Date(d).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-};
 
 /**
  * Full-screen transaction detail panel with audit actions.

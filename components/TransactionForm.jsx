@@ -188,6 +188,11 @@ export default function TransactionForm({ onClose, onSuccess }) {
       // Step 2: Scan all in parallel
       setScanProgress((p) => ({ ...p, phase: "scanning" }));
       const token = await getToken();
+      if (!token) {
+        alert("Session expired. Please log in again.");
+        setScanProgress(null);
+        return;
+      }
       const scanPromises = compressed.map((file, idx) =>
         scanImage(file, token, idx)
       );
@@ -338,6 +343,11 @@ export default function TransactionForm({ onClose, onSuccess }) {
     setSubmitting(true);
     try {
       const token = await getToken();
+      if (!token) {
+        alert("Session expired. Please log in again.");
+        setSubmitting(false);
+        return;
+      }
       const createdTransactions = [];
 
       for (const result of scanResults) {
@@ -435,6 +445,11 @@ export default function TransactionForm({ onClose, onSuccess }) {
     setAdjustSubmitting(true);
     try {
       const token = await getToken();
+      if (!token) {
+        alert("Session expired. Please log in again.");
+        setAdjustSubmitting(false);
+        return;
+      }
       const payload = {
         type: "adjustment",
         amount: Number(adjustAmount),

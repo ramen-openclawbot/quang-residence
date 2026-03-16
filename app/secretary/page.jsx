@@ -7,7 +7,7 @@ import TransactionDetail from "../../components/shared/TransactionDetail";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
-import { getSignedAmount, getLocalDateKey } from "../../lib/transaction";
+import { getSignedAmount, getLocalDateKey, getTodayKey } from "../../lib/transaction";
 import TransactionForm from "../../components/TransactionForm";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -364,13 +364,7 @@ export default function SecretaryPage() {
     for (let y = current - 2; y <= current + 1; y++) years.push(y);
     return years;
   }, []);
-  const today = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }, []);
+  const today = useMemo(() => getTodayKey(), []);
   const todayTasks = useMemo(() => tasks.filter((t) => (t.due_date || "").startsWith(today)), [tasks, today]);
   const overdueTasks = useMemo(() => tasks.filter((t) => t.status !== "done" && t.due_date && t.due_date.slice(0, 10) < today), [tasks, today]);
   const recentTransactions = useMemo(() => transactions.slice(0, 8), [transactions]);
@@ -714,11 +708,7 @@ export default function SecretaryPage() {
                         <div style={{ fontSize: 13, color: T.textMuted, marginTop: 6 }}>No transactions yet.</div>
                       </div>
                     ) : recentTransactions.slice(0, 5).map((tx) => {
-                      const signedAmount = tx.type === "adjustment"
-                        ? (tx.adjustment_direction === "increase" ? Math.abs(Number(tx.amount || 0)) : -Math.abs(Number(tx.amount || 0)))
-                        : tx.type === "income"
-                          ? Math.abs(Number(tx.amount || 0))
-                          : -Math.abs(Number(tx.amount || 0));
+                      const signedAmount = getSignedAmount(tx);
                       const isPositive = signedAmount >= 0;
                       return (
                       <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
@@ -785,11 +775,7 @@ export default function SecretaryPage() {
                     <>
                       <div style={{ display: "grid", gap: 8 }}>
                         {txPageItems.map((tx) => {
-                          const signedAmount = tx.type === "adjustment"
-                            ? (tx.adjustment_direction === "increase" ? Math.abs(Number(tx.amount || 0)) : -Math.abs(Number(tx.amount || 0)))
-                            : tx.type === "income"
-                              ? Math.abs(Number(tx.amount || 0))
-                              : -Math.abs(Number(tx.amount || 0));
+                          const signedAmount = getSignedAmount(tx);
                           const isIncome = signedAmount >= 0;
                           const statusColor = tx.status === "approved" ? T.success : tx.status === "pending" ? T.amber : T.danger;
                           return (

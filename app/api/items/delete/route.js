@@ -1,19 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-async function resolveUser(request) {
-  const authHeader = request.headers.get("authorization") || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  if (!token) return { error: "Missing bearer token", status: 401 };
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-  if (error || !user) return { error: "Invalid session", status: 401 };
-  return { user };
-}
+import { resolveUser, supabaseAdmin } from "../../../../lib/api-auth";
 
 const TABLES = {
   tasks: { table: "tasks", ownerField: "created_by" },
@@ -23,7 +9,7 @@ const TABLES = {
 
 export async function POST(request) {
   try {
-    const auth = await resolveUser(request);
+    const auth = await resolveUser(request, { requireProfile: false });
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
     const { user } = auth;
     const { kind, id } = await request.json();

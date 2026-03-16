@@ -5,7 +5,7 @@ import StaffShell, { MIcon } from "../../components/shared/StaffShell";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
-import { getSignedAmount, getLocalDateKey } from "../../lib/transaction";
+import { getSignedAmount, getLocalDateKey, getTodayKey } from "../../lib/transaction";
 import TransactionForm from "../../components/TransactionForm";
 
 const T = {
@@ -261,13 +261,7 @@ export default function HousekeeperPage() {
     fetchData();
   }
 
-  const today = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }, []);
+  const today = useMemo(() => getTodayKey(), []);
   const isCurrentDayTransaction = (tx) => getLocalDateKey(tx.transaction_date) === today || getLocalDateKey(tx.created_at) === today;
   const todayExpense = useMemo(() => transactions.filter((tx) => isCurrentDayTransaction(tx)).reduce((sum, tx) => sum + Math.abs(Math.min(0, getSignedAmount(tx))), 0), [transactions, today]);
   const monthExpense = useMemo(() => {

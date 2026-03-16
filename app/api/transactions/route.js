@@ -1,49 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-/**
- * Resolve the caller's profile from the bearer token.
- * Returns { user, profile } or { error, status }.
- */
-async function resolveUser(request) {
-  const authHeader = request.headers.get("authorization") || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  if (!token) return { error: "Missing bearer token", status: 401 };
-
-  const {
-    data: { user },
-    error,
-  } = await supabaseAdmin.auth.getUser(token);
-  if (error || !user) return { error: "Invalid session", status: 401 };
-
-  const { data: profile } = await supabaseAdmin
-    .from("profiles")
-    .select("id, role, full_name")
-    .eq("id", user.id)
-    .single();
-  if (!profile) return { error: "Profile not found", status: 403 };
-
-  return { user, profile };
-}
-
-/**
- * Send a real-time notification to a specific user.
- */
-async function notify(userId, title, body, type = "info", link = null, payload = null) {
-  await supabaseAdmin.from("notifications").insert({
-    user_id: userId,
-    title,
-    body,
-    type,
-    link,
-    payload,
-  });
-}
+import { resolveUser, supabaseAdmin, notify } from "../../../lib/api-auth";
 
 const MAX_REJECT_REASON_LENGTH = 500;
 

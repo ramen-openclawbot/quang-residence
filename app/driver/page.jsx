@@ -5,7 +5,7 @@ import StaffShell, { MIcon } from "../../components/shared/StaffShell";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
-import { getSignedAmount, getLocalDateKey } from "../../lib/transaction";
+import { getSignedAmount, getLocalDateKey, getTodayKey } from "../../lib/transaction";
 import TransactionForm from "../../components/TransactionForm";
 
 const T = {
@@ -290,13 +290,7 @@ export default function DriverPage() {
     }
   }
 
-  const today = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }, []);
+  const today = useMemo(() => getTodayKey(), []);
   const todayTrips = useMemo(() => trips.filter((t) => getLocalDateKey(t.scheduled_time) === today), [trips, today]);
   const upcomingTrips = useMemo(() => trips.filter((t) => getLocalDateKey(t.scheduled_time) !== today), [trips, today]);
   const activeTrip = useMemo(() => trips.find((t) => t.status === "in_progress") || null, [trips]);

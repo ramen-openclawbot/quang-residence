@@ -6,6 +6,7 @@ import TransactionDetail from "../../components/shared/TransactionDetail";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { getSignedAmount } from "../../lib/transaction";
+import { fmtAmountVND as fmtVND, fmtDateEN as fmtDate } from "../../lib/format";
 
 /* ─── design tokens (must match app-wide palette) ─── */
 const T = {
@@ -26,14 +27,6 @@ const cardStyle = {
   border: `1px solid ${T.border}`,
   borderRadius: 18,
   boxShadow: "0 8px 30px rgba(16,24,16,0.04)",
-};
-
-/* ─── helpers ─── */
-const fmtVND = (n) => Number(n || 0).toLocaleString("vi-VN") + "đ";
-const fmtDate = (d) => {
-  if (!d) return "—";
-  const dt = new Date(d);
-  return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 };
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -269,11 +262,7 @@ export default function TransactionsPage() {
           ) : (
             <div style={{ display: "grid", gap: 8 }}>
               {filtered.map((tx) => {
-                const signedAmount = tx.type === "adjustment"
-                  ? (tx.adjustment_direction === "increase" ? Math.abs(Number(tx.amount || 0)) : -Math.abs(Number(tx.amount || 0)))
-                  : tx.type === "income"
-                    ? Math.abs(Number(tx.amount || 0))
-                    : -Math.abs(Number(tx.amount || 0));
+                const signedAmount = getSignedAmount(tx);
                 const isIncome = signedAmount >= 0;
                 const statusColor = tx.status === "approved" ? T.success : tx.status === "pending" ? T.amber : T.danger;
                 return (

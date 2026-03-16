@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { resolveUser, supabaseAdmin } from "../../../../lib/api-auth";
 
 /**
  * POST: notify reviewers when a transaction is submitted.
@@ -14,21 +9,9 @@ const supabaseAdmin = createClient(
  */
 export async function POST(request) {
   try {
-    const authHeader = request.headers.get("authorization") || "";
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const {
-      data: { user },
-    } = await supabaseAdmin.auth.getUser(token);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const { data: profile } = await supabaseAdmin
-      .from("profiles")
-      .select("id, role, full_name")
-      .eq("id", user.id)
-      .single();
-    if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 403 });
+    const auth = await resolveUser(request);
+    if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    const { profile } = auth;
 
     const { transaction_id, amount, type, description } = await request.json();
     const amountStr = Number(amount || 0).toLocaleString("vi-VN") + "đ";

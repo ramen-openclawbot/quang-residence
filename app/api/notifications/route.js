@@ -1,19 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { resolveUser, supabaseAdmin } from "../../../lib/api-auth";
 
 // GET: list notifications for current user (client calls with auth header)
 export async function GET(request) {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const token = authHeader.replace("Bearer ", "");
-  const { data: { user } } = await supabaseAdmin.auth.getUser(token);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await resolveUser(request, { requireProfile: false });
+  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { user } = auth;
 
   const { data, error } = await supabaseAdmin
     .from("notifications")
@@ -34,10 +26,9 @@ export async function GET(request) {
 // PATCH: mark notification(s) as read
 export async function PATCH(request) {
   const { notification_id, mark_all } = await request.json();
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.replace("Bearer ", "");
-  const { data: { user } } = await supabaseAdmin.auth.getUser(token);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await resolveUser(request, { requireProfile: false });
+  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { user } = auth;
 
   const now = new Date().toISOString();
 
@@ -66,10 +57,9 @@ export async function PATCH(request) {
 
 // DELETE: delete all notifications for current user only
 export async function DELETE(request) {
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.replace("Bearer ", "");
-  const { data: { user } } = await supabaseAdmin.auth.getUser(token);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await resolveUser(request, { requireProfile: false });
+  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { user } = auth;
 
   const { error } = await supabaseAdmin
     .from("notifications")

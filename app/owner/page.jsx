@@ -6,7 +6,7 @@ import NotificationCenter from "../../components/shared/NotificationCenter";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtVND } from "../../lib/format";
-import { getSignedAmount, getLocalDateKey } from "../../lib/transaction";
+import { getSignedAmount, getLocalDateKey, getTodayKey } from "../../lib/transaction";
 
 const T = {
   primary: "#56c91d",
@@ -290,13 +290,7 @@ export default function OwnerPage() {
   const activeFunds = useMemo(() => funds.filter((fund) => Number(fund.current_balance || 0) > 0).length, [funds]);
   const pendingTransactions = useMemo(() => transactions.filter((tx) => tx.status === "pending"), [transactions]);
   const openTasks = useMemo(() => tasks.filter((task) => task.status !== "done"), [tasks]);
-  const today = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }, []);
+  const today = useMemo(() => getTodayKey(), []);
   const thisMonthKey = today.slice(0, 7);
   const spentThisMonth = useMemo(() => transactions.filter((tx) => [getLocalDateKey(tx.transaction_date), getLocalDateKey(tx.created_at)].some((key) => key.startsWith(thisMonthKey))).reduce((sum, tx) => {
     const signed = getSignedAmount(tx);
@@ -612,11 +606,7 @@ export default function OwnerPage() {
             <div style={{ ...cardStyle, padding: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Recent approvals / spend</div>
               {transactions.slice(0, 6).map((tx) => {
-                const signedAmount = tx.type === "adjustment"
-                  ? (tx.adjustment_direction === "increase" ? Math.abs(Number(tx.amount || 0)) : -Math.abs(Number(tx.amount || 0)))
-                  : tx.type === "income"
-                    ? Math.abs(Number(tx.amount || 0))
-                    : -Math.abs(Number(tx.amount || 0));
+                const signedAmount = getSignedAmount(tx);
                 const isPositive = signedAmount >= 0;
                 return (
                 <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
