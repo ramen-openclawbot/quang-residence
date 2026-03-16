@@ -111,6 +111,24 @@ export default function NotificationCenter({ userId, onOpenNotification }) {
     setNotifs((p) => p.map((n) => ({ ...n, read_at: n.read_at || now })));
   };
 
+  const deleteAllNotifs = async () => {
+    const ok = typeof window === "undefined" ? true : window.confirm("Delete all notifications for this account?");
+    if (!ok) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/notifications", {
+        method: "DELETE",
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result.error || "Failed to delete notifications");
+      setNotifs([]);
+      setOpen(false);
+    } catch (err) {
+      alert(err.message || "Failed to delete notifications");
+    }
+  };
+
   // Group by date
   const groupByDate = () => {
     const today = new Date().toDateString();
