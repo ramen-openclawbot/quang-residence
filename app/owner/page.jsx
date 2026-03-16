@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import StaffShell, { MIcon } from "../../components/shared/StaffShell";
 import NotificationCenter from "../../components/shared/NotificationCenter";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtVND } from "../../lib/format";
+import { getSignedAmount, getLocalDateKey } from "../../lib/transaction";
 
 const T = {
   primary: "#56c91d",
@@ -283,14 +284,7 @@ export default function OwnerPage() {
 
   const fundsBalance = useMemo(() => funds.reduce((sum, fund) => sum + Number(fund.current_balance || 0), 0), [funds]);
   const fundedEntries = useMemo(() => funds.filter((fund) => Number(fund.current_balance || 0) !== 0).length, [funds]);
-  const getSignedAmount = useCallback((tx) => {
-    const amount = Math.abs(Number(tx?.amount || 0));
-    if (tx?.type === "income") return amount;
-    if (tx?.type === "adjustment") return tx.adjustment_direction === "increase" ? amount : -amount;
-    if (tx?.type === "expense") return -amount;
-    return 0;
-  }, []);
-  const ledgerBalance = useMemo(() => transactions.reduce((sum, tx) => sum + getSignedAmount(tx), 0), [transactions, getSignedAmount]);
+  const ledgerBalance = useMemo(() => transactions.reduce((sum, tx) => sum + getSignedAmount(tx), 0), [transactions]);
   const usingLedgerFallback = useMemo(() => fundedEntries === 0 && transactions.length > 0, [fundedEntries, transactions.length]);
   const totalBalance = useMemo(() => (usingLedgerFallback ? ledgerBalance : fundsBalance), [usingLedgerFallback, fundsBalance, ledgerBalance]);
   const activeFunds = useMemo(() => funds.filter((fund) => Number(fund.current_balance || 0) > 0).length, [funds]);
@@ -303,28 +297,15 @@ export default function OwnerPage() {
     const day = String(now.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }, []);
-  const getLocalDateKey = (value) => {
-    if (!value) return "";
-    if (typeof value === "string") {
-      const direct = value.match(/^(\d{4}-\d{2}-\d{2})/);
-      if (direct) return direct[1];
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
   const thisMonthKey = today.slice(0, 7);
   const spentThisMonth = useMemo(() => transactions.filter((tx) => [getLocalDateKey(tx.transaction_date), getLocalDateKey(tx.created_at)].some((key) => key.startsWith(thisMonthKey))).reduce((sum, tx) => {
     const signed = getSignedAmount(tx);
     return signed < 0 ? sum + Math.abs(signed) : sum;
-  }, 0), [transactions, thisMonthKey, getSignedAmount]);
+  }, 0), [transactions, thisMonthKey]);
   const incomeThisMonth = useMemo(() => transactions.filter((tx) => [getLocalDateKey(tx.transaction_date), getLocalDateKey(tx.created_at)].some((key) => key.startsWith(thisMonthKey))).reduce((sum, tx) => {
     const signed = getSignedAmount(tx);
     return signed > 0 ? sum + signed : sum;
-  }, 0), [transactions, thisMonthKey, getSignedAmount]);
+  }, 0), [transactions, thisMonthKey]);
   const topFunds = useMemo(() => [...funds].sort((a, b) => Number(b.current_balance || 0) - Number(a.current_balance || 0)).slice(0, 4), [funds]);
   const recentTasks = useMemo(() => tasks.slice(0, 4), [tasks]);
   const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);

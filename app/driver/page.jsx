@@ -5,6 +5,7 @@ import StaffShell, { MIcon } from "../../components/shared/StaffShell";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
+import { getSignedAmount, getLocalDateKey } from "../../lib/transaction";
 import TransactionForm from "../../components/TransactionForm";
 
 const T = {
@@ -296,34 +297,11 @@ export default function DriverPage() {
     const day = String(now.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }, []);
-  const getLocalDateKey = (value) => {
-    if (!value) return "";
-    if (typeof value === "string") {
-      const direct = value.match(/^(\d{4}-\d{2}-\d{2})/);
-      if (direct) return direct[1];
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
   const todayTrips = useMemo(() => trips.filter((t) => getLocalDateKey(t.scheduled_time) === today), [trips, today]);
   const upcomingTrips = useMemo(() => trips.filter((t) => getLocalDateKey(t.scheduled_time) !== today), [trips, today]);
   const activeTrip = useMemo(() => trips.find((t) => t.status === "in_progress") || null, [trips]);
   const openTasks = useMemo(() => tasks.filter((t) => t.status !== "done"), [tasks]);
   const isCurrentDayTransaction = (t) => getLocalDateKey(t.transaction_date) === today || getLocalDateKey(t.created_at) === today;
-  const getSignedAmount = (tx) => {
-    const amount = Math.abs(Number(tx.amount || 0));
-    const type = String(tx.type || "").toLowerCase();
-    if (type === "income") return amount;
-    if (type === "adjustment") {
-      return tx.adjustment_direction === "increase" ? amount : -amount;
-    }
-    if (type === "expense") return -amount;
-    return -amount;
-  };
   const todayExpense = useMemo(() => transactions.filter((t) => isCurrentDayTransaction(t)).reduce((s, t) => s + Math.abs(Math.min(0, getSignedAmount(t))), 0), [transactions, today]);
   const monthExpense = useMemo(() => {
     const monthKey = today.slice(0, 7);

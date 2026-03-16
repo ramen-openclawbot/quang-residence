@@ -252,6 +252,19 @@ Key commit:
   - Secretary transaction detail shows adjustment metadata so review stays auditable
   - Important lesson: for `TransactionForm`, a new mode is not done just because the segmented control appears. Verify the full state machine (`type`, `step`, conditional render branches) and confirm that the intended body actually appears after switching mode.
   - Another lesson: do not report commit hashes from memory or partial local state. Always confirm with `git log -1 --oneline HEAD` and `git log -1 --oneline origin/main` before telling the user what GitHub / Vercel is actually running.
+- **Current rollback status (very important):** as of late night 2026-03-16, both local `main` and `origin/main` were intentionally reset/force-pushed back to commit `ca83310` (`Update owner dashboard and handoff notes`) because the later Owner-page changes caused repeated production runtime errors.
+  - Production is intentionally aligned to `ca83310` now.
+  - Local repo was hard-reset to `ca83310`.
+  - `origin/main` was then force-pushed to `ca83310` to match production/local reality.
+  - Before handing off, repo was cleaned and `git status` was empty.
+- **Owner page caution:** multiple follow-up commits after `ca83310` attempted to replace Owner `wealth` with a Secretary-style transaction view, but those changes repeatedly produced runtime/client-side failures on production and left `app/owner/page.jsx` in a fragile state during experimentation.
+  - Problematic experimental commits that are no longer on `main` after force-push included:
+    - `2931afa` `Unify owner wealth view with transaction ledger`
+    - `2731828` `Fix owner wealth transaction tab runtime issues`
+    - `6ceff1b` `Fix owner home runtime crash after wealth merge`
+  - There were also intermediate runtime fixes on top of that branch history. Treat that line of edits as **discarded experimentation**, not a trusted base.
+  - If another agent resumes the Owner simplification idea, it should start fresh from `ca83310`, ideally on a new branch, instead of trying to resurrect or cherry-pick the discarded Owner commits blindly.
+- **Recommended next step for future agent:** if continuing the Owner simplification request (replace `wealth` with a stable transaction view), do it from a clean branch off `ca83310` and prefer a clean rewrite of the `wealth` tab only, rather than incremental patching inside the previously corrupted `app/owner/page.jsx` edit history.
   - **Critical production lesson:** feature work here repeatedly hit **schema drift** between repo code and production Supabase. UI or API fixes alone were not enough. Before claiming transaction review / adjustment is fixed, verify production DB has all required columns and constraints.
     - For manual adjustment, production must support at least:
       - `transactions.type` allowing `'adjustment'`

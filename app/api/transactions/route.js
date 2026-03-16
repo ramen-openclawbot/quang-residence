@@ -198,10 +198,40 @@ export async function PATCH(request) {
         .eq("id", transaction_id);
 
       if (error) {
-        // CRITICAL: Fund was updated but transaction approval failed — log for manual recovery
-        console.error("CRITICAL: Fund updated but transaction approval failed", {
+        // CRITICAL: Fund was updated but transaction approval failed — rollback fund balance
+        console.error("CRITICAL: Transaction approval failed, rolling back fund balance", {
           transaction_id, fund_id: tx.fund_id, error
         });
+
+        if (tx.fund_id) {
+          // Reverse the balance change
+          const { data: currentFund } = await supabaseAdmin
+            .from("funds")
+            .select("current_balance")
+            .eq("id", tx.fund_id)
+            .single();
+
+          if (currentFund) {
+            const rollbackBalance = Number(currentFund.current_balance || 0);
+            const restoredBalance = tx.type === "income"
+              ? rollbackBalance - amount
+              : tx.type === "adjustment"
+                ? (tx.adjustment_direction === "increase" ? rollbackBalance - amount : rollbackBalance + amount)
+                : rollbackBalance + amount;
+
+            const { error: rollbackErr } = await supabaseAdmin
+              .from("funds")
+              .update({ current_balance: restoredBalance })
+              .eq("id", tx.fund_id);
+
+            if (rollbackErr) {
+              console.error("CRITICAL: Fund rollback also failed — manual intervention required", {
+                transaction_id, fund_id: tx.fund_id, rollbackErr
+              });
+            }
+          }
+        }
+
         return NextResponse.json({ error: "Failed to approve transaction." }, { status: 500 });
       }
 

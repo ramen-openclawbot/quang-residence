@@ -5,6 +5,7 @@ import { MIcon } from "../../components/shared/StaffShell";
 import TransactionDetail from "../../components/shared/TransactionDetail";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
+import { getSignedAmount } from "../../lib/transaction";
 
 /* ─── design tokens (must match app-wide palette) ─── */
 const T = {
@@ -140,23 +141,15 @@ export default function TransactionsPage() {
     );
   }, [transactions, search]);
 
-  const getSignedAmount = useCallback((tx) => {
-    const amount = Math.abs(Number(tx?.amount || 0));
-    if (tx?.type === "income") return amount;
-    if (tx?.type === "adjustment") return tx.adjustment_direction === "increase" ? amount : -amount;
-    if (tx?.type === "expense") return -amount;
-    return 0;
-  }, []);
-
   // Summary stats
   const totalIncome = useMemo(() => filtered.reduce((s, t) => {
     const signed = getSignedAmount(t);
     return signed > 0 ? s + signed : s;
-  }, 0), [filtered, getSignedAmount]);
+  }, 0), [filtered]);
   const totalExpense = useMemo(() => filtered.reduce((s, t) => {
     const signed = getSignedAmount(t);
     return signed < 0 ? s + Math.abs(signed) : s;
-  }, 0), [filtered, getSignedAmount]);
+  }, 0), [filtered]);
   const pendingCount = useMemo(() => filtered.filter((t) => t.status === "pending").length, [filtered]);
 
   const handleAction = (action, txId) => {

@@ -7,6 +7,7 @@ import TransactionDetail from "../../components/shared/TransactionDetail";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
+import { getSignedAmount, getLocalDateKey } from "../../lib/transaction";
 import TransactionForm from "../../components/TransactionForm";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -353,14 +354,7 @@ export default function SecretaryPage() {
 
   const fundsBalance = useMemo(() => funds.reduce((s, f) => s + Number(f.current_balance || 0), 0), [funds]);
   const fundedEntries = useMemo(() => funds.filter((f) => Number(f.current_balance || 0) !== 0).length, [funds]);
-  const getSignedAmount = useCallback((tx) => {
-    const amount = Math.abs(Number(tx?.amount || 0));
-    if (tx?.type === "income") return amount;
-    if (tx?.type === "adjustment") return tx.adjustment_direction === "increase" ? amount : -amount;
-    if (tx?.type === "expense") return -amount;
-    return 0;
-  }, []);
-  const ledgerBalance = useMemo(() => transactions.reduce((sum, tx) => sum + getSignedAmount(tx), 0), [transactions, getSignedAmount]);
+  const ledgerBalance = useMemo(() => transactions.reduce((sum, tx) => sum + getSignedAmount(tx), 0), [transactions]);
   const usingLedgerFallback = useMemo(() => fundedEntries === 0 && transactions.length > 0, [fundedEntries, transactions.length]);
   const totalBalance = useMemo(() => (usingLedgerFallback ? ledgerBalance : fundsBalance), [usingLedgerFallback, fundsBalance, ledgerBalance]);
   const pendingTx = useMemo(() => transactions.filter((t) => t.status === "pending"), [transactions]);
@@ -377,19 +371,6 @@ export default function SecretaryPage() {
     const day = String(now.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }, []);
-  const getLocalDateKey = (value) => {
-    if (!value) return "";
-    if (typeof value === "string") {
-      const direct = value.match(/^(\d{4}-\d{2}-\d{2})/);
-      if (direct) return direct[1];
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
   const todayTasks = useMemo(() => tasks.filter((t) => (t.due_date || "").startsWith(today)), [tasks, today]);
   const overdueTasks = useMemo(() => tasks.filter((t) => t.status !== "done" && t.due_date && t.due_date.slice(0, 10) < today), [tasks, today]);
   const recentTransactions = useMemo(() => transactions.slice(0, 8), [transactions]);
@@ -425,11 +406,11 @@ export default function SecretaryPage() {
   const txIncomeTotal = useMemo(() => txMonthFiltered.reduce((sum, tx) => {
     const signed = getSignedAmount(tx);
     return signed > 0 ? sum + signed : sum;
-  }, 0), [txMonthFiltered, getSignedAmount]);
+  }, 0), [txMonthFiltered]);
   const txExpenseTotal = useMemo(() => txMonthFiltered.reduce((sum, tx) => {
     const signed = getSignedAmount(tx);
     return signed < 0 ? sum + Math.abs(signed) : sum;
-  }, 0), [txMonthFiltered, getSignedAmount]);
+  }, 0), [txMonthFiltered]);
   const txPendingCount = useMemo(() => txMonthFiltered.filter((tx) => tx.status === "pending").length, [txMonthFiltered]);
 
   useEffect(() => {

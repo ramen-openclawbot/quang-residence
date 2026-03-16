@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getSignedAmount } from "../../../../lib/transaction";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -78,14 +79,6 @@ export async function GET(request) {
       .gte("maturity_date", reportDate);
 
     // === Build report data ===
-    const getSignedAmount = (t) => {
-      const amount = Math.abs(Number(t?.amount || 0));
-      if (t?.type === "income") return amount;
-      if (t?.type === "adjustment") return t.adjustment_direction === "increase" ? amount : -amount;
-      if (t?.type === "expense") return -amount;
-      return 0;
-    };
-
     const totalExpenseToday = txns?.reduce((s, t) => {
       const signed = getSignedAmount(t);
       return signed < 0 ? s + Math.abs(signed) : s;
