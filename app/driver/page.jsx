@@ -221,23 +221,29 @@ export default function DriverPage() {
   async function handleDeleteTask(task) {
     if (!profile?.id || task.created_by !== profile.id) return;
     const ok = typeof window === "undefined" ? true : window.confirm("Delete this task?");
-    if (!ok) return;
-    const token = await getToken();
-    const res = await fetch("/api/items/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify({ kind: "tasks", id: task.id }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      alert(data.error || "Failed to delete task");
+    if (!ok) {
+      setRevealedTaskId(null);
       return;
     }
-    setTasks((prev) => prev.filter((t) => t.id !== task.id));
-    setRevealedTaskId(null);
-    if (selectedTask?.id === task.id) {
-      setSelectedTask(null);
-      setActivePanel("");
+    try {
+      const token = await getToken();
+      const res = await fetch("/api/items/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ kind: "tasks", id: task.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to delete task");
+
+      setTasks((prev) => prev.filter((t) => t.id !== task.id));
+      if (selectedTask?.id === task.id) {
+        setSelectedTask(null);
+        setActivePanel("");
+      }
+    } catch (err) {
+      alert(err.message || "Failed to delete task");
+    } finally {
+      setRevealedTaskId(null);
     }
   }
 
@@ -542,7 +548,7 @@ Complete trip
                         return (
                           <div key={task.id} style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
                             {canDelete && (
-                              <button onClick={() => handleDeleteTask(task)} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", borderRadius: 18 }}>
+                              <button onClick={(e) => { e.stopPropagation(); handleDeleteTask(task); }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", borderRadius: 18 }}>
                                 Delete
                               </button>
                             )}

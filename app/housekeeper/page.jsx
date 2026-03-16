@@ -455,14 +455,18 @@ export default function HousekeeperPage() {
                         return (
                           <div key={item.id} style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
                             {canDelete && (
-                              <button onClick={async () => {
+                              <button onClick={async (e) => {
+                                e.stopPropagation();
                                 const ok = window.confirm("Delete this item?");
-                                if (!ok) return;
+                                if (!ok) {
+                                  setRevealedItemKey(null);
+                                  return;
+                                }
                                 try {
                                   await deleteOwnedItem("maintenance", item.id);
                                   setMaintenanceItems((prev) => prev.filter((m) => m.id !== item.id));
-                                  setRevealedItemKey(null);
                                 } catch (err) { alert(err.message); }
+                                finally { setRevealedItemKey(null); }
                               }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", borderRadius: 18 }}>Delete</button>
                             )}
                             <button {...swipe} onClick={() => { setSelectedMaintenance(item); setActivePanel("maintenance-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, position: "relative", transform: canDelete && revealedItemKey === itemKey ? "translateX(-88px)" : "translateX(0)", transition: "transform 180ms ease" }}>
@@ -500,14 +504,18 @@ export default function HousekeeperPage() {
                         return (
                           <div key={item.id} style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
                             {canDelete && (
-                              <button onClick={async () => {
+                              <button onClick={async (e) => {
+                                e.stopPropagation();
                                 const ok = window.confirm("Delete this event?");
-                                if (!ok) return;
+                                if (!ok) {
+                                  setRevealedItemKey(null);
+                                  return;
+                                }
                                 try {
                                   await deleteOwnedItem("family", item.id);
                                   setFamilySchedule((prev) => prev.filter((f) => f.id !== item.id));
-                                  setRevealedItemKey(null);
                                 } catch (err) { alert(err.message); }
+                                finally { setRevealedItemKey(null); }
                               }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", borderRadius: 18 }}>Delete</button>
                             )}
                             <button {...swipe} onClick={() => { setSelectedFamilyItem(item); setActivePanel("family-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, position: "relative", transform: canDelete && revealedItemKey === itemKey ? "translateX(-88px)" : "translateX(0)", transition: "transform 180ms ease" }}>
