@@ -35,6 +35,105 @@ For suggested_category, infer from the description/recipient:
 
 Return ONLY valid JSON, no markdown, no explanation.`;
 
+const TEMPLATE_PROMPT = (bankName) => `You are a Vietnamese bank transfer slip OCR specialist.
+This is a ${bankName} bank transfer slip.
+
+Extract ONLY these fields (return JSON):
+- amount: number (digits only, no commas or symbols)
+- recipient_name: string
+- bank_account: string
+- description: string (Lời nhắn or Nội dung field)
+- transaction_date: string (YYYY-MM-DD format if possible)
+- transaction_code: string (mã giao dịch)
+
+Return ONLY valid JSON, no markdown.`;
+
+/**
+ * Normalize a bank name to a consistent identifier
+ * e.g. "Techcombank" → "techcombank", "MB Bank" → "mbbank"
+ */
+function normalizeBankIdentifier(bankName) {
+  if (!bankName) return null;
+  return bankName
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+/**
+ * Fetch or create an OCR template for a given bank
+ */
+async function getOrCreateTemplate(bankName, userId) {
+  if (!bankName) return null;
+
+  const bankIdentifier = normalizeBankIdentifier(bankName);
+  if (!bankIdentifier) return null;
+
+  try {
+    // Try to find existing template
+    const { data: existing, error: selectErr } = await supabaseAdmin
+      .from("ocr_templates")
+      .select("*")
+      .eq("bank_identifier", bankIdentifier)
+      .maybeSingle();
+
+    if (selectErr) {
+      console.error("Error fetching template:", selectErr);
+      return null;
+    }
+
+    if (existing) {
+      return existing;
+    }
+
+    // No template exists, will be created after successful extraction
+    return null;
+  } catch (err) {
+    console.error("Error in getOrCreateTemplate:", err);
+    return null;
+  }
+}
+
+/**
+ * Save a new template after successful extraction
+ */
+async function saveTemplate(bankName, userId, extractedData) {
+  const bankIdentifier = normalizeBankIdentifier(bankName);
+  if (!bankIdentifier) return;
+
+  try {
+    // Check if template already exists
+    const { data: existing } = await supabaseAdmin
+      .from("ocr_templates")
+      .select("id, extraction_count")
+      .eq("bank_identifier", bankIdentifier)
+      .maybeSingle();
+
+    if (existing) {
+      // Update existing template
+      await supabaseAdmin
+        .from("ocr_templates")
+        .update({
+          extraction_count: (existing.extraction_count || 0) + 1,
+          last_used_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+    } else {
+      // Insert new template
+      await supabaseAdmin.from("ocr_templates").insert({
+        bank_name: bankName,
+        bank_identifier: bankIdentifier,
+        sample_extraction: extractedData,
+        extraction_count: 1,
+        last_used_at: new Date().toISOString(),
+        created_by: userId,
+      });
+    }
+  } catch (err) {
+    console.error("Error saving template:", err);
+  }
+}
+
 export async function POST(request) {
   if (!OPENAI_API_KEY) {
     return NextResponse.json(
@@ -55,13 +154,25 @@ export async function POST(request) {
       return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }
 
-    const { imageBase64, imageMimeType } = await request.json();
+    const { imageBase64, imageMimeType, templateHint } = await request.json();
 
     if (!imageBase64) {
       return NextResponse.json(
         { error: "No image provided" },
         { status: 400 }
       );
+    }
+
+    // Determine which prompt to use — first do a full scan to identify the bank
+    let systemPrompt = SYSTEM_PROMPT;
+    let template = null;
+
+    if (templateHint) {
+      // If a template hint is provided, try to use optimized prompt
+      template = await getOrCreateTemplate(templateHint, user.id);
+      if (template) {
+        systemPrompt = TEMPLATE_PROMPT(templateHint);
+      }
     }
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -75,14 +186,16 @@ export async function POST(request) {
         messages: [
           {
             role: "system",
-            content: SYSTEM_PROMPT,
+            content: systemPrompt,
           },
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: "Extract all information from this Vietnamese bank transfer slip:",
+                text: templateHint
+                  ? "Extract data from this bank slip:"
+                  : "Extract all information from this Vietnamese bank transfer slip:",
               },
               {
                 type: "image_url",
@@ -94,7 +207,7 @@ export async function POST(request) {
             ],
           },
         ],
-        max_tokens: 500,
+        max_tokens: templateHint ? 300 : 500,
         temperature: 0,
       }),
     });
@@ -124,7 +237,21 @@ export async function POST(request) {
       );
     }
 
-    return NextResponse.json({ success: true, data: parsed });
+    // After successful extraction, save or update template if bank was identified
+    const bankName = parsed.bank_name;
+    if (bankName && !template) {
+      await saveTemplate(bankName, user.id, parsed);
+    }
+
+    const bankIdentifier = bankName ? normalizeBankIdentifier(bankName) : null;
+    const templateMatched = !!template;
+
+    return NextResponse.json({
+      success: true,
+      data: parsed,
+      templateMatched,
+      bankIdentifier,
+    });
   } catch (err) {
     console.error("OCR route error:", err);
     return NextResponse.json(

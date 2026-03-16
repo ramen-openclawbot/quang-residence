@@ -23,34 +23,26 @@ const T = {
 export default function TransactionForm({ onClose, onSuccess }) {
   const { profile, getToken } = useAuth();
   const fileRef = useRef(null);
-  const supportingFileRef = useRef(null);
 
+  // Form state
   const [type, setType] = useState("expense");
-  const [form, setForm] = useState({
-    amount: "",
-    description: "",
-    recipient_name: "",
-    bank_name: "",
-    bank_account: "",
-    transaction_code: "",
-    transaction_date: new Date().toISOString().slice(0, 10),
-    notes: "",
-    fund_id: "",
-  });
-
+  const [step, setStep] = useState("upload"); // "upload" | "scanning" | "review"
   const [funds, setFunds] = useState([]);
-  const [slipImage, setSlipImage] = useState(null);
-  const [supportingImages, setSupportingImages] = useState([]);
-  const [supportingPreviews, setSupportingPreviews] = useState([]);
-  const [proofLinksText, setProofLinksText] = useState("");
-  const [proofNote, setProofNote] = useState("");
-  const [ocrData, setOcrData] = useState(null);
-  const [ocrError, setOcrError] = useState("");
-  const [scanning, setScanning] = useState(false);
-  const [saving, setSaving] = useState(false);
 
-  const updateField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  // Step 1: Upload
+  const [slipFiles, setSlipFiles] = useState([]);
+  const [slipPreviews, setSlipPreviews] = useState([]);
 
+  // Step 2: Scanning
+  const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, phase: "compressing" });
+  const [compressedFiles, setCompressedFiles] = useState([]);
+
+  // Step 3: Review
+  const [scanResults, setScanResults] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [selectedFundId, setSelectedFundId] = useState("");
+
+  // Load funds
   useEffect(() => {
     let mounted = true;
     async function loadFunds() {
@@ -68,6 +60,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
     };
   }, []);
 
+  // ==================== HELPERS ====================
   const fileToBase64 = (file) =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -129,72 +122,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
     }
   };
 
-  const parseReceipt = async (file) => {
-    try {
-      setScanning(true);
-      setOcrError("");
-      const imageBase64 = await fileToBase64(file);
-      const token = await getToken();
-      const res = await fetch("/api/ocr", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ imageBase64, imageMimeType: file.type || "image/jpeg" }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "OCR failed");
-
-      const parsed = data.data || data.parsed || {};
-      setOcrData(parsed);
-      setForm((prev) => ({
-        ...prev,
-        amount: parsed.amount ? String(parsed.amount) : prev.amount,
-        recipient_name: parsed.recipient_name || prev.recipient_name,
-        bank_name: parsed.bank_name || prev.bank_name,
-        bank_account: parsed.bank_account || prev.bank_account,
-        transaction_code: parsed.transaction_code || prev.transaction_code,
-        transaction_date: parsed.transaction_date || prev.transaction_date,
-      }));
-    } catch (err) {
-      console.error("OCR parse failed:", err);
-      setOcrError(err.message || "OCR failed");
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  const handleImageSelect = async (e) => {
-    const rawFile = e.target.files?.[0];
-    if (!rawFile) return;
-    const file = await compressImageIfNeeded(rawFile, { forceJpeg: true });
-    setSlipImage(file);
-    await parseReceipt(file);
-  };
-
-  const handleSupportingSelect = async (e) => {
-    const remaining = Math.max(0, 10 - supportingImages.length);
-    const files = Array.from(e.target.files || []).slice(0, remaining);
-    if (!files.length) return;
-    const compressed = [];
-    for (const file of files) compressed.push(await compressImageIfNeeded(file));
-    setSupportingImages((prev) => [...prev, ...compressed].slice(0, 10));
-    setSupportingPreviews((prev) => [...prev, ...compressed.map((f) => URL.createObjectURL(f))].slice(0, 10));
-  };
-
-  const removeSupportingImage = (index) => {
-    setSupportingImages((prev) => prev.filter((_, i) => i !== index));
-    setSupportingPreviews((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const clearSlipImage = () => {
-    setSlipImage(null);
-    setOcrData(null);
-    if (fileRef.current) fileRef.current.value = "";
-  };
-
-  const uploadFileToStorage = async (file, prefix = "proof") => {
+  const uploadFileToStorage = async (file, prefix = "slip") => {
     if (!file || !profile?.id) return null;
     const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
     const path = `${profile.id}/${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -207,91 +135,286 @@ export default function TransactionForm({ onClose, onSuccess }) {
     return data.publicUrl;
   };
 
-  const onSubmit = async () => {
-    setSaving(true);
+  // ==================== STEP 1: FILE SELECTION ====================
+  const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    // Max 5 slips
+    const remaining = Math.max(0, 5 - slipFiles.length);
+    const toAdd = files.slice(0, remaining);
+    if (!toAdd.length) return;
+
+    // Compress each file
+    const compressed = [];
+    for (const file of toAdd) {
+      const c = await compressImageIfNeeded(file, { forceJpeg: true });
+      compressed.push(c);
+    }
+
+    // Create previews
+    const newPreviews = compressed.map((f) => URL.createObjectURL(f));
+    setSlipFiles((prev) => [...prev, ...compressed]);
+    setSlipPreviews((prev) => [...prev, ...newPreviews]);
+  };
+
+  const removeSlipFile = (index) => {
+    setSlipFiles((prev) => prev.filter((_, i) => i !== index));
+    setSlipPreviews((prev) => {
+      // Revoke the removed URL only
+      if (prev[index]) URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  // ==================== STEP 2: SCANNING ====================
+  const handleScanSlips = async () => {
+    if (slipFiles.length === 0) return;
+    setStep("scanning");
+    setScanProgress({ current: 0, total: slipFiles.length, phase: "compressing" });
+
     try {
-      const slipUrl = await uploadFileToStorage(slipImage, "slip");
-      const supportingProofUrls = [];
-      for (const img of supportingImages) {
-        const url = await uploadFileToStorage(img, "support");
-        if (url) supportingProofUrls.push(url);
+      // Step 1: Compress all files
+      setScanProgress((p) => ({ ...p, phase: "compressing" }));
+      const compressed = [];
+      for (let i = 0; i < slipFiles.length; i++) {
+        const file = slipFiles[i];
+        const c = await compressImageIfNeeded(file, { forceJpeg: true });
+        compressed.push(c);
       }
-      const proofLinks = proofLinksText
-        .split(/\n|,/) 
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .slice(0, 10);
+      setCompressedFiles(compressed);
 
-      const payload = {
-        type,
-        amount: Number(form.amount || 0),
-        fund_id: form.fund_id ? Number(form.fund_id) : null,
-        description: form.description || null,
-        recipient_name: form.recipient_name || null,
-        bank_name: form.bank_name || null,
-        bank_account: form.bank_account || null,
-        transaction_code: form.transaction_code || null,
-        transaction_date: form.transaction_date ? new Date(form.transaction_date).toISOString() : null,
-        notes: form.notes || null,
-        created_by: profile.id,
-        slip_image_url: slipUrl,
-        status: "pending",
-        source: "app",
-        ocr_raw_data: {
-          ...(ocrData || {}),
-          supporting_proof_urls: supportingProofUrls,
-          proof_links: proofLinks,
-          proof_note: proofNote || null,
-        },
-      };
+      // Step 2: Scan all in parallel
+      setScanProgress((p) => ({ ...p, phase: "scanning" }));
+      const token = await getToken();
+      const scanPromises = compressed.map((file, idx) =>
+        scanImage(file, token, idx)
+      );
 
-      const { data: inserted, error } = await supabase.from("transactions").insert(payload).select("id").single();
-      if (error) throw error;
+      const results = await Promise.allSettled(scanPromises);
 
-      // Notify reviewers after submit
-      try {
-        const notifyToken = await getToken();
-        if (notifyToken && inserted?.id) {
-          const notifyRes = await fetch("/api/transactions/notify-submit", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${notifyToken}` },
-            body: JSON.stringify({ transaction_id: inserted.id, amount: payload.amount, type: payload.type, description: payload.description }),
+      // Step 3: Collect results
+      const collected = [];
+      results.forEach((result, idx) => {
+        if (result.status === "fulfilled") {
+          const { ocrData, templateMatched, bankIdentifier } = result.value;
+          collected.push({
+            file: compressed[idx],
+            preview: slipPreviews[idx],
+            ocrData: ocrData || null,
+            ocrError: null,
+            form: {
+              amount: ocrData?.amount ? String(ocrData.amount) : "",
+              description: ocrData?.description || "",
+              recipient_name: ocrData?.recipient_name || "",
+              bank_name: ocrData?.bank_name || "",
+              bank_account: ocrData?.bank_account || "",
+              transaction_code: ocrData?.transaction_code || "",
+              transaction_date: ocrData?.transaction_date || new Date().toISOString().slice(0, 10),
+              notes: "",
+              fund_id: selectedFundId || "",
+            },
+            supportingImages: [],
+            supportingPreviews: [],
+            templateMatched: templateMatched || false,
+            bankIdentifier: bankIdentifier || "",
           });
-          if (!notifyRes.ok) {
-            const notifyErr = await notifyRes.text();
-            console.warn("notify-submit failed:", notifyErr);
-          }
+        } else {
+          // OCR failed
+          collected.push({
+            file: compressed[idx],
+            preview: slipPreviews[idx],
+            ocrData: null,
+            ocrError: result.reason?.message || "Failed to scan",
+            form: {
+              amount: "",
+              description: "",
+              recipient_name: "",
+              bank_name: "",
+              bank_account: "",
+              transaction_code: "",
+              transaction_date: new Date().toISOString().slice(0, 10),
+              notes: "",
+              fund_id: selectedFundId || "",
+            },
+            supportingImages: [],
+            supportingPreviews: [],
+            templateMatched: false,
+            bankIdentifier: "",
+          });
         }
-      } catch (notifyError) {
-        console.warn("notify-submit error:", notifyError);
-      }
-
-      setForm({
-        amount: "",
-        description: "",
-        recipient_name: "",
-        bank_name: "",
-        bank_account: "",
-        transaction_code: "",
-        transaction_date: new Date().toISOString().slice(0, 10),
-        notes: "",
-        fund_id: "",
       });
-      setSlipImage(null);
-      setSupportingImages([]);
-      setSupportingPreviews([]);
-      setProofLinksText("");
-      setProofNote("");
-      setOcrData(null);
-      onSuccess?.();
+
+      setScanResults(collected);
+      setStep("review");
     } catch (err) {
-      console.error("Create transaction failed:", err);
-      alert(err.message || "Failed to create transaction");
-    } finally {
-      setSaving(false);
+      console.error("Scan failed:", err);
+      alert("Scanning failed: " + (err.message || "Unknown error"));
+      setStep("upload");
     }
   };
 
+  const scanImage = async (file, token, index) => {
+    try {
+      const imageBase64 = await fileToBase64(file);
+      const res = await fetch("/api/ocr", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ imageBase64, imageMimeType: file.type || "image/jpeg" }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "OCR failed");
+
+      const parsed = data.data || {};
+      return {
+        ocrData: parsed,
+        templateMatched: data.templateMatched || false,
+        bankIdentifier: data.bankIdentifier || "",
+      };
+    } catch (err) {
+      throw err;
+    } finally {
+      setScanProgress((p) => ({ ...p, current: p.current + 1 }));
+    }
+  };
+
+  // ==================== STEP 3: REVIEW ====================
+  const updateResultForm = (index, key, value) => {
+    setScanResults((prev) => {
+      const updated = [...prev];
+      updated[index].form[key] = value;
+      return updated;
+    });
+  };
+
+  const handleSupportingSelect = async (resultIndex, e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const remaining = Math.max(0, 10 - scanResults[resultIndex].supportingImages.length);
+    const toAdd = files.slice(0, remaining);
+    if (!toAdd.length) return;
+
+    const compressed = [];
+    for (const file of toAdd) {
+      const c = await compressImageIfNeeded(file);
+      compressed.push(c);
+    }
+
+    const newPreviews = compressed.map((f) => URL.createObjectURL(f));
+
+    setScanResults((prev) => {
+      const updated = [...prev];
+      updated[resultIndex].supportingImages = [...updated[resultIndex].supportingImages, ...compressed].slice(0, 10);
+      updated[resultIndex].supportingPreviews = [...updated[resultIndex].supportingPreviews, ...newPreviews].slice(0, 10);
+      return updated;
+    });
+  };
+
+  const removeSupportingImage = (resultIndex, imageIndex) => {
+    setScanResults((prev) => {
+      const updated = [...prev];
+      updated[resultIndex].supportingImages = updated[resultIndex].supportingImages.filter((_, i) => i !== imageIndex);
+      updated[resultIndex].supportingPreviews = updated[resultIndex].supportingPreviews.filter((_, i) => i !== imageIndex);
+      return updated;
+    });
+  };
+
+  const removeResult = (index) => {
+    setScanResults((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async () => {
+    if (scanResults.length === 0 || !scanResults.some((r) => r.form.amount)) {
+      alert("Please fill in at least one amount");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const token = await getToken();
+      const createdTransactions = [];
+
+      for (const result of scanResults) {
+        if (!result.form.amount) continue; // Skip empty ones
+
+        // Upload supporting images
+        const supportingProofUrls = [];
+        for (const img of result.supportingImages) {
+          const url = await uploadFileToStorage(img, "support");
+          if (url) supportingProofUrls.push(url);
+        }
+
+        // Upload main slip image
+        const slipUrl = await uploadFileToStorage(result.file, "slip");
+
+        const payload = {
+          type,
+          amount: Number(result.form.amount || 0),
+          fund_id: result.form.fund_id ? Number(result.form.fund_id) : null,
+          description: result.form.description || null,
+          recipient_name: result.form.recipient_name || null,
+          bank_name: result.form.bank_name || null,
+          bank_account: result.form.bank_account || null,
+          transaction_code: result.form.transaction_code || null,
+          transaction_date: result.form.transaction_date ? new Date(result.form.transaction_date).toISOString() : null,
+          notes: result.form.notes || null,
+          created_by: profile.id,
+          slip_image_url: slipUrl,
+          status: "pending",
+          source: "app",
+          ocr_raw_data: {
+            ...(result.ocrData || {}),
+            supporting_proof_urls: supportingProofUrls,
+            template_matched: result.templateMatched,
+            bank_identifier: result.bankIdentifier,
+          },
+        };
+
+        const { data: inserted, error } = await supabase.from("transactions").insert(payload).select("id").single();
+        if (error) throw error;
+        createdTransactions.push(inserted);
+
+        // Notify reviewers
+        try {
+          if (token && inserted?.id) {
+            await fetch("/api/transactions/notify-submit", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({
+                transaction_id: inserted.id,
+                amount: payload.amount,
+                type: payload.type,
+                description: payload.description,
+              }),
+            });
+          }
+        } catch (notifyError) {
+          console.warn("notify-submit error:", notifyError);
+        }
+      }
+
+      // Reset state
+      setSlipFiles([]);
+      setSlipPreviews([]);
+      setScanResults([]);
+      setCompressedFiles([]);
+      setSelectedFundId("");
+      setStep("upload");
+      onSuccess?.();
+    } catch (err) {
+      console.error("Submit failed:", err);
+      alert(err.message || "Failed to create transactions");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ==================== TYPE OPTIONS ====================
   const typeOptions = [
     {
       id: "expense",
@@ -309,6 +432,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
     },
   ];
 
+  // ==================== RENDER ====================
   return (
     <div style={overlayStyle}>
       <div style={sheetStyle}>
@@ -316,11 +440,16 @@ export default function TransactionForm({ onClose, onSuccess }) {
           <button onClick={onClose} style={backBtnStyle}>
             <MIcon name="chevron_left" size={20} color={T.text} /> Back
           </button>
-          <span style={{ fontSize: 16, fontWeight: 700, color: T.text }}>New transaction</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: T.text }}>
+            {step === "upload" && "New transaction"}
+            {step === "scanning" && "Scanning slips..."}
+            {step === "review" && "Review & submit"}
+          </span>
           <div style={{ width: 48 }} />
         </div>
 
         <div style={bodyStyle}>
+          {/* Type toggle - always visible */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {typeOptions.map((item) => {
               const active = type === item.id;
@@ -329,12 +458,15 @@ export default function TransactionForm({ onClose, onSuccess }) {
                   key={item.id}
                   type="button"
                   onClick={() => setType(item.id)}
+                  disabled={step !== "upload"}
                   style={{
                     ...segBtnStyle,
                     background: active ? item.tone : item.soft,
                     border: `1px solid ${active ? item.tone : item.border}`,
                     color: active ? "white" : item.tone,
                     boxShadow: active ? `0 8px 20px ${item.id === "expense" ? "rgba(220,38,38,0.22)" : "rgba(22,163,74,0.22)"}` : "none",
+                    opacity: step !== "upload" ? 0.6 : 1,
+                    cursor: step !== "upload" ? "not-allowed" : "pointer",
                   }}
                 >
                   {item.label}
@@ -343,162 +475,376 @@ export default function TransactionForm({ onClose, onSuccess }) {
             })}
           </div>
 
-          <div style={sectionCardStyle}>
-            <div style={sectionHeaderStyle}>
-              <div>
-                <div style={labelStyle}>Bank slip</div>
-                <div style={helperTextStyle}>Giữ kiểu compact như form cũ: chọn slip, không hiển thị full ảnh trên mobile.</div>
-              </div>
-            </div>
-            <input ref={fileRef} type="file" accept="image/*" onChange={handleImageSelect} style={{ display: "none" }} />
-            {!slipImage ? (
-              <button type="button" onClick={() => fileRef.current?.click()} style={uploadBoxStyle}>
-                <MIcon name="cloud_upload" size={20} color={T.primary} />
-                <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Upload bank slip</div>
-                <div style={{ fontSize: 12, color: T.textMuted }}>UNC / transfer receipt</div>
-              </button>
-            ) : (
-              <div style={compactUploadCardStyle}>
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                  <div style={compactUploadIconStyle}>
-                    <MIcon name="check_circle" size={20} color={T.primary} />
+          {/* STEP 1: UPLOAD */}
+          {step === "upload" && (
+            <>
+              <div style={sectionCardStyle}>
+                <div style={sectionHeaderStyle}>
+                  <div>
+                    <div style={labelStyle}>Bank slips</div>
+                    <div style={helperTextStyle}>Select 1-5 images at once</div>
                   </div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text, wordBreak: "break-word" }}>{slipImage.name}</div>
-                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>
-                      Bank slip uploaded. Kéo xuống để upload proof.
+                </div>
+                <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFileSelect} style={{ display: "none" }} />
+                {slipFiles.length === 0 ? (
+                  <button type="button" onClick={() => fileRef.current?.click()} style={uploadBoxStyle}>
+                    <MIcon name="cloud_upload" size={24} color={T.primary} />
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Scan slips</div>
+                    <div style={{ fontSize: 12, color: T.textMuted }}>UNC / transfer receipt</div>
+                  </button>
+                ) : (
+                  <>
+                    {/* Thumbnails scroll strip */}
+                    <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 12, marginBottom: 12 }}>
+                      {slipPreviews.map((src, idx) => (
+                        <div key={idx} style={{ position: "relative", flexShrink: 0 }}>
+                          <img src={src} alt={`Slip ${idx + 1}`} style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 12, border: `1px solid ${T.border}` }} />
+                          <button
+                            type="button"
+                            onClick={() => removeSlipFile(idx)}
+                            style={{
+                              position: "absolute",
+                              top: -8,
+                              right: -8,
+                              width: 24,
+                              height: 24,
+                              borderRadius: "50%",
+                              border: "none",
+                              background: T.danger,
+                              color: "white",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 12,
+                              fontWeight: 700,
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                    {ocrData && (
-                      <div style={infoPillStyle}>OCR auto-filled available</div>
+                    {slipFiles.length < 5 && (
+                      <button type="button" onClick={() => fileRef.current?.click()} style={{ ...uploadBoxStyle, minHeight: 60, gap: 4 }}>
+                        <MIcon name="add" size={20} color={T.primary} />
+                        <div style={{ fontSize: 12, color: T.primary, fontWeight: 700 }}>Add more ({slipFiles.length}/5)</div>
+                      </button>
                     )}
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                  <button type="button" onClick={() => fileRef.current?.click()} style={secondaryActionBtnStyle}>Change</button>
-                  <button type="button" onClick={clearSlipImage} style={ghostDangerBtnStyle}>Remove</button>
-                </div>
+                  </>
+                )}
               </div>
-            )}
-            {scanning && (
-              <div style={{ marginTop: 10, ...rowStyle, gap: 8 }}>
-                <MIcon name="progress_activity" size={16} color={T.primary} style={{ animation: "spin 0.8s linear infinite" }} />
-                <span style={{ color: T.textMuted, fontSize: 13 }}>Scanning bank slip...</span>
-              </div>
-            )}
-            {!!ocrError && (
-              <div style={{ marginTop: 10, fontSize: 12, color: T.danger, lineHeight: 1.45 }}>
-                OCR could not read this slip automatically. Anh/chị vẫn có thể nhập tay các trường bên dưới.
-              </div>
-            )}
-          </div>
 
-          <div style={sectionCardStyle}>
-            <div style={sectionHeaderStyle}>
-              <div>
-                <div style={labelStyle}>Supporting proof</div>
-                <div style={helperTextStyle}>Sau khi upload bank slip, user chỉ cần kéo xuống đây để thêm proof.</div>
+              {/* Fund selector for all transactions */}
+              <div style={sectionCardStyle}>
+                <div style={labelStyle}>Fund (applies to all)</div>
+                <select value={selectedFundId} onChange={(e) => setSelectedFundId(e.target.value)} style={selectStyle}>
+                  <option value="">Select fund</option>
+                  {funds.map((fund) => (
+                    <option key={fund.id} value={fund.id}>{fund.name}</option>
+                  ))}
+                </select>
+                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 8 }}>
+                  Approved transactions will update this fund balance.
+                </div>
+              </div>
+
+              {/* Scan button */}
+              <button
+                type="button"
+                onClick={handleScanSlips}
+                disabled={slipFiles.length === 0}
+                style={{
+                  ...submitBtnStyle,
+                  opacity: slipFiles.length === 0 ? 0.5 : 1,
+                  cursor: slipFiles.length === 0 ? "not-allowed" : "pointer",
+                }}
+              >
+                {slipFiles.length === 0 ? "Select slips to scan" : `Scan ${slipFiles.length} slip${slipFiles.length > 1 ? "s" : ""}`}
+              </button>
+            </>
+          )}
+
+          {/* STEP 2: SCANNING */}
+          {step === "scanning" && (
+            <div style={scanningOverlayStyle}>
+              <style>{`
+                @keyframes scanPulse {
+                  0%, 100% { opacity: 0.4; transform: scaleX(1); }
+                  50% { opacity: 1; transform: scaleX(1.02); }
+                }
+                @keyframes scanLine {
+                  0% { top: 0%; }
+                  100% { top: 100%; }
+                }
+                @keyframes checkPop {
+                  0% { transform: scale(0); opacity: 0; }
+                  60% { transform: scale(1.2); }
+                  100% { transform: scale(1); opacity: 1; }
+                }
+              `}</style>
+              <div style={{ textAlign: "center" }}>
+                {/* Animated scan container */}
+                <div style={{ width: 120, height: 150, margin: "0 auto 24px", position: "relative", borderRadius: 12, border: `2px solid ${T.primary}`, overflow: "hidden", background: "#f9fff6" }}>
+                  <div style={{ position: "absolute", width: "100%", height: 3, background: T.primary, top: "50%", animation: "scanLine 2s ease-in-out infinite" }} />
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        position: "absolute",
+                        width: "80%",
+                        left: "10%",
+                        height: 12,
+                        background: T.primary,
+                        opacity: 0.1,
+                        top: `${(i + 1) * 35}%`,
+                        borderRadius: 2,
+                      }}
+                    />
+                  ))}
+                </div>
+
+                <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 8 }}>
+                  Scanning slips...
+                </div>
+                <div style={{ fontSize: 14, color: T.textMuted, marginBottom: 16 }}>
+                  {scanProgress.phase === "compressing" ? "Preparing images..." : `Scanning ${scanProgress.current}/${scanProgress.total}...`}
+                </div>
+
+                {/* Progress bar */}
+                <div style={{ width: "100%", height: 6, background: T.border, borderRadius: 999, overflow: "hidden", marginBottom: 16 }}>
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${scanProgress.total > 0 ? (scanProgress.current / scanProgress.total) * 100 : 0}%`,
+                      background: T.primary,
+                      transition: "width 0.3s ease",
+                    }}
+                  />
+                </div>
+
+                <div style={{ fontSize: 12, color: T.textMuted }}>
+                  {Math.round((scanProgress.total > 0 ? (scanProgress.current / scanProgress.total) * 100 : 0))}%
+                </div>
               </div>
             </div>
-            <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 10 }}>Up to 10 extra images: invoice, received item, chat proof, or related evidence.</div>
-            <input ref={supportingFileRef} type="file" accept="image/*" multiple onChange={handleSupportingSelect} style={{ display: "none" }} />
-            <button type="button" onClick={() => supportingFileRef.current?.click()} style={uploadBoxStyle}>
-              <MIcon name="add_photo_alternate" size={20} color={T.primary} />
-              <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Add supporting images</div>
-              <div style={{ fontSize: 12, color: T.textMuted }}>{supportingImages.length}/10 selected</div>
-            </button>
-            {supportingPreviews.length > 0 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 12 }}>
-                {supportingPreviews.map((src, index) => (
-                  <div key={index} style={{ position: "relative" }}>
-                    <img src={src} alt={`Proof ${index + 1}`} style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: 12, border: `1px solid ${T.border}` }} />
-                    <button type="button" onClick={() => removeSupportingImage(index)} style={removeProofBtnStyle}>
-                      <MIcon name="close" size={14} color="white" />
-                    </button>
+          )}
+
+          {/* STEP 3: REVIEW */}
+          {step === "review" && (
+            <>
+              {scanResults.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 24, color: T.textMuted }}>
+                  <MIcon name="info" size={24} color={T.textMuted} style={{ marginBottom: 12 }} />
+                  <div>No slips scanned</div>
+                </div>
+              ) : (
+                scanResults.map((result, resultIdx) => (
+                  <div key={resultIdx} style={sectionCardStyle}>
+                    {/* Slip thumbnail */}
+                    <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
+                      <img src={result.preview} alt={`Slip ${resultIdx + 1}`} style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 12, border: `1px solid ${T.border}` }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>
+                          Slip {resultIdx + 1}
+                        </div>
+                        {result.templateMatched && (
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: T.primary, background: "#eef8e8", padding: "4px 8px", borderRadius: 4, marginBottom: 4 }}>
+                            <span>⚡</span> {result.bankIdentifier || "Template matched"}
+                          </div>
+                        )}
+                        {result.ocrError && (
+                          <div style={{ fontSize: 12, color: T.danger, lineHeight: 1.4 }}>
+                            {result.ocrError}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeResult(resultIdx)}
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: "50%",
+                          border: "none",
+                          background: T.dangerSoft,
+                          color: T.danger,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 16,
+                          flexShrink: 0,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    {/* Form fields */}
+                    <div style={{ display: "grid", gap: 10 }}>
+                      {/* Amount */}
+                      <div>
+                        <div style={labelStyle}>Amount *</div>
+                        <input
+                          type="number"
+                          value={result.form.amount}
+                          onChange={(e) => updateResultForm(resultIdx, "amount", e.target.value)}
+                          placeholder="0"
+                          style={inputStyle}
+                          required
+                        />
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <div style={labelStyle}>Description</div>
+                        <input
+                          type="text"
+                          value={result.form.description}
+                          onChange={(e) => updateResultForm(resultIdx, "description", e.target.value)}
+                          placeholder="What is this for?"
+                          style={inputStyle}
+                        />
+                      </div>
+
+                      {/* Recipient */}
+                      <div>
+                        <div style={labelStyle}>Recipient</div>
+                        <input
+                          type="text"
+                          value={result.form.recipient_name}
+                          onChange={(e) => updateResultForm(resultIdx, "recipient_name", e.target.value)}
+                          placeholder="Recipient name"
+                          style={inputStyle}
+                        />
+                      </div>
+
+                      {/* Bank */}
+                      <div>
+                        <div style={labelStyle}>Bank</div>
+                        <input
+                          type="text"
+                          value={result.form.bank_name}
+                          onChange={(e) => updateResultForm(resultIdx, "bank_name", e.target.value)}
+                          placeholder="Bank name"
+                          style={inputStyle}
+                        />
+                      </div>
+
+                      {/* Account */}
+                      <div>
+                        <div style={labelStyle}>Account number</div>
+                        <input
+                          type="text"
+                          value={result.form.bank_account}
+                          onChange={(e) => updateResultForm(resultIdx, "bank_account", e.target.value)}
+                          placeholder="Bank account"
+                          style={inputStyle}
+                        />
+                      </div>
+
+                      {/* Transaction code */}
+                      <div>
+                        <div style={labelStyle}>Transaction code</div>
+                        <input
+                          type="text"
+                          value={result.form.transaction_code}
+                          onChange={(e) => updateResultForm(resultIdx, "transaction_code", e.target.value)}
+                          placeholder="Reference code"
+                          style={inputStyle}
+                        />
+                      </div>
+
+                      {/* Date */}
+                      <div>
+                        <div style={labelStyle}>Date</div>
+                        <input
+                          type="date"
+                          value={result.form.transaction_date}
+                          onChange={(e) => updateResultForm(resultIdx, "transaction_date", e.target.value)}
+                          style={dateInputStyle}
+                        />
+                      </div>
+
+                      {/* Notes */}
+                      <div>
+                        <div style={labelStyle}>Notes</div>
+                        <textarea
+                          value={result.form.notes}
+                          onChange={(e) => updateResultForm(resultIdx, "notes", e.target.value)}
+                          placeholder="Internal note"
+                          style={{ ...inputStyle, minHeight: 70, resize: "vertical", paddingTop: 10, paddingBottom: 10, lineHeight: "normal" }}
+                        />
+                      </div>
+
+                      {/* Supporting images */}
+                      <div>
+                        <div style={labelStyle}>Supporting images ({result.supportingImages.length}/10)</div>
+                        <input
+                          type="file"
+                          id={`supporting-${resultIdx}`}
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => handleSupportingSelect(resultIdx, e)}
+                          style={{ display: "none" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById(`supporting-${resultIdx}`).click()}
+                          style={{ ...uploadBoxStyle, minHeight: 80, gap: 4 }}
+                        >
+                          <MIcon name="add_photo_alternate" size={20} color={T.primary} />
+                          <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>Add supporting images</div>
+                          <div style={{ fontSize: 11, color: T.textMuted }}>{result.supportingImages.length}/10 selected</div>
+                        </button>
+
+                        {result.supportingPreviews.length > 0 && (
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 10 }}>
+                            {result.supportingPreviews.map((src, imgIdx) => (
+                              <div key={imgIdx} style={{ position: "relative" }}>
+                                <img src={src} alt={`Support ${imgIdx + 1}`} style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: 12, border: `1px solid ${T.border}` }} />
+                                <button
+                                  type="button"
+                                  onClick={() => removeSupportingImage(resultIdx, imgIdx)}
+                                  style={removeProofBtnStyle}
+                                >
+                                  <MIcon name="close" size={14} color="white" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                ))
+              )}
 
-          <div style={sectionCardStyle}>
-            <div style={labelStyle}>Amount</div>
-            <input value={form.amount} onChange={(e) => updateField("amount", e.target.value)} inputMode="numeric" placeholder="0" style={inputStyle} />
-          </div>
-
-          <div style={sectionCardStyle}>
-            <div style={labelStyle}>Fund</div>
-            <select value={form.fund_id} onChange={(e) => updateField("fund_id", e.target.value)} style={selectStyle}>
-              <option value="">Select fund</option>
-              {funds.map((fund) => (
-                <option key={fund.id} value={fund.id}>{fund.name}</option>
-              ))}
-            </select>
-            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 8 }}>
-              Approved transactions will update this fund balance.
-            </div>
-          </div>
-
-          <div style={sectionCardStyle}>
-            <div style={labelStyle}>Description</div>
-            <input value={form.description} onChange={(e) => updateField("description", e.target.value)} placeholder="What is this for?" style={inputStyle} />
-          </div>
-
-          <div style={sectionCardStyle}>
-            <div style={labelStyle}>Recipient</div>
-            <input value={form.recipient_name} onChange={(e) => updateField("recipient_name", e.target.value)} placeholder="Recipient name" style={inputStyle} />
-          </div>
-
-          <div style={sectionCardStyle}>
-            <div style={labelStyle}>Bank</div>
-            <input value={form.bank_name} onChange={(e) => updateField("bank_name", e.target.value)} placeholder="Bank name" style={inputStyle} />
-          </div>
-
-          <div style={sectionCardStyle}>
-            <div style={labelStyle}>Account number</div>
-            <input value={form.bank_account} onChange={(e) => updateField("bank_account", e.target.value)} placeholder="Bank account" style={inputStyle} />
-          </div>
-
-          <div style={sectionCardStyle}>
-            <div style={labelStyle}>Transaction code</div>
-            <input value={form.transaction_code} onChange={(e) => updateField("transaction_code", e.target.value)} placeholder="Reference code" style={inputStyle} />
-          </div>
-
-          <div style={sectionCardStyle}>
-            <div style={labelStyle}>Date</div>
-            <input
-              type="date"
-              value={form.transaction_date}
-              onChange={(e) => updateField("transaction_date", e.target.value)}
-              style={dateInputStyle}
-            />
-          </div>
-
-          <div style={sectionCardStyle}>
-            <div style={labelStyle}>Drive / proof links</div>
-            <textarea value={proofLinksText} onChange={(e) => setProofLinksText(e.target.value)} placeholder="Paste Google Drive or other proof links, one per line" style={{ ...inputStyle, minHeight: 88, resize: "vertical", paddingTop: 12, paddingBottom: 12 }} />
-          </div>
-
-          <div style={sectionCardStyle}>
-            <div style={labelStyle}>Proof note</div>
-            <textarea value={proofNote} onChange={(e) => setProofNote(e.target.value)} placeholder="Explain why the transfer is valid and what the supporting proof shows" style={{ ...inputStyle, minHeight: 88, resize: "vertical", paddingTop: 12, paddingBottom: 12 }} />
-          </div>
-
-          <div style={sectionCardStyle}>
-            <div style={labelStyle}>Extra note</div>
-            <textarea value={form.notes} onChange={(e) => updateField("notes", e.target.value)} placeholder="Internal note" style={{ ...inputStyle, minHeight: 88, resize: "vertical", paddingTop: 12, paddingBottom: 12 }} />
-          </div>
-        </div>
-
-        <div style={footerStyle}>
-          <button type="button" onClick={onSubmit} disabled={saving || !form.amount} style={{ ...submitBtnStyle, opacity: saving ? 0.7 : 1 }}>
-            {saving ? "Saving..." : "Create"}
-          </button>
+              {/* Submit button */}
+              {scanResults.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={submitting || !scanResults.some((r) => r.form.amount)}
+                  style={{
+                    ...submitBtnStyle,
+                    opacity: submitting || !scanResults.some((r) => r.form.amount) ? 0.5 : 1,
+                    cursor: submitting || !scanResults.some((r) => r.form.amount) ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {submitting ? "Creating..." : `Create ${scanResults.filter((r) => r.form.amount).length} transaction${scanResults.filter((r) => r.form.amount).length !== 1 ? "s" : ""}`}
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
+// ==================== STYLES ====================
 const rowStyle = { display: "flex", alignItems: "center" };
 
 const overlayStyle = {
@@ -520,6 +866,7 @@ const sheetStyle = {
   maxHeight: "92vh",
   overflow: "hidden",
   boxShadow: T.shadow,
+  position: "relative",
 };
 
 const topBarStyle = {
@@ -634,53 +981,15 @@ const uploadBoxStyle = {
   fontFamily: T.font,
 };
 
-const compactUploadCardStyle = {
-  border: `1px solid ${T.border}`,
-  borderRadius: 16,
-  background: "#fbfdf9",
-  padding: 14,
-};
-
-const compactUploadIconStyle = {
-  width: 40,
-  height: 40,
-  borderRadius: 12,
-  background: "#eef8e8",
+const scanningOverlayStyle = {
+  position: "absolute",
+  inset: 0,
+  background: T.card,
+  borderRadius: "24px 24px 0 0",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  flexShrink: 0,
-};
-
-const infoPillStyle = {
-  display: "inline-flex",
-  alignItems: "center",
-  padding: "6px 10px",
-  borderRadius: 999,
-  background: "#eef8e8",
-  color: T.primary,
-  fontSize: 11,
-  fontWeight: 700,
-  marginTop: 8,
-};
-
-const secondaryActionBtnStyle = {
-  height: 36,
-  padding: "0 14px",
-  borderRadius: 12,
-  border: `1px solid ${T.border}`,
-  background: T.card,
-  color: T.text,
-  cursor: "pointer",
-  fontWeight: 700,
-  fontFamily: T.font,
-};
-
-const ghostDangerBtnStyle = {
-  ...secondaryActionBtnStyle,
-  color: T.danger,
-  border: `1px solid rgba(220, 38, 38, 0.18)`,
-  background: T.dangerSoft,
+  zIndex: 100,
 };
 
 const removeProofBtnStyle = {

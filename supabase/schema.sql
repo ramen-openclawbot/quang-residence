@@ -319,15 +319,15 @@ CREATE POLICY "tasks_select" ON public.tasks FOR SELECT USING (
 
 DROP POLICY IF EXISTS "tasks_insert" ON public.tasks;
 CREATE POLICY "tasks_insert" ON public.tasks FOR INSERT WITH CHECK (
-  public.get_user_role() IN ('owner', 'secretary')
+  public.get_user_role() IN ('owner', 'secretary', 'driver')
   AND created_by = auth.uid()
 );
 
 DROP POLICY IF EXISTS "tasks_update" ON public.tasks;
 CREATE POLICY "tasks_update" ON public.tasks FOR UPDATE USING (
-  public.get_user_role() IN ('owner', 'secretary') OR assigned_to = auth.uid()
+  public.get_user_role() IN ('owner', 'secretary') OR assigned_to = auth.uid() OR created_by = auth.uid()
 ) WITH CHECK (
-  public.get_user_role() IN ('owner', 'secretary') OR assigned_to = auth.uid()
+  public.get_user_role() IN ('owner', 'secretary') OR assigned_to = auth.uid() OR created_by = auth.uid()
 );
 
 DROP POLICY IF EXISTS "task_comments_select" ON public.task_comments;
@@ -394,6 +394,34 @@ WITH CHECK (public.get_user_role() = 'owner');
 
 DROP POLICY IF EXISTS "monthly_data_select" ON public.monthly_data;
 CREATE POLICY "monthly_data_select" ON public.monthly_data FOR SELECT USING (true);
+
+-- =============================================
+-- 14. OCR TEMPLATES
+-- =============================================
+CREATE TABLE IF NOT EXISTS public.ocr_templates (
+  id SERIAL PRIMARY KEY,
+  bank_name TEXT NOT NULL,
+  bank_identifier TEXT UNIQUE NOT NULL,
+  layout_hints JSONB,
+  sample_extraction JSONB,
+  extraction_count INTEGER DEFAULT 1,
+  last_used_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID REFERENCES public.profiles(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.ocr_templates ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "ocr_templates_select" ON public.ocr_templates;
+CREATE POLICY "ocr_templates_select" ON public.ocr_templates FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "ocr_templates_insert" ON public.ocr_templates;
+CREATE POLICY "ocr_templates_insert" ON public.ocr_templates FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "ocr_templates_update" ON public.ocr_templates;
+CREATE POLICY "ocr_templates_update" ON public.ocr_templates FOR UPDATE USING (true);
+
+CREATE INDEX IF NOT EXISTS idx_ocr_templates_bank ON public.ocr_templates(bank_identifier);
 
 -- =============================================
 -- INDEXES

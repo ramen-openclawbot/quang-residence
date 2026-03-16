@@ -1,6 +1,6 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-16 09:12 GMT+7_
+_Last updated: 2026-03-16 09:45 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
@@ -272,6 +272,16 @@ Key commit:
 - **Bundle reduction:** Replaced all `lucide-react` icon imports (~40KB) with already-loaded Material Symbols via `MIcon` component in `TransactionForm.jsx`. Removed `lucide-react` from `package.json` entirely
 - **Reduced initial data load:** Secretary `loadFullTransactions` default limit reduced from 200 to 30 rows
 - **Auth for OCR:** `TransactionForm.jsx` updated to pass bearer token to `/api/ocr` (required after security hardening) and uses `getToken()` for notify-submit call
+
+### Bank slip upload overhaul (2026-03-16)
+- **Multi-slip upload:** TransactionForm now supports uploading 1-5 bank slips at once via a single button. Replaced the old single-slip + separate supporting proof sections with a 3-step flow
+- **Step 1 — Upload:** User selects 1-5 bank slip images, sees horizontal scroll thumbnail strip, picks fund, taps "Scan N slips"
+- **Step 2 — Scan animation:** Beautiful animated scanning overlay with scan-line effect, progress bar showing "Scanning X/Y...", auto-transitions to review
+- **Step 3 — Review & submit:** Each scanned slip becomes an editable transaction card showing OCR-extracted data (amount, recipient, bank, description, date, code). User can edit fields, add supporting images per transaction (0-10 each), remove transactions, then batch-submit all at once
+- **OCR template system:** New `ocr_templates` table stores known bank layouts. After first successful scan of a bank (e.g., Techcombank), the system saves the template. Subsequent scans of the same bank use a shorter, faster OCR prompt (300 tokens vs 500)
+- **Template API:** New `GET /api/ocr/templates` endpoint lists known bank templates with extraction counts
+- **All roles supported:** Secretary, driver, and housekeeper all share the same TransactionForm component — no changes needed to role pages
+- **Batch transaction creation:** Multiple transactions are created sequentially, each with its own slip image upload and reviewer notification
 
 ### DB / config
 - `supabase/schema.sql`
