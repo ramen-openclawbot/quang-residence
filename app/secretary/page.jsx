@@ -286,10 +286,10 @@ export default function SecretaryPage() {
     const ok = typeof window === "undefined" ? true : window.confirm("Delete this task?");
     if (!ok) return;
     const token = await getToken();
-    const res = await fetch("/api/tasks/delete", {
+    const res = await fetch("/api/items/delete", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify({ task_id: task.id }),
+      body: JSON.stringify({ kind: "tasks", id: task.id }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -788,7 +788,7 @@ export default function SecretaryPage() {
                         return (
                           <div key={task.id} style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
                             {canDelete && (
-                              <button onClick={() => handleDeleteTask(task)} style={{ position: "absolute", inset: 0, marginLeft: "auto", width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
+                              <button onClick={() => handleDeleteTask(task)} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", borderRadius: 18 }}>
                                 Delete
                               </button>
                             )}

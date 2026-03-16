@@ -463,7 +463,7 @@ export default function HousekeeperPage() {
                                   setMaintenanceItems((prev) => prev.filter((m) => m.id !== item.id));
                                   setRevealedItemKey(null);
                                 } catch (err) { alert(err.message); }
-                              }} style={{ position: "absolute", inset: 0, marginLeft: "auto", width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>Delete</button>
+                              }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", borderRadius: 18 }}>Delete</button>
                             )}
                             <button {...swipe} onClick={() => { setSelectedMaintenance(item); setActivePanel("maintenance-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, position: "relative", transform: canDelete && revealedItemKey === itemKey ? "translateX(-88px)" : "translateX(0)", transition: "transform 180ms ease" }}>
                               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
@@ -508,7 +508,7 @@ export default function HousekeeperPage() {
                                   setFamilySchedule((prev) => prev.filter((f) => f.id !== item.id));
                                   setRevealedItemKey(null);
                                 } catch (err) { alert(err.message); }
-                              }} style={{ position: "absolute", inset: 0, marginLeft: "auto", width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>Delete</button>
+                              }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", borderRadius: 18 }}>Delete</button>
                             )}
                             <button {...swipe} onClick={() => { setSelectedFamilyItem(item); setActivePanel("family-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, position: "relative", transform: canDelete && revealedItemKey === itemKey ? "translateX(-88px)" : "translateX(0)", transition: "transform 180ms ease" }}>
                               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
