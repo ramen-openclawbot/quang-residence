@@ -1,12 +1,12 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-16 11:30 GMT+7_
+_Last updated: 2026-03-16 12:18 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
 - GitHub: `https://github.com/ramen-openclawbot/quang-residence.git`
 - Branch: `main`
-- Current pushed commit: `e6ccaf2`
+- Current pushed commit: `57ce9ac`
 
 ## Current product state
 ZenHome is now in a **product-hardening + CRUD-completion** phase, not an auth/firefighting phase.
@@ -250,6 +250,8 @@ Key commit:
   - Shared transaction form now exposes **Adjust** mode for Secretary / Driver / Housekeeper because all three roles reuse `components/TransactionForm.jsx`
   - Approval logic updates `funds.current_balance` using `adjustment_direction` (`increase` adds, `decrease` subtracts)
   - Secretary transaction detail shows adjustment metadata so review stays auditable
+  - Important lesson: for `TransactionForm`, a new mode is not done just because the segmented control appears. Verify the full state machine (`type`, `step`, conditional render branches) and confirm that the intended body actually appears after switching mode.
+  - Another lesson: do not report commit hashes from memory or partial local state. Always confirm with `git log -1 --oneline HEAD` and `git log -1 --oneline origin/main` before telling the user what GitHub / Vercel is actually running.
 - Transaction audit behavior was upgraded in phases:
   - **Phase 1:** rejected transactions are preserved instead of deleted
   - **Phase 2:** approved transactions can update `funds.current_balance` when `fund_id` is set
