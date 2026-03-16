@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS public.funds (
 -- =============================================
 CREATE TABLE IF NOT EXISTS public.transactions (
   id SERIAL PRIMARY KEY,
-  type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+  type TEXT NOT NULL CHECK (type IN ('income', 'expense', 'adjustment')),
   amount DECIMAL(15, 0) NOT NULL,
   currency TEXT DEFAULT 'VND',
   fund_id INTEGER REFERENCES public.funds(id),
@@ -92,6 +92,9 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   transaction_date TIMESTAMPTZ,
   slip_image_url TEXT,
   ocr_raw_data JSONB,
+  adjustment_direction TEXT CHECK (adjustment_direction IN ('increase', 'decrease')),
+  reason TEXT,
+  linked_transaction_id INTEGER REFERENCES public.transactions(id),
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   approved_by UUID REFERENCES public.profiles(id),
   approved_at TIMESTAMPTZ,
@@ -430,6 +433,7 @@ CREATE INDEX IF NOT EXISTS idx_transactions_created_by ON public.transactions(cr
 CREATE INDEX IF NOT EXISTS idx_transactions_fund_id ON public.transactions(fund_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON public.transactions(transaction_date);
 CREATE INDEX IF NOT EXISTS idx_transactions_status ON public.transactions(status);
+CREATE INDEX IF NOT EXISTS idx_transactions_linked_transaction_id ON public.transactions(linked_transaction_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to ON public.tasks(assigned_to);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON public.tasks(status);
 CREATE INDEX IF NOT EXISTS idx_driving_trips_date ON public.driving_trips(scheduled_time);

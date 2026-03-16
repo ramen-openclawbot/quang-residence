@@ -145,9 +145,14 @@ export async function PATCH(request) {
     }
 
     const amountStr = amount.toLocaleString("vi-VN") + "đ";
+    const txLabel = tx.type === "adjustment" ? "adjustment" : tx.type;
 
     if (action === "approve") {
       const reviewedAt = new Date().toISOString();
+
+      if (tx.type === "adjustment" && !["increase", "decrease"].includes(tx.adjustment_direction)) {
+        return NextResponse.json({ error: "Adjustment transaction is missing a valid direction" }, { status: 422 });
+      }
 
       if (tx.fund_id) {
         const { data: fund, error: fundErr } = await supabaseAdmin
@@ -162,7 +167,11 @@ export async function PATCH(request) {
         }
 
         const currentBalance = Number(fund.current_balance || 0);
-        const nextBalance = tx.type === "income" ? currentBalance + amount : currentBalance - amount;
+        const nextBalance = tx.type === "income"
+          ? currentBalance + amount
+          : tx.type === "adjustment"
+            ? (tx.adjustment_direction === "increase" ? currentBalance + amount : currentBalance - amount)
+            : currentBalance - amount;
 
         const { error: fundUpdateError } = await supabaseAdmin
           .from("funds")
@@ -201,7 +210,7 @@ export async function PATCH(request) {
         await notify(
           tx.created_by,
           "Transaction approved",
-          `Your ${tx.type} of ${amountStr} — "${tx.description || "no description"}" has been approved by ${profile.full_name}.`,
+          `Your ${txLabel} of ${amountStr} — "${tx.description || "no description"}" has been approved by ${profile.full_name}.`,
           "info",
           "/transactions",
           { transaction_id, fund_id: tx.fund_id || null }
@@ -242,7 +251,7 @@ export async function PATCH(request) {
         await notify(
           tx.created_by,
           "Transaction rejected",
-          `Your ${tx.type} of ${amountStr} — "${tx.description || "no description"}" was rejected by ${profile.full_name}. Reason: ${reject_reason.trim()}. Please review and resubmit if needed.`,
+          `Your ${txLabel} of ${amountStr} — "${tx.description || "no description"}" was rejected by ${profile.full_name}. Reason: ${reject_reason.trim()}. Please review and resubmit if needed.`,
           "warning",
           "/transactions",
           { transaction_id, reject_reason: reject_reason.trim(), original_amount: tx.amount, original_description: tx.description }

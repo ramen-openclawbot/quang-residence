@@ -32,7 +32,7 @@ export async function POST(request) {
 
     const { transaction_id, amount, type, description } = await request.json();
     const amountStr = Number(amount || 0).toLocaleString("vi-VN") + "đ";
-    const typeLabel = type === "income" ? "Income" : "Expense";
+    const typeLabel = type === "income" ? "Income" : type === "adjustment" ? "Adjustment" : "Expense";
 
     // Determine who to notify
     let targetRole;
