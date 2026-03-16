@@ -26,6 +26,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
   // Form state
   const [type, setType] = useState("expense");
+  const [adjustmentDirection, setAdjustmentDirection] = useState("increase");
   const [step, setStep] = useState("upload"); // "upload" | "scanning" | "review"
   const [funds, setFunds] = useState([]);
 
