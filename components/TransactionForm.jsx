@@ -415,11 +415,84 @@ export default function TransactionForm({ onClose, onSuccess }) {
     }
   };
 
+  // ==================== ADJUSTMENT FORM STATE ====================
+  const [adjustAmount, setAdjustAmount] = useState("");
+  const [adjustReason, setAdjustReason] = useState("");
+  const [adjustFundId, setAdjustFundId] = useState("");
+  const [adjustDate, setAdjustDate] = useState(new Date().toISOString().slice(0, 10));
+  const [adjustLinkedTx, setAdjustLinkedTx] = useState("");
+  const [adjustSubmitting, setAdjustSubmitting] = useState(false);
+
+  const handleAdjustSubmit = async () => {
+    if (!adjustAmount || Number(adjustAmount) <= 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+    if (!adjustReason.trim()) {
+      alert("Please provide a reason for this adjustment");
+      return;
+    }
+    setAdjustSubmitting(true);
+    try {
+      const token = await getToken();
+      const payload = {
+        type: "adjustment",
+        amount: Number(adjustAmount),
+        fund_id: adjustFundId ? Number(adjustFundId) : null,
+        description: adjustReason.trim(),
+        adjustment_direction: adjustmentDirection,
+        reason: adjustReason.trim(),
+        linked_transaction_id: adjustLinkedTx ? Number(adjustLinkedTx) : null,
+        transaction_date: adjustDate ? new Date(adjustDate).toISOString() : new Date().toISOString(),
+        created_by: profile.id,
+        status: "pending",
+        source: "app",
+        notes: `Manual adjustment (${adjustmentDirection}) — requires review`,
+      };
+
+      const { data: inserted, error } = await supabase.from("transactions").insert(payload).select("id").single();
+      if (error) throw error;
+
+      // Notify reviewers
+      try {
+        if (token && inserted?.id) {
+          await fetch("/api/transactions/notify-submit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              transaction_id: inserted.id,
+              amount: payload.amount,
+              type: "adjustment",
+              description: `${adjustmentDirection === "increase" ? "+" : "-"} ${payload.description}`,
+            }),
+          });
+        }
+      } catch (notifyErr) {
+        console.warn("notify-submit error:", notifyErr);
+      }
+
+      // Reset
+      setAdjustAmount("");
+      setAdjustReason("");
+      setAdjustFundId("");
+      setAdjustDate(new Date().toISOString().slice(0, 10));
+      setAdjustLinkedTx("");
+      setAdjustmentDirection("increase");
+      onSuccess?.();
+    } catch (err) {
+      console.error("Adjustment submit failed:", err);
+      alert(err.message || "Failed to create adjustment");
+    } finally {
+      setAdjustSubmitting(false);
+    }
+  };
+
   // ==================== TYPE OPTIONS ====================
-  const typeOptions = [
+  const mainTypeOptions = [
     {
       id: "expense",
       label: "Out",
+      icon: "arrow_upward",
       tone: T.danger,
       soft: T.dangerSoft,
       border: "rgba(220, 38, 38, 0.18)",
@@ -427,18 +500,21 @@ export default function TransactionForm({ onClose, onSuccess }) {
     {
       id: "income",
       label: "In",
+      icon: "arrow_downward",
       tone: T.success,
       soft: T.successSoft,
       border: "rgba(22, 163, 74, 0.18)",
     },
-    {
-      id: "adjustment",
-      label: "Adjust",
-      tone: "#2563eb",
-      soft: "#eff6ff",
-      border: "rgba(37, 99, 235, 0.18)",
-    },
   ];
+
+  const adjustOption = {
+    id: "adjustment",
+    label: "Manual Adjust",
+    icon: "tune",
+    tone: "#2563eb",
+    soft: "#eff6ff",
+    border: "rgba(37, 99, 235, 0.18)",
+  };
 
   // ==================== RENDER ====================
   return (
@@ -449,45 +525,248 @@ export default function TransactionForm({ onClose, onSuccess }) {
             <MIcon name="chevron_left" size={20} color={T.text} /> Back
           </button>
           <span style={{ fontSize: 16, fontWeight: 700, color: T.text }}>
-            {step === "upload" && "New transaction"}
-            {step === "scanning" && "Scanning slips..."}
-            {step === "review" && "Review & submit"}
+            {type === "adjustment" && "Manual Adjust"}
+            {type !== "adjustment" && step === "upload" && "New transaction"}
+            {type !== "adjustment" && step === "scanning" && "Scanning slips..."}
+            {type !== "adjustment" && step === "review" && "Review & submit"}
           </span>
           <div style={{ width: 48 }} />
         </div>
 
         <div style={bodyStyle}>
           {/* Type toggle - always visible */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-            {typeOptions.map((item) => {
-              const active = type === item.id;
-              return (
+          {type !== "adjustment" ? (
+            <div style={{ display: "grid", gap: 10 }}>
+              {/* Primary: In / Out row */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                {mainTypeOptions.map((item) => {
+                  const active = type === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => { setType(item.id); setStep("upload"); }}
+                      disabled={step !== "upload"}
+                      style={{
+                        ...segBtnStyle,
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                        background: active ? item.tone : item.soft,
+                        border: `1px solid ${active ? item.tone : item.border}`,
+                        color: active ? "white" : item.tone,
+                        boxShadow: active ? `0 6px 18px ${item.id === "expense" ? "rgba(220,38,38,0.18)" : "rgba(22,163,74,0.18)"}` : "none",
+                        opacity: step !== "upload" ? 0.6 : 1,
+                        cursor: step !== "upload" ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      <MIcon name={item.icon} size={16} color={active ? "white" : item.tone} />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Secondary: Manual Adjust link */}
+              {step === "upload" && (
                 <button
-                  key={item.id}
                   type="button"
-                  onClick={() => {
-                    setType(item.id);
-                    setStep(item.id === "adjustment" ? "details" : (slipImages.length === 0 ? "upload" : "details"));
-                  }}
-                  disabled={step !== "upload"}
+                  onClick={() => setType("adjustment")}
                   style={{
-                    ...segBtnStyle,
-                    background: active ? item.tone : item.soft,
-                    border: `1px solid ${active ? item.tone : item.border}`,
-                    color: active ? "white" : item.tone,
-                    boxShadow: active ? `0 8px 20px ${item.id === "expense" ? "rgba(220,38,38,0.22)" : "rgba(22,163,74,0.22)"}` : "none",
-                    opacity: step !== "upload" ? 0.6 : 1,
-                    cursor: step !== "upload" ? "not-allowed" : "pointer",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    padding: "8px 0 2px",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: adjustOption.tone,
+                    fontFamily: T.font,
                   }}
                 >
-                  {item.label}
+                  <MIcon name="tune" size={16} color={adjustOption.tone} />
+                  Manual Adjust
                 </button>
-              );
-            })}
-          </div>
+              )}
+            </div>
+          ) : (
+            /* Adjustment mode header — back to normal + active indicator */
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => { setType("expense"); setStep("upload"); }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: T.textMuted,
+                  fontFamily: T.font,
+                  padding: 0,
+                }}
+              >
+                <MIcon name="chevron_left" size={16} color={T.textMuted} />
+                Back
+              </button>
+              <div style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                height: 46,
+                borderRadius: 14,
+                background: adjustOption.tone,
+                color: "white",
+                fontWeight: 800,
+                fontSize: 14,
+                fontFamily: T.font,
+              }}>
+                <MIcon name="tune" size={16} color="white" />
+                Manual Adjust
+              </div>
+            </div>
+          )}
 
-          {/* STEP 1: UPLOAD */}
-          {step === "upload" && (
+          {/* ========== ADJUSTMENT MODE ========== */}
+          {type === "adjustment" && (
+            <div style={{ display: "grid", gap: 14 }}>
+              {/* Direction toggle */}
+              <div style={sectionCardStyle}>
+                <div style={labelStyle}>Direction</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  {[
+                    { id: "increase", label: "Increase", icon: "add_circle", tone: T.success, soft: T.successSoft, border: "rgba(22, 163, 74, 0.18)" },
+                    { id: "decrease", label: "Decrease", icon: "remove_circle", tone: T.danger, soft: T.dangerSoft, border: "rgba(220, 38, 38, 0.18)" },
+                  ].map((dir) => {
+                    const active = adjustmentDirection === dir.id;
+                    return (
+                      <button
+                        key={dir.id}
+                        type="button"
+                        onClick={() => setAdjustmentDirection(dir.id)}
+                        style={{
+                          ...segBtnStyle,
+                          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                          background: active ? dir.tone : dir.soft,
+                          border: `1px solid ${active ? dir.tone : dir.border}`,
+                          color: active ? "white" : dir.tone,
+                          boxShadow: active ? `0 6px 18px ${dir.id === "increase" ? "rgba(22,163,74,0.16)" : "rgba(220,38,38,0.16)"}` : "none",
+                        }}
+                      >
+                        <MIcon name={dir.icon} size={16} color={active ? "white" : dir.tone} />
+                        {dir.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Amount */}
+              <div style={sectionCardStyle}>
+                <div style={labelStyle}>Amount *</div>
+                <input
+                  type="number"
+                  value={adjustAmount}
+                  onChange={(e) => setAdjustAmount(e.target.value)}
+                  placeholder="0"
+                  style={{ ...inputStyle, fontSize: 20, fontWeight: 700, letterSpacing: "0.02em" }}
+                  required
+                />
+              </div>
+
+              {/* Reason */}
+              <div style={sectionCardStyle}>
+                <div style={labelStyle}>Reason *</div>
+                <textarea
+                  value={adjustReason}
+                  onChange={(e) => setAdjustReason(e.target.value)}
+                  placeholder="Why is this adjustment needed?"
+                  style={{ ...inputStyle, minHeight: 80, resize: "vertical", paddingTop: 12, paddingBottom: 12, lineHeight: 1.5, height: "auto" }}
+                  required
+                  maxLength={500}
+                />
+                <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4, textAlign: "right" }}>
+                  {adjustReason.length}/500
+                </div>
+              </div>
+
+              {/* Fund */}
+              <div style={sectionCardStyle}>
+                <div style={labelStyle}>Fund</div>
+                <select value={adjustFundId} onChange={(e) => setAdjustFundId(e.target.value)} style={selectStyle}>
+                  <option value="">Select fund</option>
+                  {funds.map((fund) => (
+                    <option key={fund.id} value={fund.id}>{fund.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date */}
+              <div style={sectionCardStyle}>
+                <div style={labelStyle}>Date</div>
+                <input
+                  type="date"
+                  value={adjustDate}
+                  onChange={(e) => setAdjustDate(e.target.value)}
+                  style={dateInputStyle}
+                />
+              </div>
+
+              {/* Linked transaction (optional) */}
+              <div style={sectionCardStyle}>
+                <div style={labelStyle}>Linked transaction ID</div>
+                <input
+                  type="number"
+                  value={adjustLinkedTx}
+                  onChange={(e) => setAdjustLinkedTx(e.target.value)}
+                  placeholder="Optional — reference an existing transaction"
+                  style={inputStyle}
+                />
+                <div style={{ fontSize: 11, color: T.textMuted, marginTop: 6 }}>
+                  Link to the original transaction if this corrects an error.
+                </div>
+              </div>
+
+              {/* Notice */}
+              <div style={{
+                background: "#eff6ff",
+                border: "1px solid rgba(37, 99, 235, 0.15)",
+                borderRadius: 14,
+                padding: "12px 14px",
+                display: "flex",
+                gap: 10,
+                alignItems: "flex-start",
+              }}>
+                <MIcon name="info" size={18} color="#2563eb" style={{ flexShrink: 0, marginTop: 1 }} />
+                <div style={{ fontSize: 12, color: "#1e40af", lineHeight: 1.5 }}>
+                  This adjustment will be submitted for review. Owner or secretary must approve before it affects the fund balance.
+                </div>
+              </div>
+
+              {/* Submit */}
+              <button
+                type="button"
+                onClick={handleAdjustSubmit}
+                disabled={adjustSubmitting || !adjustAmount || !adjustReason.trim()}
+                style={{
+                  ...submitBtnStyle,
+                  background: adjustOption.tone,
+                  opacity: adjustSubmitting || !adjustAmount || !adjustReason.trim() ? 0.5 : 1,
+                  cursor: adjustSubmitting || !adjustAmount || !adjustReason.trim() ? "not-allowed" : "pointer",
+                }}
+              >
+                {adjustSubmitting ? "Submitting..." : "Submit for review"}
+              </button>
+            </div>
+          )}
+
+          {/* STEP 1: UPLOAD (only for expense/income) */}
+          {type !== "adjustment" && step === "upload" && (
             <>
               <div style={sectionCardStyle}>
                 <div style={sectionHeaderStyle}>
