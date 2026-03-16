@@ -48,7 +48,7 @@ export async function PATCH(request) {
       .eq("user_id", user.id)
       .is("read_at", null);
   } else if (notification_id) {
-    const { data, error } = await supabaseAdmin
+    const { data } = await supabaseAdmin
       .from("notifications")
       .update({ read_at: now })
       .eq("id", notification_id)
@@ -59,6 +59,26 @@ export async function PATCH(request) {
     }
   } else {
     return NextResponse.json({ error: "notification_id or mark_all required" }, { status: 400 });
+  }
+
+  return NextResponse.json({ success: true });
+}
+
+// DELETE: delete all notifications for current user only
+export async function DELETE(request) {
+  const authHeader = request.headers.get("authorization");
+  const token = authHeader?.replace("Bearer ", "");
+  const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { error } = await supabaseAdmin
+    .from("notifications")
+    .delete()
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Notifications DELETE error:", error);
+    return NextResponse.json({ error: "Failed to delete notifications." }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

@@ -147,7 +147,7 @@ export default function NotificationCenter({ userId, onOpenNotification }) {
             <h3 style={{ fontSize: 16, fontWeight: 700, color: T.text }}>Notifications</h3>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {unread > 0 && <button onClick={markAllRead} style={{ fontSize: 12, color: T.primary, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Mark all read</button>}
-              <button style={{ width: 28, height: 28, borderRadius: "50%", background: `${T.primary}10`, border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              <button onClick={deleteAllNotifs} style={{ width: 28, height: 28, borderRadius: "50%", background: `${T.primary}10`, border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16, color: T.primary }}>settings</span>
               </button>
             </div>
