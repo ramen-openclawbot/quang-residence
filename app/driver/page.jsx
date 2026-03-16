@@ -513,7 +513,10 @@ Complete trip
                     <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No expenses logged yet.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
-                      {transactions.map((tx) => (
+                      {transactions.map((tx) => {
+                        const signedAmount = getSignedAmount(tx);
+                        const isPositive = signedAmount >= 0;
+                        return (
                         <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("expense-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
                           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                             <div style={{ minWidth: 0, flex: 1 }}>
@@ -521,10 +524,10 @@ Complete trip
                               <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{fmtRelative(tx.created_at)}</div>
                               {tx.bank_name && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{tx.bank_name}</div>}
                             </div>
-                            <div style={{ fontSize: 14, fontWeight: 800, color: tx.type === "income" ? T.success : T.danger }}>{tx.type === "income" ? "+" : "-"}{fmtVND(Math.abs(Number(tx.amount || 0)))}</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: isPositive ? T.success : T.danger }}>{isPositive ? "+" : "-"}{fmtVND(Math.abs(signedAmount))}</div>
                           </div>
                         </button>
-                      ))}
+                      );})}
                     </div>
                   )}
                 </div>

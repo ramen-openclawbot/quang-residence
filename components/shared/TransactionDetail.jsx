@@ -110,8 +110,8 @@ export default function TransactionDetail({ tx, profile, onClose, onAction }) {
         <div style={{ flex: 1, overflowY: "auto", padding: 18, display: "grid", gap: 14 }}>
           {/* Amount + status hero */}
           <div style={{ ...cardStyle, padding: 20, textAlign: "center" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: tx.type === "income" ? T.success : T.danger }}>
-              {tx.type === "income" ? "Income" : "Expense"}
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: tx.type === "adjustment" ? (tx.adjustment_direction === "increase" ? T.success : T.danger) : tx.type === "income" ? T.success : T.danger }}>
+              {tx.type === "adjustment" ? `Adjustment · ${tx.adjustment_direction === "increase" ? "Increase" : "Decrease"}` : tx.type === "income" ? "Income" : "Expense"}
             </div>
             <div style={{ fontSize: 32, fontWeight: 900, color: T.text, marginTop: 6 }}>{fmtVND(tx.amount)}</div>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 10, padding: "4px 12px", borderRadius: 999, background: `${statusColor}15`, color: statusColor, fontSize: 12, fontWeight: 700 }}>

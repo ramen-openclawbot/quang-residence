@@ -521,15 +521,22 @@ export default function OwnerPage() {
 
             <div style={{ ...cardStyle, padding: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Recent approvals / spend</div>
-              {transactions.slice(0, 6).map((tx) => (
+              {transactions.slice(0, 6).map((tx) => {
+                const signedAmount = tx.type === "adjustment"
+                  ? (tx.adjustment_direction === "increase" ? Math.abs(Number(tx.amount || 0)) : -Math.abs(Number(tx.amount || 0)))
+                  : tx.type === "income"
+                    ? Math.abs(Number(tx.amount || 0))
+                    : -Math.abs(Number(tx.amount || 0));
+                const isPositive = signedAmount >= 0;
+                return (
                 <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{tx.description || tx.recipient_name || "Transaction"}</div>
                     <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(tx.transaction_date || tx.created_at)} • {tx.status || "pending"}</div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: tx.type === "income" ? T.success : T.danger }}>{tx.type === "income" ? "+" : "-"}{fmtVND(Math.abs(Number(tx.amount || 0)))}</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: isPositive ? T.success : T.danger }}>{isPositive ? "+" : "-"}{fmtVND(Math.abs(signedAmount))}</div>
                 </div>
-              ))}
+              );})}
             </div>
           </div>
         )}

@@ -724,20 +724,27 @@ export default function SecretaryPage() {
                         <MIcon name="receipt_long" size={28} color={T.textMuted} />
                         <div style={{ fontSize: 13, color: T.textMuted, marginTop: 6 }}>No transactions yet.</div>
                       </div>
-                    ) : recentTransactions.slice(0, 5).map((tx) => (
+                    ) : recentTransactions.slice(0, 5).map((tx) => {
+                      const signedAmount = tx.type === "adjustment"
+                        ? (tx.adjustment_direction === "increase" ? Math.abs(Number(tx.amount || 0)) : -Math.abs(Number(tx.amount || 0)))
+                        : tx.type === "income"
+                          ? Math.abs(Number(tx.amount || 0))
+                          : -Math.abs(Number(tx.amount || 0));
+                      const isPositive = signedAmount >= 0;
+                      return (
                       <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
-                          <div style={{ width: 38, height: 38, borderRadius: 12, background: tx.type === "income" ? "#eafaf2" : "#fff1f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            <MIcon name={tx.type === "income" ? "south_west" : "north_east"} size={18} color={tx.type === "income" ? T.success : T.danger} />
+                          <div style={{ width: 38, height: 38, borderRadius: 12, background: isPositive ? "#eafaf2" : "#fff1f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <MIcon name={isPositive ? "south_west" : "north_east"} size={18} color={isPositive ? T.success : T.danger} />
                           </div>
                           <div style={{ minWidth: 0, flex: 1 }}>
                             <div style={{ fontSize: 14, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tx.description || tx.recipient_name || "Transactions"}</div>
                             <div style={{ fontSize: 12, color: T.textMuted }}>{fmtRelative(tx.created_at)}</div>
                           </div>
                         </div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: tx.type === "income" ? T.success : T.danger }}>{tx.type === "income" ? "+" : "-"}{fmtVND(Math.abs(Number(tx.amount || 0)))}</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: isPositive ? T.success : T.danger }}>{isPositive ? "+" : "-"}{fmtVND(Math.abs(signedAmount))}</div>
                       </div>
-                    ))}
+                    );})}
                   </div>
                 </div>
               )}
@@ -789,7 +796,12 @@ export default function SecretaryPage() {
                     <>
                       <div style={{ display: "grid", gap: 8 }}>
                         {txPageItems.map((tx) => {
-                          const isIncome = tx.type === "income";
+                          const signedAmount = tx.type === "adjustment"
+                            ? (tx.adjustment_direction === "increase" ? Math.abs(Number(tx.amount || 0)) : -Math.abs(Number(tx.amount || 0)))
+                            : tx.type === "income"
+                              ? Math.abs(Number(tx.amount || 0))
+                              : -Math.abs(Number(tx.amount || 0));
+                          const isIncome = signedAmount >= 0;
                           const statusColor = tx.status === "approved" ? T.success : tx.status === "pending" ? T.amber : T.danger;
                           return (
                             <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("transaction-detail"); }} style={{ ...cardStyle, padding: 14, width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, border: `1px solid ${T.border}` }}>
@@ -812,7 +824,7 @@ export default function SecretaryPage() {
                                   </div>
                                 </div>
                                 <div style={{ fontSize: 14, fontWeight: 800, color: isIncome ? T.success : T.danger, whiteSpace: "nowrap", textAlign: "right", alignSelf: "center" }}>
-                                  {isIncome ? "+" : "−"}{fmtVND(Math.abs(Number(tx.amount || 0)))}
+                                  {isIncome ? "+" : "−"}{fmtVND(Math.abs(signedAmount))}
                                 </div>
                               </div>
                             </button>

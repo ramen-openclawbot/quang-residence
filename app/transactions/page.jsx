@@ -262,7 +262,12 @@ export default function TransactionsPage() {
           ) : (
             <div style={{ display: "grid", gap: 8 }}>
               {filtered.map((tx) => {
-                const isIncome = tx.type === "income";
+                const signedAmount = tx.type === "adjustment"
+                  ? (tx.adjustment_direction === "increase" ? Math.abs(Number(tx.amount || 0)) : -Math.abs(Number(tx.amount || 0)))
+                  : tx.type === "income"
+                    ? Math.abs(Number(tx.amount || 0))
+                    : -Math.abs(Number(tx.amount || 0));
+                const isIncome = signedAmount >= 0;
                 const statusColor = tx.status === "approved" ? T.success : tx.status === "pending" ? T.amber : T.danger;
                 return (
                   <button
@@ -281,7 +286,7 @@ export default function TransactionsPage() {
                           {tx.description || tx.recipient_name || (isIncome ? "Income" : "Expense")}
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 800, color: isIncome ? T.success : T.text, flexShrink: 0 }}>
-                          {isIncome ? "+" : "−"}{fmtVND(tx.amount)}
+                          {isIncome ? "+" : "−"}{fmtVND(Math.abs(signedAmount))}
                         </div>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
