@@ -353,12 +353,14 @@ export default function SecretaryPage() {
 
   const fundsBalance = useMemo(() => funds.reduce((s, f) => s + Number(f.current_balance || 0), 0), [funds]);
   const fundedEntries = useMemo(() => funds.filter((f) => Number(f.current_balance || 0) !== 0).length, [funds]);
-  const ledgerBalance = useMemo(() => transactions.reduce((sum, tx) => {
-    const amount = Number(tx.amount || 0);
-    if (tx.type === "income") return sum + amount;
-    if (tx.type === "expense") return sum - amount;
-    return sum;
-  }, 0), [transactions]);
+  const getSignedAmount = useCallback((tx) => {
+    const amount = Math.abs(Number(tx?.amount || 0));
+    if (tx?.type === "income") return amount;
+    if (tx?.type === "adjustment") return tx.adjustment_direction === "increase" ? amount : -amount;
+    if (tx?.type === "expense") return -amount;
+    return 0;
+  }, []);
+  const ledgerBalance = useMemo(() => transactions.reduce((sum, tx) => sum + getSignedAmount(tx), 0), [transactions, getSignedAmount]);
   const usingLedgerFallback = useMemo(() => fundedEntries === 0 && transactions.length > 0, [fundedEntries, transactions.length]);
   const totalBalance = useMemo(() => (usingLedgerFallback ? ledgerBalance : fundsBalance), [usingLedgerFallback, fundsBalance, ledgerBalance]);
   const pendingTx = useMemo(() => transactions.filter((t) => t.status === "pending"), [transactions]);
@@ -420,8 +422,14 @@ export default function SecretaryPage() {
   const txTotalPages = Math.max(1, Math.ceil(txFiltered.length / TX_PER_PAGE));
   const txPageItems = useMemo(() => txFiltered.slice(txPage * TX_PER_PAGE, (txPage + 1) * TX_PER_PAGE), [txFiltered, txPage]);
 
-  const txIncomeTotal = useMemo(() => txMonthFiltered.filter((tx) => tx.type === "income").reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [txMonthFiltered]);
-  const txExpenseTotal = useMemo(() => txMonthFiltered.filter((tx) => tx.type === "expense").reduce((sum, tx) => sum + Number(tx.amount || 0), 0), [txMonthFiltered]);
+  const txIncomeTotal = useMemo(() => txMonthFiltered.reduce((sum, tx) => {
+    const signed = getSignedAmount(tx);
+    return signed > 0 ? sum + signed : sum;
+  }, 0), [txMonthFiltered, getSignedAmount]);
+  const txExpenseTotal = useMemo(() => txMonthFiltered.reduce((sum, tx) => {
+    const signed = getSignedAmount(tx);
+    return signed < 0 ? sum + Math.abs(signed) : sum;
+  }, 0), [txMonthFiltered, getSignedAmount]);
   const txPendingCount = useMemo(() => txMonthFiltered.filter((tx) => tx.status === "pending").length, [txMonthFiltered]);
 
   useEffect(() => {

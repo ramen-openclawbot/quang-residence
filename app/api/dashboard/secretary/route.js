@@ -53,7 +53,7 @@ export async function GET(request) {
         .limit(10),
       supabaseAdmin
         .from("transactions")
-        .select("type, amount")
+        .select("type, amount, adjustment_direction")
         .gte("created_at", todayStart)
         .lte("created_at", todayEnd),
       supabaseAdmin
