@@ -458,7 +458,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
         <div style={bodyStyle}>
           {/* Type toggle - always visible */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
             {typeOptions.map((item) => {
               const active = type === item.id;
               return (
