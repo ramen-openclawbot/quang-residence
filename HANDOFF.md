@@ -1,12 +1,12 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-16 09:45 GMT+7_
+_Last updated: 2026-03-16 10:53 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
 - GitHub: `https://github.com/ramen-openclawbot/quang-residence.git`
 - Branch: `main`
-- Current pushed commit: `82edd6a`
+- Current pushed commit: `1185a5a`
 
 ## Current product state
 ZenHome is now in a **product-hardening + CRUD-completion** phase, not an auth/firefighting phase.
@@ -232,6 +232,11 @@ Key commit:
 - Notification items related to transactions should deep-link with context so back-navigation stays correct. Current behavior:
   - Secretary opens transaction notifications in-place inside `/secretary` (Transactions tab + detail overlay)
   - Owner opens transaction notifications via `/transactions?tx=<id>&from=owner`
+- Swipe-to-delete was added for creator-owned items only.
+  - Secretary / Driver: task cards can be swiped left and deleted only when `task.created_by === currentUser.id`
+  - Housekeeper: maintenance items (`reported_by`) and family schedule items (`created_by`) can be swiped left and deleted only by their original creator/reporter
+  - Current safer deletion path is server-side via `/api/items/delete` (not direct client-side Supabase delete), because earlier direct deletes could fail silently under policy/permission differences and leave the swipe UI looking stuck
+  - A follow-up stabilization pass added `stopPropagation()` plus `try/catch/finally` so Cancel/error/success all close the revealed delete state instead of leaving the card visually broken
 - **Performance pass completed.** After merging Audit Ledger into Secretary → Transactions, load cost had increased. The following optimizations were applied:
   - **Shared components:** `ImageLightbox` and `TransactionDetail` extracted into `components/shared/` — used by both `/secretary` and `/transactions` pages
   - **Lazy-load by tab:** Secretary Home tab loads only summary data (funds + tasks + 10 recent tx via `/api/dashboard/secretary`). Full transaction list loads only when the Transactions tab is first opened
