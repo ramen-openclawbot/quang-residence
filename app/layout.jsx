@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "../lib/auth";
+import ChatInbox from "../components/chat/ChatInbox";
 
 export const metadata = {
   title: "ZenHome",
@@ -35,7 +36,10 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <ChatInbox />
+        </AuthProvider>
       </body>
     </html>
   );
