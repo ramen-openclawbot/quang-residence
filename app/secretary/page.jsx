@@ -7,7 +7,7 @@ import TransactionDetail from "../../components/shared/TransactionDetail";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
-import { getSignedAmount, getLocalDateKey, getTodayKey } from "../../lib/transaction";
+import { classifyTransaction, getSignedAmount, getLocalDateKey, getTodayKey, getTransactionDateKey } from "../../lib/transaction";
 import TransactionForm from "../../components/TransactionForm";
 
 const MONTHS = ["Thg 1","Thg 2","Thg 3","Thg 4","Thg 5","Thg 6","Thg 7","Thg 8","Thg 9","Thg 10","Thg 11","Thg 12"];
@@ -370,27 +370,28 @@ export default function SecretaryPage() {
   const todayTasks = useMemo(() => tasks.filter((t) => (t.due_date || "").startsWith(today)), [tasks, today]);
   const overdueTasks = useMemo(() => tasks.filter((t) => t.status !== "done" && t.due_date && t.due_date.slice(0, 10) < today), [tasks, today]);
   const recentTransactions = useMemo(() => transactions.slice(0, 8), [transactions]);
-  const getTxFilterDate = (tx) => {
-    const candidate = tx.transaction_date || tx.created_at;
-    const d = new Date(candidate || Date.now());
-    return Number.isNaN(d.getTime()) ? new Date() : d;
-  };
-  // Helper: get day of month from tx date
-  const getTxDay = (tx) => {
-    const d = getTxFilterDate(tx);
-    return d.getDate();
+  const getTxDateParts = (tx) => {
+    const key = getTransactionDateKey(tx);
+    if (!key) return null;
+    const [y, m, d] = key.split("-").map((v) => Number(v));
+    if (!y || !m || !d) return null;
+    return { year: y, month: m - 1, day: d };
   };
 
   // Step 1: Month filter
   const txMonthFiltered = useMemo(() => transactions.filter((tx) => {
-    const base = getTxFilterDate(tx);
-    return base.getMonth() === selectedMonth && base.getFullYear() === selectedYear;
+    const parts = getTxDateParts(tx);
+    if (!parts) return false;
+    return parts.month === selectedMonth && parts.year === selectedYear;
   }), [transactions, selectedMonth, selectedYear]);
 
   // Step 2: Day filter
   const txDayFiltered = useMemo(() => {
     if (selectedDay === null) return txMonthFiltered;
-    return txMonthFiltered.filter((tx) => getTxDay(tx) === selectedDay);
+    return txMonthFiltered.filter((tx) => {
+      const parts = getTxDateParts(tx);
+      return parts?.day === selectedDay;
+    });
   }, [txMonthFiltered, selectedDay]);
 
   // Step 3: Search filter
@@ -411,29 +412,7 @@ export default function SecretaryPage() {
   // Step 4: Apply activeFilter (income/expense/pending)
   const txFiltered = useMemo(() => {
     if (!txActiveFilter) return txSearchFiltered;
-
-    const classifyTx = (tx) => {
-      const type = String(tx?.type || "").trim().toLowerCase();
-      const direction = String(tx?.adjustment_direction || "").trim().toLowerCase();
-      if (type === "income") return "income";
-      if (type === "expense") return "expense";
-      if (type === "adjustment") {
-        if (direction === "increase") return "income";
-        if (direction === "decrease") return "expense";
-      }
-      const signed = getSignedAmount(tx);
-      if (signed > 0) return "income";
-      if (signed < 0) return "expense";
-      return "other";
-    };
-
-    return txSearchFiltered.filter((tx) => {
-      if (txActiveFilter === "pending") return tx.status === "pending";
-      const bucket = classifyTx(tx);
-      if (txActiveFilter === "income") return bucket === "income";
-      if (txActiveFilter === "expense") return bucket === "expense";
-      return true;
-    });
+    return txSearchFiltered.filter((tx) => classifyTransaction(tx) === txActiveFilter);
   }, [txSearchFiltered, txActiveFilter]);
 
   // Group transactions by date for display
@@ -480,16 +459,16 @@ export default function SecretaryPage() {
 
   useEffect(() => {
     if (!transactions.length) return;
-    const latest = getTxFilterDate(transactions[0]);
+    const latest = getTxDateParts(transactions[0]);
     const hasCurrentSelection = transactions.some((tx) => {
-      const d = getTxFilterDate(tx);
-      return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+      const d = getTxDateParts(tx);
+      return d && d.month === selectedMonth && d.year === selectedYear;
     });
-    if (!hasCurrentSelection) {
-      setSelectedMonth(latest.getMonth());
-      setSelectedYear(latest.getFullYear());
+    if (!hasCurrentSelection && latest) {
+      setSelectedMonth(latest.month);
+      setSelectedYear(latest.year);
     }
-  }, [transactions]);
+  }, [transactions, selectedMonth, selectedYear]);
 
   const isTodayTransaction = (t) => {
     const createdKey = getLocalDateKey(t.created_at);

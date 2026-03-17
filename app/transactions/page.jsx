@@ -5,7 +5,7 @@ import { MIcon } from "../../components/shared/StaffShell";
 import TransactionDetail from "../../components/shared/TransactionDetail";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
-import { getSignedAmount } from "../../lib/transaction";
+import { classifyTransaction, getSignedAmount, getTransactionDateKey } from "../../lib/transaction";
 import { fmtAmountVND as fmtVND, fmtDate } from "../../lib/format";
 
 /* ─── design tokens (must match app-wide palette) ─── */
@@ -87,8 +87,8 @@ export default function TransactionsPage() {
         const { data } = await supabase
           .from("transactions")
           .select("*, profiles!created_by(id, full_name, role)")
-          .gte("created_at", startDate)
-          .lte("created_at", endDate)
+          .gte("transaction_date", startDate)
+          .lte("transaction_date", endDate)
           .order("created_at", { ascending: false })
           .limit(PAGE_SIZE);
         setTransactions(data || []);
@@ -127,16 +127,18 @@ export default function TransactionsPage() {
     return () => supabase.removeChannel(ch);
   }, [selectedMonth, selectedYear]);
 
-  // Helper: get day of month from a transaction date
-  const getTxDay = (tx) => {
-    const d = new Date(tx.transaction_date || tx.created_at || Date.now());
-    return Number.isNaN(d.getTime()) ? null : d.getDate();
+  const getTxDateParts = (tx) => {
+    const key = getTransactionDateKey(tx);
+    if (!key) return null;
+    const [y, m, d] = key.split("-").map((v) => Number(v));
+    if (!y || !m || !d) return null;
+    return { year: y, month: m - 1, day: d };
   };
 
   // Step 1: Filter by day (if selected)
   const dayFiltered = useMemo(() => {
     if (selectedDay === null) return transactions;
-    return transactions.filter((tx) => getTxDay(tx) === selectedDay);
+    return transactions.filter((tx) => getTxDateParts(tx)?.day === selectedDay);
   }, [transactions, selectedDay]);
 
   // Step 2: Filter by search
@@ -157,14 +159,7 @@ export default function TransactionsPage() {
   // Step 3: Apply activeFilter (income/expense/pending)
   const filtered = useMemo(() => {
     if (!activeFilter) return searchFiltered;
-    return searchFiltered.filter((tx) => {
-      const signed = getSignedAmount(tx);
-      const type = String(tx?.type || "").trim().toLowerCase();
-      if (activeFilter === "income") return signed > 0 || (signed === 0 && type === "income");
-      if (activeFilter === "expense") return signed < 0 || (signed === 0 && type === "expense");
-      if (activeFilter === "pending") return tx.status === "pending";
-      return true;
-    });
+    return searchFiltered.filter((tx) => classifyTransaction(tx) === activeFilter);
   }, [searchFiltered, activeFilter]);
 
   // Summary stats — computed from filtered (reflects day + search + activeFilter)
@@ -405,6 +400,11 @@ export default function TransactionsPage() {
                                   <div style={{ width: 4, height: 4, borderRadius: "50%", background: statusColor }} />
                                   {STATUS_VI[tx.status] || tx.status}
                                 </div>
+                              </div>
+                            </div>
+                            <div style={{ textAlign: "right", flexShrink: 0, minWidth: 108 }}>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: signedAmount >= 0 ? T.success : T.danger, whiteSpace: "nowrap" }}>
+                                {signedAmount >= 0 ? "+" : "−"}{fmtVND(Math.abs(signedAmount))}
                               </div>
                             </div>
                           </button>
