@@ -4,7 +4,7 @@ import ChatInbox from "../components/chat/ChatInbox";
 
 export const metadata = {
   title: "ZenHome",
-  description: "Smart Household Management",
+  description: "Quản lý gia đình thông minh",
   manifest: "/manifest.json",
 };
 

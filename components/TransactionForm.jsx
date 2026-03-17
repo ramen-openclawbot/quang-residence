@@ -482,7 +482,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
   const mainTypeOptions = [
     {
       id: "expense",
-      label: "Out",
+      label: "Chi",
       icon: "arrow_upward",
       tone: T.danger,
       soft: T.dangerSoft,
@@ -490,7 +490,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
     },
     {
       id: "income",
-      label: "In",
+      label: "Thu",
       icon: "arrow_downward",
       tone: T.success,
       soft: T.successSoft,
@@ -500,7 +500,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
   const adjustOption = {
     id: "adjustment",
-    label: "Manual Adjust",
+    label: "Điều chỉnh Thủ công",
     icon: "tune",
     tone: "#2563eb",
     soft: "#eff6ff",
@@ -513,13 +513,13 @@ export default function TransactionForm({ onClose, onSuccess }) {
       <div style={sheetStyle}>
         <div style={topBarStyle}>
           <button onClick={onClose} style={backBtnStyle}>
-            <MIcon name="chevron_left" size={20} color={T.text} /> Back
+            <MIcon name="chevron_left" size={20} color={T.text} /> Quay lại
           </button>
           <span style={{ fontSize: 16, fontWeight: 700, color: T.text }}>
-            {type === "adjustment" && "Manual Adjust"}
-            {type !== "adjustment" && step === "upload" && "New transaction"}
-            {type !== "adjustment" && step === "scanning" && "Scanning slips..."}
-            {type !== "adjustment" && step === "review" && "Review & submit"}
+            {type === "adjustment" && "Điều chỉnh Thủ công"}
+            {type !== "adjustment" && step === "upload" && "Giao dịch mới"}
+            {type !== "adjustment" && step === "scanning" && "Đang quét hóa đơn..."}
+            {type !== "adjustment" && step === "review" && "Xem xét & Gửi"}
           </span>
           <div style={{ width: 48 }} />
         </div>
@@ -576,7 +576,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
                   }}
                 >
                   <MIcon name="tune" size={16} color={adjustOption.tone} />
-                  Manual Adjust
+                  Điều chỉnh Thủ công
                 </button>
               )}
             </div>
@@ -601,7 +601,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
                 }}
               >
                 <MIcon name="chevron_left" size={16} color={T.textMuted} />
-                Back
+                Quay lại
               </button>
               <div style={{
                 flex: 1,
@@ -618,7 +618,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
                 fontFamily: T.font,
               }}>
                 <MIcon name="tune" size={16} color="white" />
-                Manual Adjust
+                Điều chỉnh Thủ công
               </div>
             </div>
           )}
@@ -628,11 +628,11 @@ export default function TransactionForm({ onClose, onSuccess }) {
             <div style={{ display: "grid", gap: 14 }}>
               {/* Direction toggle */}
               <div style={sectionCardStyle}>
-                <div style={labelStyle}>Direction</div>
+                <div style={labelStyle}>Hướng</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   {[
-                    { id: "increase", label: "Increase", icon: "add_circle", tone: T.success, soft: T.successSoft, border: "rgba(22, 163, 74, 0.18)" },
-                    { id: "decrease", label: "Decrease", icon: "remove_circle", tone: T.danger, soft: T.dangerSoft, border: "rgba(220, 38, 38, 0.18)" },
+                    { id: "increase", label: "Tăng", icon: "add_circle", tone: T.success, soft: T.successSoft, border: "rgba(22, 163, 74, 0.18)" },
+                    { id: "decrease", label: "Giảm", icon: "remove_circle", tone: T.danger, soft: T.dangerSoft, border: "rgba(220, 38, 38, 0.18)" },
                   ].map((dir) => {
                     const active = adjustmentDirection === dir.id;
                     return (
@@ -659,7 +659,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
               {/* Amount */}
               <div style={sectionCardStyle}>
-                <div style={labelStyle}>Amount *</div>
+                <div style={labelStyle}>Số tiền *</div>
                 <input
                   type="number"
                   value={adjustAmount}
@@ -672,11 +672,11 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
               {/* Reason */}
               <div style={sectionCardStyle}>
-                <div style={labelStyle}>Reason *</div>
+                <div style={labelStyle}>Lý do *</div>
                 <textarea
                   value={adjustReason}
                   onChange={(e) => setAdjustReason(e.target.value)}
-                  placeholder="Why is this adjustment needed?"
+                  placeholder="Tại sao cần điều chỉnh này?"
                   style={{ ...inputStyle, minHeight: 80, resize: "vertical", paddingTop: 12, paddingBottom: 12, lineHeight: 1.5, height: "auto" }}
                   required
                   maxLength={500}
@@ -688,7 +688,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
               {/* Date */}
               <div style={sectionCardStyle}>
-                <div style={labelStyle}>Date</div>
+                <div style={labelStyle}>Ngày</div>
                 <input
                   type="date"
                   value={adjustDate}
@@ -699,16 +699,16 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
               {/* Linked transaction (optional) */}
               <div style={sectionCardStyle}>
-                <div style={labelStyle}>Linked transaction ID</div>
+                <div style={labelStyle}>ID giao dịch liên kết</div>
                 <input
                   type="number"
                   value={adjustLinkedTx}
                   onChange={(e) => setAdjustLinkedTx(e.target.value)}
-                  placeholder="Optional — reference an existing transaction"
+                  placeholder="Tùy chọn — tham chiếu giao dịch hiện có"
                   style={inputStyle}
                 />
                 <div style={{ fontSize: 11, color: T.textMuted, marginTop: 6 }}>
-                  Link to the original transaction if this corrects an error.
+                  Liên kết đến giao dịch gốc nếu điều này sửa lỗi.
                 </div>
               </div>
 
@@ -724,7 +724,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
               }}>
                 <MIcon name="info" size={18} color="#2563eb" style={{ flexShrink: 0, marginTop: 1 }} />
                 <div style={{ fontSize: 12, color: "#1e40af", lineHeight: 1.5 }}>
-                  This adjustment will be submitted for review. Owner or secretary must approve before it takes effect.
+                  Điều chỉnh này sẽ được gửi để duyệt. Chủ sở hữu hoặc thư ký phải phê duyệt trước khi có hiệu lực.
                 </div>
               </div>
 
@@ -740,7 +740,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
                   cursor: adjustSubmitting || !adjustAmount || !adjustReason.trim() ? "not-allowed" : "pointer",
                 }}
               >
-                {adjustSubmitting ? "Submitting..." : "Submit for review"}
+                {adjustSubmitting ? "Đang gửi..." : "Gửi để duyệt"}
               </button>
             </div>
           )}
@@ -751,16 +751,16 @@ export default function TransactionForm({ onClose, onSuccess }) {
               <div style={sectionCardStyle}>
                 <div style={sectionHeaderStyle}>
                   <div>
-                    <div style={labelStyle}>Bank slips</div>
-                    <div style={helperTextStyle}>Select 1-5 images at once</div>
+                    <div style={labelStyle}>Hóa đơn ngân hàng</div>
+                    <div style={helperTextStyle}>Chọn 1-5 hình ảnh cùng lúc</div>
                   </div>
                 </div>
                 <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFileSelect} style={{ display: "none" }} />
                 {slipFiles.length === 0 ? (
                   <button type="button" onClick={() => fileRef.current?.click()} style={uploadBoxStyle}>
                     <MIcon name="cloud_upload" size={24} color={T.primary} />
-                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Scan slips</div>
-                    <div style={{ fontSize: 12, color: T.textMuted }}>UNC / transfer receipt</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Quét hóa đơn</div>
+                    <div style={{ fontSize: 12, color: T.textMuted }}>UNC / biên lai chuyển khoản</div>
                   </button>
                 ) : (
                   <>
@@ -798,7 +798,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
                     {slipFiles.length < 5 && (
                       <button type="button" onClick={() => fileRef.current?.click()} style={{ ...uploadBoxStyle, minHeight: 60, gap: 4 }}>
                         <MIcon name="add" size={20} color={T.primary} />
-                        <div style={{ fontSize: 12, color: T.primary, fontWeight: 700 }}>Add more ({slipFiles.length}/5)</div>
+                        <div style={{ fontSize: 12, color: T.primary, fontWeight: 700 }}>Thêm ({slipFiles.length}/5)</div>
                       </button>
                     )}
                   </>
@@ -816,7 +816,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
                   cursor: slipFiles.length === 0 ? "not-allowed" : "pointer",
                 }}
               >
-                {slipFiles.length === 0 ? "Select slips to scan" : `Scan ${slipFiles.length} slip${slipFiles.length > 1 ? "s" : ""}`}
+                {slipFiles.length === 0 ? "Chọn hóa đơn để quét" : `Quét ${slipFiles.length} hóa đơn${slipFiles.length > 1 ? "" : ""}`}
               </button>
             </>
           )}
@@ -861,10 +861,10 @@ export default function TransactionForm({ onClose, onSuccess }) {
                 </div>
 
                 <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 8 }}>
-                  Scanning slips...
+                  Đang quét hóa đơn...
                 </div>
                 <div style={{ fontSize: 14, color: T.textMuted, marginBottom: 16 }}>
-                  {scanProgress.phase === "compressing" ? "Preparing images..." : `Scanning ${scanProgress.current}/${scanProgress.total}...`}
+                  {scanProgress.phase === "compressing" ? "Chuẩn bị hình ảnh..." : `Đang quét ${scanProgress.current}/${scanProgress.total}...`}
                 </div>
 
                 {/* Progress bar */}
@@ -892,7 +892,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
               {scanResults.length === 0 ? (
                 <div style={{ textAlign: "center", padding: 24, color: T.textMuted }}>
                   <MIcon name="info" size={24} color={T.textMuted} style={{ marginBottom: 12 }} />
-                  <div>No slips scanned</div>
+                  <div>Không có hóa đơn nào được quét</div>
                 </div>
               ) : (
                 scanResults.map((result, resultIdx) => (
@@ -902,7 +902,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
                       <img src={result.preview} alt={`Slip ${resultIdx + 1}`} style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 12, border: `1px solid ${T.border}` }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>
-                          Slip {resultIdx + 1}
+                          Hóa đơn {resultIdx + 1}
                         </div>
                         {result.templateMatched && (
                           <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: T.primary, background: "#eef8e8", padding: "4px 8px", borderRadius: 4, marginBottom: 4 }}>
@@ -941,7 +941,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
                     <div style={{ display: "grid", gap: 10 }}>
                       {/* Amount */}
                       <div>
-                        <div style={labelStyle}>Amount *</div>
+                        <div style={labelStyle}>Số tiền *</div>
                         <input
                           type="number"
                           value={result.form.amount}
@@ -954,67 +954,67 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
                       {/* Description */}
                       <div>
-                        <div style={labelStyle}>Description</div>
+                        <div style={labelStyle}>Mô tả</div>
                         <input
                           type="text"
                           value={result.form.description}
                           onChange={(e) => updateResultForm(resultIdx, "description", e.target.value)}
-                          placeholder="What is this for?"
+                          placeholder="Cái này dùng để làm gì?"
                           style={inputStyle}
                         />
                       </div>
 
                       {/* Recipient */}
                       <div>
-                        <div style={labelStyle}>Recipient</div>
+                        <div style={labelStyle}>Người nhận</div>
                         <input
                           type="text"
                           value={result.form.recipient_name}
                           onChange={(e) => updateResultForm(resultIdx, "recipient_name", e.target.value)}
-                          placeholder="Recipient name"
+                          placeholder="Tên người nhận"
                           style={inputStyle}
                         />
                       </div>
 
                       {/* Bank */}
                       <div>
-                        <div style={labelStyle}>Bank</div>
+                        <div style={labelStyle}>Ngân hàng</div>
                         <input
                           type="text"
                           value={result.form.bank_name}
                           onChange={(e) => updateResultForm(resultIdx, "bank_name", e.target.value)}
-                          placeholder="Bank name"
+                          placeholder="Tên ngân hàng"
                           style={inputStyle}
                         />
                       </div>
 
                       {/* Account */}
                       <div>
-                        <div style={labelStyle}>Account number</div>
+                        <div style={labelStyle}>Số tài khoản</div>
                         <input
                           type="text"
                           value={result.form.bank_account}
                           onChange={(e) => updateResultForm(resultIdx, "bank_account", e.target.value)}
-                          placeholder="Bank account"
+                          placeholder="Số tài khoản ngân hàng"
                           style={inputStyle}
                         />
                       </div>
 
                       {/* Transaction code */}
                       <div>
-                        <div style={labelStyle}>Transaction code</div>
+                        <div style={labelStyle}>Mã giao dịch</div>
                         <input
                           type="text"
                           value={result.form.transaction_code}
                           onChange={(e) => updateResultForm(resultIdx, "transaction_code", e.target.value)}
-                          placeholder="Reference code"
+                          placeholder="Mã tham chiếu"
                           style={inputStyle}
                         />
                       </div>
 
                       {/* Date */}
                       <div>
-                        <div style={labelStyle}>Date</div>
+                        <div style={labelStyle}>Ngày</div>
                         <input
                           type="date"
                           value={result.form.transaction_date}
@@ -1025,18 +1025,18 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
                       {/* Notes */}
                       <div>
-                        <div style={labelStyle}>Notes</div>
+                        <div style={labelStyle}>Ghi chú</div>
                         <textarea
                           value={result.form.notes}
                           onChange={(e) => updateResultForm(resultIdx, "notes", e.target.value)}
-                          placeholder="Internal note"
+                          placeholder="Ghi chú nội bộ"
                           style={{ ...inputStyle, minHeight: 70, resize: "vertical", paddingTop: 10, paddingBottom: 10, lineHeight: "normal" }}
                         />
                       </div>
 
                       {/* Supporting images */}
                       <div>
-                        <div style={labelStyle}>Supporting images ({result.supportingImages.length}/10)</div>
+                        <div style={labelStyle}>Hình ảnh hỗ trợ ({result.supportingImages.length}/10)</div>
                         <input
                           type="file"
                           id={`supporting-${resultIdx}`}
@@ -1051,8 +1051,8 @@ export default function TransactionForm({ onClose, onSuccess }) {
                           style={{ ...uploadBoxStyle, minHeight: 80, gap: 4 }}
                         >
                           <MIcon name="add_photo_alternate" size={20} color={T.primary} />
-                          <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>Add supporting images</div>
-                          <div style={{ fontSize: 11, color: T.textMuted }}>{result.supportingImages.length}/10 selected</div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>Thêm hình ảnh hỗ trợ</div>
+                          <div style={{ fontSize: 11, color: T.textMuted }}>{result.supportingImages.length}/10 đã chọn</div>
                         </button>
 
                         {result.supportingPreviews.length > 0 && (
@@ -1089,7 +1089,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
                     cursor: submitting || !scanResults.some((r) => r.form.amount) ? "not-allowed" : "pointer",
                   }}
                 >
-                  {submitting ? "Creating..." : `Create ${scanResults.filter((r) => r.form.amount).length} transaction${scanResults.filter((r) => r.form.amount).length !== 1 ? "s" : ""}`}
+                  {submitting ? "Đang tạo..." : `Tạo ${scanResults.filter((r) => r.form.amount).length} giao dịch${scanResults.filter((r) => r.form.amount).length !== 1 ? "" : ""}`}
                 </button>
               )}
             </>

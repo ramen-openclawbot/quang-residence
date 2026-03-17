@@ -22,11 +22,11 @@ const T = {
 };
 
 const NAV_TABS = [
-  { id: "home", label: "Home", icon: "home" },
-  { id: "wealth", label: "Wealth", icon: "account_balance_wallet" },
-  { id: "ambiance", label: "Ambiance", icon: "nest_eco_leaf" },
-  { id: "agenda", label: "Agenda", icon: "calendar_today" },
-  { id: "settings", label: "Settings", icon: "settings" },
+  { id: "home", label: "Tổng quan", icon: "home" },
+  { id: "wealth", label: "Tài chính", icon: "account_balance_wallet" },
+  { id: "ambiance", label: "Không gian", icon: "nest_eco_leaf" },
+  { id: "agenda", label: "Lịch trình", icon: "calendar_today" },
+  { id: "settings", label: "Cài đặt", icon: "settings" },
 ];
 
 const cardStyle = {
@@ -225,12 +225,12 @@ export default function OwnerPage() {
         body: JSON.stringify({ user_id: userId, role }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Role update failed");
-      setAccountMsg(`Role updated to ${role}`);
+      if (!res.ok) throw new Error(data.error || "Cập nhật vai trò thất bại");
+      setAccountMsg(`Đã cập nhật vai trò thành ${role}`);
       await loadAccountUsers();
     } catch (error) {
       console.error("handleRoleChange error:", error);
-      setAccountMsg(error.message || "Role update failed");
+      setAccountMsg(error.message || "Cập nhật vai trò thất bại");
     } finally {
       setAccountLoading(false);
     }
@@ -251,11 +251,11 @@ export default function OwnerPage() {
         body: JSON.stringify({ user_id: userId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Password reset failed");
-      setAccountMsg(`Temporary password: ${data.temporary_password}`);
+      if (!res.ok) throw new Error(data.error || "Đặt lại mật khẩu thất bại");
+      setAccountMsg(`Mật khẩu tạm: ${data.temporary_password}`);
     } catch (error) {
       console.error("handleResetPassword error:", error);
-      setAccountMsg(error.message || "Password reset failed");
+      setAccountMsg(error.message || "Đặt lại mật khẩu thất bại");
     } finally {
       setAccountLoading(false);
     }
@@ -265,17 +265,17 @@ export default function OwnerPage() {
     e.preventDefault();
     setPasswordMsg("");
     if (!passwordForm.next || passwordForm.next !== passwordForm.confirm) {
-      setPasswordMsg("New passwords do not match.");
+      setPasswordMsg("Mật khẩu mớis do not match.");
       return;
     }
     try {
       const { error } = await supabase.auth.updateUser({ password: passwordForm.next });
       if (error) throw error;
-      setPasswordMsg("Password updated successfully.");
+      setPasswordMsg("Đã cập nhật mật khẩu thành công.");
       setPasswordForm({ current: "", next: "", confirm: "" });
     } catch (error) {
       console.error("handleChangeOwnPassword error:", error);
-      setPasswordMsg(error.message || "Password update failed.");
+      setPasswordMsg(error.message || "Cập nhật mật khẩu thất bại.");
     }
   }
 
@@ -311,7 +311,7 @@ export default function OwnerPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <OwnerAvatar name={profile?.full_name || "Mr. Quang"} />
                   <div>
-                    <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Owner Studio</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Chủ nhà</div>
                     <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Mr. Quang"}</div>
                   </div>
                 </div>
@@ -372,10 +372,10 @@ export default function OwnerPage() {
                       <div style={{ position: "relative", zIndex: 1, padding: 18, minHeight: 180 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                           <div>
-                            <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Estate overview</div>
-                            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Quiet control</div>
+                            <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Tổng quan tài sản</div>
+                            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Kiểm soát yên tĩnh</div>
                           </div>
-                          <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Owner</div>
+                          <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Chủ nhà</div>
                         </div>
 
                         {/* Aurora mist layers */}
@@ -411,7 +411,7 @@ export default function OwnerPage() {
                         </div>
 
                         <div style={{ textAlign: "center", fontSize: 12, opacity: 0.5, fontWeight: 600, animation: "ownerBreath 4s ease-in-out infinite" }}>
-                          Tap to reveal
+                          Chạm để hiện
                         </div>
                       </div>
                     ) : (
@@ -419,20 +419,20 @@ export default function OwnerPage() {
                       <div style={{ position: "relative", zIndex: 1, padding: 18, animation: "ownerFadeIn 0.4s ease-out" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                           <div>
-                            <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Estate overview</div>
-                            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Quiet control</div>
+                            <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Tổng quan tài sản</div>
+                            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Kiểm soát yên tĩnh</div>
                           </div>
-                          <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Owner</div>
+                          <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Chủ nhà</div>
                         </div>
-                        <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Finance, estate, team, and rhythm.</div>
+                        <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Tài chính, tài sản, đội ngũ và nhịp sống.</div>
                         <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 10 }}>{fmtVND(ledgerBalance)}</div>
                         <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,0.12)", fontSize: 11, fontWeight: 700, marginBottom: 16 }}>
                           <div style={{ width: 6, height: 6, borderRadius: 999, background: "#86efac" }} />
-                          Ledger balance
+                          Số dư sổ cái
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                          <div><div style={{ fontSize: 11, opacity: 0.7 }}>Pending</div><div style={{ fontSize: 18, fontWeight: 800 }}>{pendingTransactions.length}</div></div>
-                          <div><div style={{ fontSize: 11, opacity: 0.7 }}>Open tasks</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
+                          <div><div style={{ fontSize: 11, opacity: 0.7 }}>Chờ duyệt</div><div style={{ fontSize: 18, fontWeight: 800 }}>{pendingTransactions.length}</div></div>
+                          <div><div style={{ fontSize: 11, opacity: 0.7 }}>Việc đang mở</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
                         </div>
                       </div>
                     )}
@@ -441,17 +441,17 @@ export default function OwnerPage() {
                   {/* Spent / Income monthly cards — hidden until revealed */}
                   {balanceRevealed ? (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14, animation: "ownerFadeIn 0.5s ease-out 0.1s both" }}>
-                      <SmallStat label="Spent this month" value={fmtVND(spentThisMonth)} color={T.danger} />
-                      <SmallStat label="Income this month" value={fmtVND(incomeThisMonth)} color={T.success} />
+                      <SmallStat label="Chi tháng này" value={fmtVND(spentThisMonth)} color={T.danger} />
+                      <SmallStat label="Thu tháng này" value={fmtVND(incomeThisMonth)} color={T.success} />
                     </div>
                   ) : (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                       <div style={{ ...softCard, padding: 14 }}>
-                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Spent this month</div>
+                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Chi tháng này</div>
                         <div style={{ fontSize: 20, fontWeight: 800, color: T.textMuted, marginTop: 6, opacity: 0.3 }}>• • •</div>
                       </div>
                       <div style={{ ...softCard, padding: 14 }}>
-                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Income this month</div>
+                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Thu tháng này</div>
                         <div style={{ fontSize: 20, fontWeight: 800, color: T.textMuted, marginTop: 6, opacity: 0.3 }}>• • •</div>
                       </div>
                     </div>
@@ -459,24 +459,24 @@ export default function OwnerPage() {
 
 
                   <div style={{ ...cardStyle, padding: 16, marginBottom: 16 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Collected pieces</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Bộ sưu tập</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 168, background: "#8d7555" }}>
                         <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(18,18,14,0.04) 0%, rgba(18,18,14,0.42) 58%, rgba(18,18,14,0.78) 100%), url('/art-blocks/owner-ceramic-horse.jpg')", backgroundSize: "cover", backgroundPosition: "center 36%", transform: "scale(1.05)" }} />
                         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top right, rgba(255,255,255,0.40), transparent 35%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
-                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Art holding</div>
-                          <div style={{ fontSize: 16, fontWeight: 800, marginTop: 4 }}>Ceramic horse</div>
-                          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>Quiet value, warm materiality.</div>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Nghệ thuật</div>
+                          <div style={{ fontSize: 16, fontWeight: 800, marginTop: 4 }}>Ngựa gốm sứ</div>
+                          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>Giá trị trầm lắng, chất liệu ấm áp.</div>
                         </div>
                       </div>
                       <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 168, background: "#304432" }}>
                         <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(8,16,12,0.04) 0%, rgba(8,16,12,0.42) 58%, rgba(8,16,12,0.80) 100%), url('/art-blocks/owner-ink-landscape.jpg')", backgroundSize: "cover", backgroundPosition: "center 34%", transform: "scale(1.05)" }} />
                         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top left, rgba(255,255,255,0.18), transparent 35%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
-                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Private collection</div>
-                          <div style={{ fontSize: 16, fontWeight: 800, marginTop: 4 }}>Ink landscape</div>
-                          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>A slower, calmer dashboard note.</div>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Bộ sưu tập riêng</div>
+                          <div style={{ fontSize: 16, fontWeight: 800, marginTop: 4 }}>Tranh thủy mặc</div>
+                          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>Một nốt nhạc trầm lắng trên bảng điều khiển.</div>
                         </div>
                       </div>
                     </div>
@@ -485,8 +485,8 @@ export default function OwnerPage() {
 
                   <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Ambience</div>
-                      <button onClick={() => setTab("ambiance")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Không gian</div>
+                      <button onClick={() => setTab("ambiance")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở</button>
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div style={{ ...cardStyle, padding: 14 }}>
@@ -494,48 +494,48 @@ export default function OwnerPage() {
                           <MIcon name="videocam" size={20} color={T.primary} />
                           <div style={{ width: 8, height: 8, borderRadius: "50%", background: securitySetting.armed ? T.primary : T.textMuted }} />
                         </div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Security</div>
-                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{securitySetting.cameras_active || 0} cameras • {securitySetting.armed ? "armed" : "disarmed"}</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>An ninh</div>
+                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{securitySetting.cameras_active || 0} camera • {securitySetting.armed ? "bật canh giữ" : "tắt canh giữ"}</div>
                       </div>
                       <div style={{ ...cardStyle, padding: 14 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                           <MIcon name="light_group" size={20} color={T.primary} />
                           <div style={{ fontSize: 11, color: T.primary, fontWeight: 800 }}>{lightingSetting.brightness || 0}%</div>
                         </div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Lighting</div>
-                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{lightingSetting.preset || "warm"} preset</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Chiếu sáng</div>
+                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{lightingSetting.preset || "warm"} chế độ</div>
                       </div>
                       <div style={{ ...cardStyle, padding: 14 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                           <MIcon name="device_thermostat" size={20} color={T.primary} />
                           <div style={{ fontSize: 11, color: T.primary, fontWeight: 800 }}>{climateSetting.current_temp || 0}°C</div>
                         </div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Climate</div>
-                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Target {climateSetting.target_temp || 0}°C • {climateSetting.humidity || 0}% RH</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Khí hậu</div>
+                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Mục tiêu {climateSetting.target_temp || 0}°C • {climateSetting.humidity || 0}% RH</div>
                       </div>
                       <div style={{ ...cardStyle, padding: 14 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                           <MIcon name="air_purifier_gen" size={20} color={T.primary} />
                           <div style={{ fontSize: 11, color: purifierSetting.on ? T.primary : T.textMuted, fontWeight: 800 }}>{purifierSetting.on ? "ON" : "OFF"}</div>
                         </div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Devices</div>
-                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Purifier {purifierSetting.mode || "manual"} • Blinds {blindsSetting.on ? "on" : "off"}</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Thiết bị</div>
+                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Máy lọc {purifierSetting.mode || "thủ công"} • Blinds {blindsSetting.on ? "on" : "off"}</div>
                       </div>
                     </div>
                   </div>
 
                   <div style={{ ...cardStyle, padding: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Agenda</div>
-                      <button onClick={() => setTab("agenda")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Lịch trình</div>
+                      <button onClick={() => setTab("agenda")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở</button>
                     </div>
                     {recentTasks.length === 0 ? (
-                      <div style={{ fontSize: 13, color: T.textMuted }}>Chưa có task nào để hiển thị.</div>
+                      <div style={{ fontSize: 13, color: T.textMuted }}>Chưa có việc nào.</div>
                     ) : recentTasks.map((task) => (
                       <div key={task.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
-                          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.due_date ? fmtDate(task.due_date) : "No deadline"}</div>
+                          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.due_date ? fmtDate(task.due_date) : "Không có hạn"}</div>
                         </div>
                         <div style={{ padding: "6px 10px", borderRadius: 999, background: task.status === "done" ? "#e9fff5" : task.status === "in_progress" ? "#fff7e6" : "#eef4ff", color: task.status === "done" ? T.success : task.status === "in_progress" ? T.amber : T.blue, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
                       </div>
@@ -551,20 +551,20 @@ export default function OwnerPage() {
           <div style={{ padding: "24px 18px 120px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <button onClick={() => setTab("home")} style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${T.border}`, background: "white", cursor: "pointer" }}><MIcon name="arrow_back" size={20} color={T.text} /></button>
-              <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Wealth Analytics</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Phân tích tài chính</div>
               <button style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${T.border}`, background: "white", cursor: "pointer" }}><MIcon name="search" size={20} color={T.textMuted} /></button>
             </div>
 
             <div style={{ textAlign: "center", marginBottom: 24 }}>
-              <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Net balance</div>
+              <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Số dư ròng</div>
               <div style={{ fontSize: 36, fontWeight: 900, color: T.text, marginTop: 8 }}>{fmtVND(ledgerBalance)}</div>
               <div style={{ display: "flex", justifyContent: "center", gap: 20, marginTop: 12 }}>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, textTransform: "uppercase" }}>Income</div>
+                  <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, textTransform: "uppercase" }}>Thu nhập</div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: T.success, marginTop: 2 }}>+{fmtVND(incomeThisMonth)}</div>
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, textTransform: "uppercase" }}>Spent</div>
+                  <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, textTransform: "uppercase" }}>Chi tiêu</div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: T.danger, marginTop: 2 }}>-{fmtVND(spentThisMonth)}</div>
                 </div>
               </div>
@@ -573,20 +573,20 @@ export default function OwnerPage() {
             <button onClick={() => window.location.href = "/transactions"} style={{ ...cardStyle, width: "100%", padding: 14, marginBottom: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 38, height: 38, borderRadius: 10, background: `${T.primary}12`, display: "flex", alignItems: "center", justifyContent: "center" }}><MIcon name="receipt_long" size={20} color={T.primary} /></div>
-                <div><div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Audit Ledger</div><div style={{ fontSize: 12, color: T.textMuted }}>Review all transactions</div></div>
+                <div><div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Sổ kiểm toán</div><div style={{ fontSize: 12, color: T.textMuted }}>Xem tất cả giao dịch</div></div>
               </div>
               <MIcon name="chevron_right" size={20} color={T.textMuted} />
             </button>
 
             <div style={{ ...cardStyle, padding: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 12 }}>Recent transactions</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 12 }}>Giao dịch gần đây</div>
               {transactions.slice(0, 6).map((tx) => {
                 const signedAmount = getSignedAmount(tx);
                 const isPositive = signedAmount >= 0;
                 return (
                 <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.description || tx.recipient_name || "Transaction"}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.description || tx.recipient_name || "Giao dịch"}</div>
                     <div style={{ fontSize: 12, color: T.textMuted, marginTop: 3 }}>{fmtDate(tx.transaction_date || tx.created_at)} · {tx.status || "pending"}</div>
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: isPositive ? T.success : T.danger, flexShrink: 0 }}>{isPositive ? "+" : "-"}{fmtVND(Math.abs(signedAmount))}</div>
@@ -619,40 +619,40 @@ export default function OwnerPage() {
             <div style={{ display: "grid", gap: 16 }}>
               <div style={{ ...softCard, padding: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Security</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: securitySetting.armed ? T.primary : T.textMuted }}><span style={{ width: 7, height: 7, borderRadius: 999, background: securitySetting.armed ? T.primary : T.textMuted }} />{securitySetting.armed ? "armed" : "disarmed"}</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>An ninh</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: securitySetting.armed ? T.primary : T.textMuted }}><span style={{ width: 7, height: 7, borderRadius: 999, background: securitySetting.armed ? T.primary : T.textMuted }} />{securitySetting.armed ? "bật canh giữ" : "tắt canh giữ"}</div>
                 </div>
-                <div style={{ fontSize: 13, color: T.textMuted }}>{securitySetting.cameras_active || 0} camera active • live monitoring</div>
+                <div style={{ fontSize: 13, color: T.textMuted }}>{securitySetting.cameras_active || 0} camera đang hoạt động • giám sát trực tiếp</div>
               </div>
 
               <div style={{ ...softCard, padding: 16 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 12 }}>Lighting</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 12 }}>Chiếu sáng</div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                  <div style={{ fontSize: 13, color: T.textMuted }}>Brightness</div>
+                  <div style={{ fontSize: 13, color: T.textMuted }}>Độ sáng</div>
                   <div style={{ fontSize: 13, fontWeight: 800, color: T.primary }}>{lightingSetting.brightness || 0}%</div>
                 </div>
                 <div style={{ height: 8, borderRadius: 999, background: "#edf3ea", overflow: "hidden", marginBottom: 8 }}><div style={{ width: `${lightingSetting.brightness || 0}%`, height: "100%", background: T.primary, borderRadius: 999 }} /></div>
-                <div style={{ fontSize: 12, color: T.textMuted }}>{lightingSetting.preset || "warm"} preset active</div>
+                <div style={{ fontSize: 12, color: T.textMuted }}>{lightingSetting.preset || "warm"} chế độ đang bật</div>
               </div>
 
               <div style={{ ...softCard, padding: 16 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 12 }}>Climate</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 12 }}>Khí hậu</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <SmallStat label="Current" value={`${climateSetting.current_temp || 0}°C`} />
-                  <SmallStat label="Target" value={`${climateSetting.target_temp || 0}°C`} color={T.primary} />
+                  <SmallStat label="Hiện tại" value={`${climateSetting.current_temp || 0}°C`} />
+                  <SmallStat label="Mục tiêu" value={`${climateSetting.target_temp || 0}°C`} color={T.primary} />
                 </div>
-                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 10 }}>Humidity {climateSetting.humidity || 0}%</div>
+                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 10 }}>Độ ẩm {climateSetting.humidity || 0}%</div>
               </div>
 
               <div style={{ ...cardStyle, padding: 16 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 12 }}>Devices</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 12 }}>Thiết bị</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div style={{ ...softCard, padding: 14 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Air Purifier</div>
-                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{purifierSetting.on ? "On" : "Off"} • {purifierSetting.mode || "manual"}</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Máy lọc không khí</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{purifierSetting.on ? "On" : "Off"} • {purifierSetting.mode || "thủ công"}</div>
                   </div>
                   <div style={{ ...softCard, padding: 14 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Smart Blinds</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Rèm thông minh</div>
                     <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{blindsSetting.on ? "On" : "Off"}</div>
                   </div>
                 </div>
@@ -665,26 +665,26 @@ export default function OwnerPage() {
           <div style={{ padding: "24px 18px 120px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <button onClick={() => setTab("home")} style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${T.border}`, background: "white", cursor: "pointer" }}><MIcon name="arrow_back" size={20} color={T.text} /></button>
-              <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Agenda</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Lịch trình</div>
               <button onClick={() => setActivePanel("agenda-help")} style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${T.border}`, background: "white", cursor: "pointer" }}><MIcon name="calendar_today" size={20} color={T.textMuted} /></button>
             </div>
 
             <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
-              <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Upcoming focus</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: T.text, marginTop: 8 }}>Today & next few items</div>
+              <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Sắp tới</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: T.text, marginTop: 8 }}>Hôm nay & các mục tiếp theo</div>
             </div>
 
             <div style={{ display: "grid", gap: 12 }}>
               {tasks.slice(0, 10).map((task) => {
                 const tone = task.status === "done" ? { bg: "#e9fff5", color: T.success } : task.status === "in_progress" ? { bg: "#fff7e6", color: T.amber } : { bg: "#eef4ff", color: T.blue };
-                const assignee = staffById[task.assigned_to]?.full_name || staffById[task.created_by]?.full_name || "Unassigned";
+                const assignee = staffById[task.assigned_to]?.full_name || staffById[task.created_by]?.full_name || "Chưa phân công";
                 return (
                   <button key={task.id} onClick={() => { setSelectedTask(task); setActivePanel("task-detail"); }} style={{ ...cardStyle, padding: 16, width: "100%", textAlign: "left", cursor: "pointer" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
-                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.due_date ? fmtDate(task.due_date) : "No deadline"}</div>
-                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Assignee: {assignee}</div>
+                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.due_date ? fmtDate(task.due_date) : "Không có hạn"}</div>
+                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Phụ trách: {assignee}</div>
                       </div>
                       <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
                     </div>
@@ -711,11 +711,11 @@ export default function OwnerPage() {
 
             <div style={{ display: "grid", gap: 10, marginTop: 24 }}>
               {[
-                { icon: "person", label: "Account Management", sub: "User roles & owner profile", panel: "account" },
-                { icon: "fingerprint", label: "Security & Biometrics", sub: "Session & authentication", panel: "security" },
-                { icon: "notifications_active", label: "Notifications", sub: "Smart alerts & approvals", panel: "notifications" },
-                { icon: "palette", label: "Display & Theme", sub: "Visual preferences", panel: "theme" },
-                { icon: "help_center", label: "Help Center", sub: "Support & documentation", panel: "help" },
+                { icon: "person", label: "Quản lý tài khoản", sub: "Vai trò & hồ sơ chủ nhà", panel: "account" },
+                { icon: "fingerprint", label: "Bảo mật & Sinh trắc", sub: "Phiên & xác thực", panel: "security" },
+                { icon: "notifications_active", label: "Thông báo", sub: "Cảnh báo & phê duyệt thông minh", panel: "notifications" },
+                { icon: "palette", label: "Giao diện & Chủ đề", sub: "Tùy chỉnh giao diện", panel: "theme" },
+                { icon: "help_center", label: "Trợ giúp", sub: "Hỗ trợ & tài liệu", panel: "help" },
               ].map((item, i) => (
                 <button key={i} onClick={() => { setActivePanel(item.panel); if (item.panel === "account") loadAccountUsers(); }} style={{ ...cardStyle, width: "100%", padding: 16, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", border: `1px solid ${T.border}`, textAlign: "left" }}>
                   <div style={{ width: 40, height: 40, borderRadius: 12, background: "#eef8e8", display: "flex", alignItems: "center", justifyContent: "center" }}><MIcon name={item.icon} size={20} color={T.primary} /></div>
@@ -739,13 +739,13 @@ export default function OwnerPage() {
             <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, background: T.card, borderRadius: "22px 22px 0 0", padding: 18, maxHeight: "78vh", overflowY: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>
-                  {activePanel === "account" && "Account Management"}
-                  {activePanel === "security" && "Security & Biometrics"}
-                  {activePanel === "notifications" && "Notifications"}
-                  {activePanel === "theme" && "Display & Theme"}
-                  {activePanel === "help" && "Help Center"}
-                  {activePanel === "agenda-help" && "Agenda Tips"}
-                  {activePanel === "task-detail" && "Task detail"}
+                  {activePanel === "account" && "Quản lý tài khoản"}
+                  {activePanel === "security" && "Bảo mật & Sinh trắc"}
+                  {activePanel === "notifications" && "Thông báo"}
+                  {activePanel === "theme" && "Giao diện & Chủ đề"}
+                  {activePanel === "help" && "Trợ giúp"}
+                  {activePanel === "agenda-help" && "Mẹo lịch trình"}
+                  {activePanel === "task-detail" && "Chi tiết công việc"}
                 </div>
                 <button onClick={() => setActivePanel("")} style={{ border: "none", background: "transparent", cursor: "pointer" }}><MIcon name="close" size={22} color={T.textMuted} /></button>
               </div>
@@ -763,7 +763,7 @@ export default function OwnerPage() {
                         <option value="housekeeper">housekeeper</option>
                         <option value="driver">driver</option>
                       </select>
-                      <button type="submit" disabled={accountLoading} style={{ ...panelBtn }}>{accountLoading ? "Creating..." : "Create user"}</button>
+                      <button type="submit" disabled={accountLoading} style={{ ...panelBtn }}>{accountLoading ? "Đang tạo..." : "Tạo tài khoản"}</button>
                     </form>
                   </div>
 
@@ -772,7 +772,7 @@ export default function OwnerPage() {
                   <div style={{ ...cardStyle, padding: 14 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                       <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Danh sách user</div>
-                      <button onClick={loadAccountUsers} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>Refresh</button>
+                      <button onClick={loadAccountUsers} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>Tải lại</button>
                     </div>
                     <div style={{ display: "grid", gap: 10 }}>
                       {accountUsers.map((u) => (
@@ -789,10 +789,10 @@ export default function OwnerPage() {
                               <option value="driver">driver</option>
                             </select>
                           </div>
-                          <button onClick={() => handleResetPassword(u.id)} style={{ marginTop: 10, width: "100%", height: 38, borderRadius: 10, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700, color: T.text }}>Reset password</button>
+                          <button onClick={() => handleResetPassword(u.id)} style={{ marginTop: 10, width: "100%", height: 38, borderRadius: 10, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700, color: T.text }}>Đặt lại mật khẩu</button>
                         </div>
                       ))}
-                      {!accountLoading && accountUsers.length === 0 && <div style={{ fontSize: 12, color: T.textMuted }}>No users yet.</div>}
+                      {!accountLoading && accountUsers.length === 0 && <div style={{ fontSize: 12, color: T.textMuted }}>Chưa có tài khoản nào.</div>}
                     </div>
                   </div>
                 </div>
@@ -800,14 +800,14 @@ export default function OwnerPage() {
 
               {activePanel === "security" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Auth mode</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Email + password is now the primary sign-in method.</div></div>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Phương thức xác thực</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Đăng nhập bằng email & mật khẩu là phương thức chính.</div></div>
                   <div style={{ ...softCard, padding: 14 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 10 }}>Change your password</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 10 }}>Đổi mật khẩu</div>
                     <form onSubmit={handleChangeOwnPassword} style={{ display: "grid", gap: 10 }}>
-                      <input type="password" value={passwordForm.current} onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })} placeholder="Current password" style={inputStyle} />
-                      <input type="password" value={passwordForm.next} onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })} placeholder="New password" style={inputStyle} />
-                      <input type="password" value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} placeholder="Confirm new password" style={inputStyle} />
-                      <button type="submit" style={{ ...panelBtn }}>Update password</button>
+                      <input type="password" value={passwordForm.current} onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })} placeholder="Mật khẩu hiện tại" style={inputStyle} />
+                      <input type="password" value={passwordForm.next} onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })} placeholder="Mật khẩu mới" style={inputStyle} />
+                      <input type="password" value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} placeholder="Xác nhận mật khẩu mới" style={inputStyle} />
+                      <button type="submit" style={{ ...panelBtn }}>Cập nhật mật khẩu</button>
                     </form>
                     {passwordMsg && <div style={{ marginTop: 10, fontSize: 12, color: T.textMuted }}>{passwordMsg}</div>}
                   </div>
@@ -823,22 +823,26 @@ export default function OwnerPage() {
 
               {activePanel === "theme" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Current theme</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>ZenHome green visual system đang được áp dụng đồng bộ cho 4 role.</div></div>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Next option</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Có thể làm thêm theme toggle / density controls ở vòng sau.</div></div>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Chủ đề hiện tại</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>ZenHome green visual system đang được áp dụng đồng bộ cho 4 role.</div></div>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Tùy chọn tiếp theo</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Có thể làm thêm theme toggle / density controls ở vòng sau.</div></div>
                 </div>
               )}
 
               {activePanel === "help" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick help</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Home: overall view\n• Wealth: income and spend\n• Ambience: estate state\n• Agenda: upcoming priorities\n• Settings: system controls</div></div>
-                  <button onClick={() => { setActivePanel(""); setTab("home"); }} style={{ ...panelBtn }}>Về Home</button>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Hướng dẫn nhanh</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Tổng quan: xem chung
+• Tài chính: thu chi
+• Không gian: trạng thái nhà
+• Lịch trình: công việc ưu tiên
+• Cài đặt: điều khiển hệ thống</div></div>
+                  <button onClick={() => { setActivePanel(""); setTab("home"); }} style={{ ...panelBtn }}>Về trang chính</button>
                 </div>
               )}
 
               {activePanel === "agenda-help" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Agenda view</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Agenda surfaces the nearest tasks already stored in the system.</div></div>
-                  <button onClick={() => { setActivePanel(""); setTab("agenda"); }} style={{ ...panelBtn }}>Open Agenda</button>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Xem lịch trình</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Lịch trình hiển thị các công việc sắp tới đã được lưu trong hệ thống.</div></div>
+                  <button onClick={() => { setActivePanel(""); setTab("agenda"); }} style={{ ...panelBtn }}>Mở lịch trình</button>
                 </div>
               )}
 
@@ -846,15 +850,15 @@ export default function OwnerPage() {
                 <div style={{ display: "grid", gap: 12 }}>
                   <div style={{ ...softCard, padding: 14 }}>
                     <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTask.title}</div>
-                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedTask.due_date ? fmtDate(selectedTask.due_date) : "No deadline"}</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedTask.due_date ? fmtDate(selectedTask.due_date) : "Không có hạn"}</div>
                   </div>
                   <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}>
-                    <div>Status: <strong>{selectedTask.status}</strong></div>
-                    <div>Assignee: <strong>{staffById[selectedTask.assigned_to]?.full_name || staffById[selectedTask.created_by]?.full_name || "Unassigned"}</strong></div>
-                    <div>Priority: <strong>{selectedTask.priority || "medium"}</strong></div>
-                    <div style={{ marginTop: 8 }}>{selectedTask.description || "No notes"}</div>
+                    <div>Trạng thái: <strong>{selectedTask.status}</strong></div>
+                    <div>Phụ trách: <strong>{staffById[selectedTask.assigned_to]?.full_name || staffById[selectedTask.created_by]?.full_name || "Chưa phân công"}</strong></div>
+                    <div>Ưu tiên: <strong>{selectedTask.priority || "medium"}</strong></div>
+                    <div style={{ marginTop: 8 }}>{selectedTask.description || "Không có ghi chú"}</div>
                   </div>
-                  <button onClick={() => setActivePanel("")} style={{ ...panelBtn }}>Back</button>
+                  <button onClick={() => setActivePanel("")} style={{ ...panelBtn }}>Quay lại</button>
                 </div>
               )}
             </div>

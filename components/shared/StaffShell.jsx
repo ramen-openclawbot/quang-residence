@@ -48,7 +48,7 @@ export default function StaffShell({ children, role }) {
             border: `3px solid ${T.primary}20`, borderTopColor: T.primary,
             animation: "spin 0.8s linear infinite", margin: "0 auto 12px",
           }} />
-          <div style={{ fontSize: 13, color: T.textMuted }}>Loading...</div>
+          <div style={{ fontSize: 13, color: T.textMuted }}>Đang tải...</div>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       </div>

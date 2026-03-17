@@ -55,7 +55,7 @@ export default function LoginPage() {
             ZenHome
           </h1>
           <p style={{ fontSize: 14, color: T.textMuted }}>
-            Smart Household Management
+            Quản lý gia đình thông minh
           </p>
         </div>
 
@@ -85,11 +85,11 @@ export default function LoginPage() {
               display: "block", fontSize: 12, fontWeight: 700, textTransform: "uppercase",
               letterSpacing: "0.12em", color: T.textMuted, marginTop: 16, marginBottom: 8,
             }}>
-              Password
+              Mật khẩu
             </label>
             <input
               type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password" required
+              placeholder="Nhập mật khẩu" required
               style={{
                 width: "100%", padding: "14px 16px", fontSize: 16,
                 border: `1px solid ${T.border}`, borderRadius: 10,
@@ -115,13 +115,13 @@ export default function LoginPage() {
               fontSize: 15, fontWeight: 700, cursor: loading ? "wait" : "pointer",
               boxShadow: `0 4px 12px ${T.primary}33`, fontFamily: T.font,
             }}>
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
           </div>
         </form>
 
         <p style={{ textAlign: "center", marginTop: 24, fontSize: 12, color: T.textMuted }}>
-          Use the credentials provided by your administrator
+          Sử dụng thông tin đăng nhập từ quản trị viên
         </p>
       </div>
     </div>

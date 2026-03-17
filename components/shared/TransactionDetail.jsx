@@ -82,7 +82,7 @@ export default function TransactionDetail({ tx, profile, onClose, onAction }) {
   ) : null;
 
   const statusColor = tx.status === "approved" ? T.success : tx.status === "rejected" ? T.danger : T.amber;
-  const statusLabel = tx.status === "approved" ? "Approved" : tx.status === "rejected" ? "Rejected" : "Pending review";
+  const statusLabel = tx.status === "approved" ? "Đã duyệt" : tx.status === "rejected" ? "Đã từ chối" : "Chờ duyệt";
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(8,15,8,0.32)", display: "flex", justifyContent: "center", alignItems: "flex-end" }}>
@@ -91,9 +91,9 @@ export default function TransactionDetail({ tx, profile, onClose, onAction }) {
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px 14px", background: T.card, borderBottom: `1px solid ${T.border}` }}>
           <button onClick={onClose} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", cursor: "pointer", color: T.text, fontSize: 15, fontWeight: 600 }}>
-            <MIcon name="arrow_back" size={20} /> Back
+            <MIcon name="arrow_back" size={20} /> Quay lại
           </button>
-          <span style={{ fontSize: 16, fontWeight: 700, color: T.text }}>Transaction detail</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: T.text }}>Chi tiết giao dịch</span>
           <div style={{ width: 48 }} />
         </div>
 
@@ -102,7 +102,7 @@ export default function TransactionDetail({ tx, profile, onClose, onAction }) {
           {/* Amount + status hero */}
           <div style={{ ...cardStyle, padding: 20, textAlign: "center" }}>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: tx.type === "adjustment" ? (tx.adjustment_direction === "increase" ? T.success : T.danger) : tx.type === "income" ? T.success : T.danger }}>
-              {tx.type === "adjustment" ? `Adjustment · ${tx.adjustment_direction === "increase" ? "Increase" : "Decrease"}` : tx.type === "income" ? "Income" : "Expense"}
+              {tx.type === "adjustment" ? `Điều chỉnh · ${tx.adjustment_direction === "increase" ? "Tăng" : "Giảm"}` : tx.type === "income" ? "Thu nhập" : "Chi tiêu"}
             </div>
             <div style={{ fontSize: 32, fontWeight: 900, color: T.text, marginTop: 6 }}>{fmtVND(tx.amount)}</div>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 10, padding: "4px 12px", borderRadius: 999, background: `${statusColor}15`, color: statusColor, fontSize: 12, fontWeight: 700 }}>
@@ -113,31 +113,31 @@ export default function TransactionDetail({ tx, profile, onClose, onAction }) {
 
           {/* Info section */}
           <div style={{ ...cardStyle, padding: 18 }}>
-            <InfoRow label="Description" value={tx.description} />
-            <InfoRow label="Recipient" value={tx.recipient_name} />
-            <InfoRow label="Bank" value={tx.bank_name} />
-            <InfoRow label="Account number" value={tx.bank_account} mono />
-            <InfoRow label="Transaction code" value={tx.transaction_code} mono />
-            <InfoRow label="Date" value={fmtDate(tx.transaction_date)} />
-            <InfoRow label="Submitted" value={`${fmtDate(tx.created_at)} ${fmtTime(tx.created_at)}`} />
-            <InfoRow label="Submitted by" value={tx.profiles?.full_name || "—"} />
+            <InfoRow label="Mô tả" value={tx.description} />
+            <InfoRow label="Người nhận" value={tx.recipient_name} />
+            <InfoRow label="Ngân hàng" value={tx.bank_name} />
+            <InfoRow label="Số tài khoản" value={tx.bank_account} mono />
+            <InfoRow label="Mã giao dịch" value={tx.transaction_code} mono />
+            <InfoRow label="Ngày" value={fmtDate(tx.transaction_date)} />
+            <InfoRow label="Đã gửi" value={`${fmtDate(tx.created_at)} ${fmtTime(tx.created_at)}`} />
+            <InfoRow label="Người gửi" value={tx.profiles?.full_name || "—"} />
             <InfoRow label="Notes" value={tx.notes} />
-            {tx.approved_by_profile && <InfoRow label="Approved by" value={tx.approved_by_profile.full_name} />}
-            {tx.reviewed_by_profile && !tx.approved_by_profile && <InfoRow label="Reviewed by" value={tx.reviewed_by_profile.full_name} />}
-            {tx.reviewed_at && <InfoRow label="Reviewed at" value={`${fmtDate(tx.reviewed_at)} ${fmtTime(tx.reviewed_at)}`} />}
-            {tx.reject_reason && <InfoRow label="Reject reason" value={tx.reject_reason} />}
+            {tx.approved_by_profile && <InfoRow label="Người duyệt" value={tx.approved_by_profile.full_name} />}
+            {tx.reviewed_by_profile && !tx.approved_by_profile && <InfoRow label="Người xem xét" value={tx.reviewed_by_profile.full_name} />}
+            {tx.reviewed_at && <InfoRow label="Thời gian xem xét" value={`${fmtDate(tx.reviewed_at)} ${fmtTime(tx.reviewed_at)}`} />}
+            {tx.reject_reason && <InfoRow label="Lý do từ chối" value={tx.reject_reason} />}
           </div>
 
           {/* Bank slip + supporting images */}
           {allImages.length > 0 && (
             <div style={{ ...cardStyle, padding: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 12 }}>Attachments</div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 12 }}>Tệp đính kèm</div>
               <div style={{ display: "grid", gridTemplateColumns: allImages.length === 1 ? "1fr" : "1fr 1fr", gap: 10 }}>
                 {allImages.map((url, i) => (
                   <div key={i} onClick={() => setLightbox({ images: allImages, index: i })} style={{ cursor: "pointer", position: "relative" }}>
-                    <img src={url} alt={i === 0 ? "Bank slip" : `Proof ${i}`} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 14, border: `1px solid ${T.border}` }} />
+                    <img src={url} alt={i === 0 ? "Hóa đơn ngân hàng" : `Bằng chứng ${i}`} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 14, border: `1px solid ${T.border}` }} />
                     <div style={{ position: "absolute", bottom: 8, left: 8, padding: "2px 8px", borderRadius: 6, background: "rgba(0,0,0,0.6)", color: "white", fontSize: 10, fontWeight: 700 }}>
-                      {i === 0 ? "Slip" : `Proof ${i}`}
+                      {i === 0 ? "Phiếu" : `Bằng chứng ${i}`}
                     </div>
                   </div>
                 ))}
@@ -148,7 +148,7 @@ export default function TransactionDetail({ tx, profile, onClose, onAction }) {
           {/* Proof links */}
           {proofLinks.length > 0 && (
             <div style={{ ...cardStyle, padding: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 10 }}>Proof links</div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 10 }}>Liên kết bằng chứng</div>
               {proofLinks.map((link, i) => (
                 <a key={i} href={link} target="_blank" rel="noopener noreferrer" style={{ display: "block", fontSize: 13, color: T.blue, marginBottom: 6, wordBreak: "break-all" }}>{link}</a>
               ))}
@@ -158,7 +158,7 @@ export default function TransactionDetail({ tx, profile, onClose, onAction }) {
           {/* Proof note */}
           {proofNote && (
             <div style={{ ...cardStyle, padding: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 6 }}>Proof note</div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 6 }}>Ghi chú bằng chứng</div>
               <div style={{ fontSize: 14, color: T.text, lineHeight: 1.5 }}>{proofNote}</div>
             </div>
           )}
@@ -166,14 +166,14 @@ export default function TransactionDetail({ tx, profile, onClose, onAction }) {
           {/* Audit actions */}
           {canReview && (
             <div style={{ ...cardStyle, padding: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 14 }}>Audit</div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 14 }}>Kiểm toán</div>
               {!showRejectInput ? (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <button onClick={() => handleAction("approve")} disabled={loading} style={{ height: 46, borderRadius: 12, border: "none", background: T.primary, color: "white", fontWeight: 800, cursor: "pointer", fontSize: 14, opacity: loading ? 0.6 : 1 }}>
-                    {loading ? "..." : "Approve"}
+                    {loading ? "..." : "Duyệt"}
                   </button>
                   <button onClick={() => setShowRejectInput(true)} disabled={loading} style={{ height: 46, borderRadius: 12, border: `1.5px solid ${T.danger}`, background: "white", color: T.danger, fontWeight: 800, cursor: "pointer", fontSize: 14 }}>
-                    Reject
+                    Từ chối
                   </button>
                 </div>
               ) : (
@@ -181,15 +181,15 @@ export default function TransactionDetail({ tx, profile, onClose, onAction }) {
                   <textarea
                     value={rejectReason}
                     onChange={(e) => setRejectReason(e.target.value)}
-                    placeholder="Why is this transaction rejected? This note will be sent to the submitter."
+                    placeholder="Tại sao giao dịch này bị từ chối? Ghi chú này sẽ được gửi cho người nộp."
                     style={{ width: "100%", minHeight: 80, borderRadius: 12, border: `1px solid ${T.border}`, padding: 14, fontSize: 14, boxSizing: "border-box", resize: "vertical" }}
                   />
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <button onClick={() => setShowRejectInput(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", color: T.text, fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
-                      Cancel
+                      Hủy
                     </button>
                     <button onClick={() => handleAction("reject")} disabled={loading || !rejectReason.trim()} style={{ height: 46, borderRadius: 12, border: "none", background: T.danger, color: "white", fontWeight: 800, cursor: "pointer", fontSize: 14, opacity: loading || !rejectReason.trim() ? 0.5 : 1 }}>
-                      {loading ? "..." : "Confirm reject"}
+                      {loading ? "..." : "Xác nhận từ chối"}
                     </button>
                   </div>
                 </div>

@@ -132,12 +132,12 @@ const HomeScreen = ({ onNav, spendingItems, agendaTasks, loading }) => {
       {/* Wealth Summary */}
       <section style={{ marginBottom: 32 }}>
         <div style={{ ...flexBetween, marginBottom: 16 }}>
-          <div style={sectionLabel}>Wealth</div>
+          <div style={sectionLabel}>Tài chính</div>
           <span
             onClick={() => onNav("wealth")}
             style={{ fontSize: 13, color: T.primary, fontWeight: 600, cursor: "pointer" }}
           >
-            View Report
+            Xem báo cáo
           </span>
         </div>
         <div style={card}>
@@ -147,13 +147,13 @@ const HomeScreen = ({ onNav, spendingItems, agendaTasks, loading }) => {
             ) : (
               <>
                 <span style={{ fontSize: 32, fontWeight: 300, color: T.text }}>{fmt(totalSpend)}</span>
-                <span style={{ fontSize: 14, color: T.textMuted }}>this month</span>
+                <span style={{ fontSize: 14, color: T.textMuted }}>tháng này</span>
               </>
             )}
           </div>
           <div style={{ marginBottom: 16 }}>
             <div style={{ ...flexBetween, marginBottom: 6 }}>
-              <span style={{ fontSize: 12, color: T.textMuted }}>Investments</span>
+              <span style={{ fontSize: 12, color: T.textMuted }}>Đầu tư</span>
               <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>$2,500</span>
             </div>
             <div style={{ height: 4, backgroundColor: "#f1f5f9", borderRadius: 99, overflow: "hidden" }}>
@@ -163,7 +163,7 @@ const HomeScreen = ({ onNav, spendingItems, agendaTasks, loading }) => {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div>
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: T.textLabel, marginBottom: 4 }}>
-                Groceries
+                Thực phẩm
               </div>
               <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>
                 {loading ? <Skeleton width={60} height={14} /> : fmt(spendingItems.find((i) => i.name === "Groceries")?.amount || 0)}
@@ -171,7 +171,7 @@ const HomeScreen = ({ onNav, spendingItems, agendaTasks, loading }) => {
             </div>
             <div>
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: T.textLabel, marginBottom: 4 }}>
-                Utilities
+                Tiện ích
               </div>
               <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>
                 {loading ? <Skeleton width={60} height={14} /> : fmt(spendingItems.find((i) => i.name === "Bill Payments")?.amount || 0)}
@@ -183,15 +183,15 @@ const HomeScreen = ({ onNav, spendingItems, agendaTasks, loading }) => {
 
       {/* Ambiance */}
       <section style={{ marginBottom: 32 }}>
-        <div style={sectionLabel}>Ambiance</div>
+        <div style={sectionLabel}>Không gian</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <div onClick={() => onNav("ambiance")} style={{ ...card, cursor: "pointer", padding: 16 }}>
             <div style={{ ...flexBetween, marginBottom: 12 }}>
               <CameraIcon size={22} color={T.primary} />
               <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: T.primary }} />
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Security</div>
-            <div style={{ fontSize: 10, color: T.textMuted, textTransform: "uppercase", marginTop: 2 }}>4 Cameras Active</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>An ninh</div>
+            <div style={{ fontSize: 10, color: T.textMuted, textTransform: "uppercase", marginTop: 2 }}>4 Camera hoạt động</div>
           </div>
           <div onClick={() => onNav("ambiance")} style={{ ...card, cursor: "pointer", padding: 16 }}>
             <div style={{ ...flexBetween, marginBottom: 12 }}>
@@ -200,15 +200,15 @@ const HomeScreen = ({ onNav, spendingItems, agendaTasks, loading }) => {
                 60%
               </span>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Lighting</div>
-            <div style={{ fontSize: 10, color: T.textMuted, textTransform: "uppercase", marginTop: 2 }}>Soft Warm Preset</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Chiếu sáng</div>
+            <div style={{ fontSize: 10, color: T.textMuted, textTransform: "uppercase", marginTop: 2 }}>Chế độ ấm nhẹ</div>
           </div>
         </div>
       </section>
 
       {/* Agenda */}
       <section>
-        <div style={sectionLabel}>Agenda</div>
+        <div style={sectionLabel}>Lịch trình</div>
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
           {loading ? (
             <div style={{ padding: 16 }}>
@@ -216,8 +216,8 @@ const HomeScreen = ({ onNav, spendingItems, agendaTasks, loading }) => {
             </div>
           ) : (
             [
-              driverTask && { type: "Driver", task: driverTask.title + " at " + driverTask.time, time: driverTask.duration + " left", Ic: CarIcon },
-              secTask && { type: "Secretary", task: secTask.title, time: secTask.time, Ic: FileIcon },
+              driverTask && { type: "Tài xế", task: driverTask.title + " at " + driverTask.time, time: driverTask.duration + " left", Ic: CarIcon },
+              secTask && { type: "Thư ký", task: secTask.title, time: secTask.time, Ic: FileIcon },
             ]
               .filter(Boolean)
               .map((item, i, arr) => (
@@ -285,8 +285,8 @@ const WealthScreen = ({ monthlyData, spendingItems, investments, loading }) => {
       {/* Bar Chart */}
       <div style={{ ...card, marginBottom: 32, padding: 24 }}>
         <div style={{ ...flexBetween, marginBottom: 24 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>Spending vs Budget</div>
-          <span style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em", color: T.textMuted }}>Last 6 Months</span>
+          <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>Chi tiêu vs Ngân sách</div>
+          <span style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em", color: T.textMuted }}>6 tháng gần đây</span>
         </div>
         {loading ? (
           <Skeleton height={128} />
@@ -317,8 +317,8 @@ const WealthScreen = ({ monthlyData, spendingItems, investments, loading }) => {
       {/* Spending Breakdown */}
       <div style={{ marginBottom: 32 }}>
         <div style={{ ...flexBetween, marginBottom: 16 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: T.text }}>Spending Breakdown</div>
-          <span style={{ fontSize: 14, fontWeight: 700, color: T.primary, cursor: "pointer" }}>View All</span>
+          <div style={{ fontSize: 18, fontWeight: 700, color: T.text }}>Phân tích chi tiêu</div>
+          <span style={{ fontSize: 14, fontWeight: 700, color: T.primary, cursor: "pointer" }}>Xem tất cả</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {loading
@@ -346,8 +346,8 @@ const WealthScreen = ({ monthlyData, spendingItems, investments, loading }) => {
       {/* Investments */}
       <div>
         <div style={{ ...flexBetween, marginBottom: 16 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: T.text }}>Small Investments</div>
-          <span style={{ fontSize: 14, fontWeight: 700, color: T.primary, cursor: "pointer" }}>Manage Assets</span>
+          <div style={{ fontSize: 18, fontWeight: 700, color: T.text }}>Đầu tư nhỏ</div>
+          <span style={{ fontSize: 14, fontWeight: 700, color: T.primary, cursor: "pointer" }}>Quản lý tài sản</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           {loading
@@ -402,9 +402,9 @@ const AmbianceScreen = ({ homeSettings, onSettingUpdate }) => {
       {/* Security */}
       <section style={{ marginBottom: 24 }}>
         <div style={{ ...flexBetween, marginBottom: 16 }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: T.text }}>Security</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: T.text }}>An ninh</div>
           <span style={{ ...flexCenter, gap: 6, fontSize: 14, fontWeight: 500, color: T.primary }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: T.primary, display: "inline-block" }} /> Live
+            <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: T.primary, display: "inline-block" }} /> Trực tiếp
           </span>
         </div>
         <div style={{ position: "relative", aspectRatio: "16/9", borderRadius: 12, overflow: "hidden", backgroundColor: "#2a3a2d", border: `1px solid ${T.borderLight}`, marginBottom: 16 }}>
@@ -414,7 +414,7 @@ const AmbianceScreen = ({ homeSettings, onSettingUpdate }) => {
             </div>
           </div>
           <div style={{ position: "absolute", bottom: 12, left: 12, backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)", padding: "4px 12px", borderRadius: 99 }}>
-            <span style={{ fontSize: 10, color: "white", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em" }}>Living Room Camera</span>
+            <span style={{ fontSize: 10, color: "white", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em" }}>Camera phòng khách</span>
           </div>
         </div>
         <div style={{ ...flexBetween, ...card, padding: 16 }}>
@@ -423,8 +423,8 @@ const AmbianceScreen = ({ homeSettings, onSettingUpdate }) => {
               <ShieldIcon size={20} color={T.primary} />
             </div>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>4 Cameras Active</div>
-              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>System armed & secured</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>4 Camera hoạt động</div>
+              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>Hệ thống đã bật canh giữ</div>
             </div>
           </div>
           <CheckCircle size={22} color={T.primary} />
@@ -433,12 +433,12 @@ const AmbianceScreen = ({ homeSettings, onSettingUpdate }) => {
 
       {/* Lighting */}
       <section style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 16 }}>Lighting</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 16 }}>Chiếu sáng</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
           {[
-            { id: "warm", label: "Soft Warm", Ic: SunIcon },
-            { id: "natural", label: "Natural", Ic: LightIcon },
-            { id: "dim", label: "Dim", Ic: MoonIcon },
+            { id: "warm", label: "Ấm nhẹ", Ic: SunIcon },
+            { id: "natural", label: "Tự nhiên", Ic: LightIcon },
+            { id: "dim", label: "Tối", Ic: MoonIcon },
           ].map((p) => (
             <button key={p.id} onClick={() => handlePresetChange(p.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: 16, borderRadius: 12, border: preset === p.id ? "none" : `1px solid ${T.primaryBg2}`, cursor: "pointer", backgroundColor: preset === p.id ? T.primary : T.card, color: preset === p.id ? T.white : T.textSec, boxShadow: preset === p.id ? `0 4px 12px ${T.primary}33` : "none" }}>
               <p.Ic size={22} color={preset === p.id ? "white" : T.textMuted} />
@@ -448,7 +448,7 @@ const AmbianceScreen = ({ homeSettings, onSettingUpdate }) => {
         </div>
         <div style={{ ...card, padding: 20 }}>
           <div style={{ ...flexBetween, marginBottom: 16 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: T.text }}>Brightness</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: T.text }}>Độ sáng</span>
             <span style={{ fontSize: 14, fontWeight: 700, color: T.primary }}>{brightness}%</span>
           </div>
           <div style={{ position: "relative", width: "100%", height: 6, backgroundColor: "#e2e8f0", borderRadius: 99 }}>
@@ -462,15 +462,15 @@ const AmbianceScreen = ({ homeSettings, onSettingUpdate }) => {
 
       {/* Climate */}
       <section style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 16 }}>Climate</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 16 }}>Khí hậu</div>
         <div style={{ ...card, ...flexBetween, padding: 24, borderRadius: 16 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: T.textMuted, marginBottom: 4 }}>Current</div>
+            <div style={{ fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: T.textMuted, marginBottom: 4 }}>Hiện tại</div>
             <div style={{ fontSize: 40, fontWeight: 300, color: T.text }}>
               {climate.current_temp}<span style={{ color: T.primary }}>°C</span>
             </div>
             <div style={{ ...flexCenter, gap: 4, fontSize: 12, color: T.textMuted, marginTop: 8 }}>
-              <DropIcon size={12} color={T.textMuted} /> {climate.humidity}% Humidity
+              <DropIcon size={12} color={T.textMuted} /> {climate.humidity}% Độ ẩm
             </div>
           </div>
           <div style={{ position: "relative", width: 112, height: 112 }}>
@@ -480,7 +480,7 @@ const AmbianceScreen = ({ homeSettings, onSettingUpdate }) => {
             </svg>
             <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
               <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{climate.target_temp}</span>
-              <span style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.05em", color: T.textMuted }}>Target</span>
+              <span style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.05em", color: T.textMuted }}>Mục tiêu</span>
             </div>
           </div>
         </div>
@@ -488,11 +488,11 @@ const AmbianceScreen = ({ homeSettings, onSettingUpdate }) => {
 
       {/* Smart Devices */}
       <section>
-        <div style={{ fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 16 }}>Smart Devices</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 16 }}>Thiết bị thông minh</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           {[
-            { name: "Air Purifier", desc: "Auto Mode", on: purifier, toggle: () => handleToggle("air_purifier", purifier, setPurifier, "air_purifier"), color: "#3b82f6", bg: "#eff6ff", Ic: WindIcon },
-            { name: "Smart Blinds", desc: "Closed", on: blinds, toggle: () => handleToggle("smart_blinds", blinds, setBlinds, "smart_blinds"), color: "#f97316", bg: "#fff7ed", Ic: LightIcon },
+            { name: "Máy lọc không khí", desc: "Chế độ tự động", on: purifier, toggle: () => handleToggle("air_purifier", purifier, setPurifier, "air_purifier"), color: "#3b82f6", bg: "#eff6ff", Ic: WindIcon },
+            { name: "Rèm thông minh", desc: "Đóng", on: blinds, toggle: () => handleToggle("smart_blinds", blinds, setBlinds, "smart_blinds"), color: "#f97316", bg: "#fff7ed", Ic: LightIcon },
           ].map((d, i) => (
             <div key={i} style={{ ...card, ...flexCenter, gap: 12, padding: 16 }}>
               <div style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: d.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -587,7 +587,7 @@ const AgendaScreen = ({ agendaTasks, loading, onStatusUpdate }) => {
           </div>
         </div>
         <span style={{ ...flexCenter, gap: 4, fontSize: 14, fontWeight: 500, color: T.primary, cursor: "pointer" }}>
-          <CalendarIcon size={14} color={T.primary} /> Month View
+          <CalendarIcon size={14} color={T.primary} /> Xem theo tháng
         </span>
       </div>
 
@@ -605,12 +605,12 @@ const AgendaScreen = ({ agendaTasks, loading, onStatusUpdate }) => {
       <section style={{ marginBottom: 40 }}>
         <div style={{ ...flexCenter, gap: 8, marginBottom: 16 }}>
           <div style={{ width: 32, height: 1, backgroundColor: T.primary + "66" }} />
-          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.2em", color: T.textLabel }}>Driver</span>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.2em", color: T.textLabel }}>Tài xế</span>
         </div>
         {loading ? <Skeleton height={80} radius={12} /> : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {driverTasks.length > 0 ? driverTasks.map(renderTask) : (
-              <div style={{ ...card, padding: 16, textAlign: "center", color: T.textMuted, fontSize: 13 }}>No driver tasks today</div>
+              <div style={{ ...card, padding: 16, textAlign: "center", color: T.textMuted, fontSize: 13 }}>Hôm nay tài xế không có việc</div>
             )}
           </div>
         )}
@@ -620,12 +620,12 @@ const AgendaScreen = ({ agendaTasks, loading, onStatusUpdate }) => {
       <section>
         <div style={{ ...flexCenter, gap: 8, marginBottom: 16 }}>
           <div style={{ width: 32, height: 1, backgroundColor: T.primary + "66" }} />
-          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.2em", color: T.textLabel }}>Secretary</span>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.2em", color: T.textLabel }}>Thư ký</span>
         </div>
         {loading ? <Skeleton height={80} radius={12} /> : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {secTasks.length > 0 ? secTasks.map(renderTask) : (
-              <div style={{ ...card, padding: 16, textAlign: "center", color: T.textMuted, fontSize: 13 }}>No secretary tasks today</div>
+              <div style={{ ...card, padding: 16, textAlign: "center", color: T.textMuted, fontSize: 13 }}>Hôm nay thư ký không có việc</div>
             )}
           </div>
         )}
@@ -639,9 +639,9 @@ const AgendaScreen = ({ agendaTasks, loading, onStatusUpdate }) => {
    ═══════════════════════════════════════════ */
 const TABS = [
   { id: "home", label: "ZenHome", Ic: HomeIcon },
-  { id: "wealth", label: "Wealth", Ic: WalletIcon },
-  { id: "ambiance", label: "Ambiance", Ic: LeafIcon },
-  { id: "agenda", label: "Agenda", Ic: CalendarIcon },
+  { id: "wealth", label: "Tài chính", Ic: WalletIcon },
+  { id: "ambiance", label: "Không gian", Ic: LeafIcon },
+  { id: "agenda", label: "Lịch trình", Ic: CalendarIcon },
 ];
 
 export default function Dashboard() {
@@ -692,7 +692,7 @@ export default function Dashboard() {
     setAgendaTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t)));
   };
 
-  const screenTitle = { home: null, wealth: "Wealth Analytics", ambiance: "Ambiance", agenda: null };
+  const screenTitle = { home: null, wealth: "Phân tích tài chính", ambiance: "Không gian", agenda: null };
 
   return (
     <>
@@ -710,7 +710,7 @@ export default function Dashboard() {
             <div style={{ ...flexCenter, gap: 12 }}>
               <div style={{ width: 40, height: 40, borderRadius: "50%", backgroundColor: T.primaryBg, border: `1px solid ${T.primaryBg2}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: T.primary }}>Q</div>
               <div>
-                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: T.textMuted, fontWeight: 600 }}>Welcome back</div>
+                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: T.textMuted, fontWeight: 600 }}>Chào mừng trở lại</div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: T.text, letterSpacing: "-0.02em" }}>Mr. Quang</div>
               </div>
             </div>
@@ -721,7 +721,7 @@ export default function Dashboard() {
         ) : tab === "agenda" ? (
           <header style={{ padding: "32px 24px 16px" }}>
             <div style={{ ...flexBetween }}>
-              <div style={{ fontSize: 24, fontWeight: 300, textTransform: "uppercase", letterSpacing: "-0.01em", color: T.text }}>Agenda</div>
+              <div style={{ fontSize: 24, fontWeight: 300, textTransform: "uppercase", letterSpacing: "-0.01em", color: T.text }}>Lịch trình</div>
               <div style={{ position: "relative" }}>
                 <BellIcon size={22} color={T.textSec} />
                 <span style={{ position: "absolute", top: 0, right: 0, width: 8, height: 8, borderRadius: "50%", backgroundColor: T.primary }} />

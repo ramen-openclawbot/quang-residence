@@ -22,10 +22,10 @@ const T = {
 };
 
 const TABS = [
-  { id: "home", label: "Home", icon: "home" },
-  { id: "expenses", label: "Expenses", icon: "receipt_long" },
-  { id: "care", label: "Home Care", icon: "home_repair_service" },
-  { id: "family", label: "Family", icon: "family_restroom" },
+  { id: "home", label: "Tổng quan", icon: "home" },
+  { id: "expenses", label: "Chi tiêu", icon: "receipt_long" },
+  { id: "care", label: "Chăm sóc nhà", icon: "home_repair_service" },
+  { id: "family", label: "Gia đình", icon: "family_restroom" },
 ];
 
 const MAINTENANCE_STATUSES = ["reported", "scheduled", "in_progress", "completed"];
@@ -279,8 +279,8 @@ export default function HousekeeperPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <Avatar name={profile?.full_name || "Housekeeper"} />
               <div>
-                <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Housekeeper Studio</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Housekeeper"}</div>
+                <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Quản gia</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Quản gia"}</div>
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -294,7 +294,7 @@ export default function HousekeeperPage() {
           </div>
 
           {loading ? (
-            <div style={{ fontSize: 13, color: T.textMuted }}>Loading...</div>
+            <div style={{ fontSize: 13, color: T.textMuted }}>Đang tải...</div>
           ) : (
             <>
               {tab === "home" && (
@@ -304,47 +304,47 @@ export default function HousekeeperPage() {
                     <div style={{ position: "relative", zIndex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                         <div>
-                          <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Home operations</div>
-                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Domestic calm</div>
+                          <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Vận hành nhà</div>
+                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Nhịp sống gia đình</div>
                         </div>
-                        <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Housekeeper</div>
+                        <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Quản gia</div>
                       </div>
-                      <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Expense, care, and family rhythm.</div>
+                      <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Chi tiêu, chăm sóc và nhịp sống gia đình.</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Out today</div><div style={{ fontSize: 18, fontWeight: 800 }}>{fmtVND(todayExpense)}</div></div>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Open care</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openMaintenance.length}</div></div>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Upcoming</div><div style={{ fontSize: 18, fontWeight: 800 }}>{upcomingFamily.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Chi hôm nay</div><div style={{ fontSize: 18, fontWeight: 800 }}>{fmtVND(todayExpense)}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Việc đang mở</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openMaintenance.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Sắp tới</div><div style={{ fontSize: 18, fontWeight: 800 }}>{upcomingFamily.length}</div></div>
                       </div>
                     </div>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-                    <StatCard label="Out today" value={fmtVND(todayExpense)} color={T.danger} />
-                    <StatCard label="This month" value={fmtVND(monthExpense)} color={T.text} />
+                    <StatCard label="Chi hôm nay" value={fmtVND(todayExpense)} color={T.danger} />
+                    <StatCard label="Tháng này" value={fmtVND(monthExpense)} color={T.text} />
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
-                    <ActionCard icon="upload_file" label="Log expense" sub="Receipt, market, supplies" onClick={() => setShowTxForm(true)} primary />
-                    <ActionCard icon="home_repair_service" label="Report issue" sub="Track a home care item" onClick={() => setShowMaintenanceForm(true)} />
+                    <ActionCard icon="upload_file" label="Ghi chi phí" sub="Hóa đơn, chợ, vật tư" onClick={() => setShowTxForm(true)} primary />
+                    <ActionCard icon="home_repair_service" label="Báo cáo sự cố" sub="Theo dõi việc chăm sóc nhà" onClick={() => setShowMaintenanceForm(true)} />
                   </div>
 
                   <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Collected forms</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Bộ sưu tập</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "#8d7250" }}>
                         <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(20,18,14,0.04) 0%, rgba(20,18,14,0.40) 58%, rgba(20,18,14,0.72) 100()), url('/art-blocks/house-clay-bowl.jpg')", backgroundSize: "cover", backgroundPosition: "center 36%", transform: "scale(1.05)" }} />
                         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top right, rgba(255,255,255,0.34), transparent 35%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
-                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Object</div>
-                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Clay bowl</div>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Vật phẩm</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Bát gốm</div>
                         </div>
                       </div>
                       <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "#223126" }}>
                         <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(10,18,12,0.04) 0%, rgba(10,18,12,0.42) 58%, rgba(10,18,12,0.78) 100()), url('/art-blocks/house-stone-tray.jpg')", backgroundSize: "cover", backgroundPosition: "center 34%", transform: "scale(1.05)" }} />
                         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top left, rgba(255,255,255,0.18), transparent 35%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
-                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>House note</div>
-                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Stone tray</div>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Ghi chú nhà</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Khay đá</div>
                         </div>
                       </div>
                     </div>
@@ -352,11 +352,11 @@ export default function HousekeeperPage() {
 
                   <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Open care</div>
-                      <button onClick={() => setTab("care")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Việc đang mở</div>
+                      <button onClick={() => setTab("care")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở</button>
                     </div>
                     {openMaintenance.length === 0 ? (
-                      <div style={{ fontSize: 13, color: T.textMuted }}>No open home care items.</div>
+                      <div style={{ fontSize: 13, color: T.textMuted }}>Chưa có việc chăm sóc nhà nào.</div>
                     ) : openMaintenance.slice(0, 4).map((item) => {
                       const s = tone(item.status);
                       return (
@@ -364,7 +364,7 @@ export default function HousekeeperPage() {
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                             <div>
                               <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
-                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{item.location_in_house || "Unknown area"}</div>
+                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{item.location_in_house || "Khu vực không xác định"}</div>
                             </div>
                             <div style={{ padding: "6px 10px", borderRadius: 999, background: s.bg, color: s.color, fontSize: 11, fontWeight: 800 }}>{item.status}</div>
                           </div>
@@ -375,11 +375,11 @@ export default function HousekeeperPage() {
 
                   <div style={{ ...cardStyle, padding: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Upcoming family rhythm</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Nhịp sống gia đình sắp tới</div>
                       <button onClick={() => setTab("family")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     </div>
                     {upcomingFamily.length === 0 ? (
-                      <div style={{ fontSize: 13, color: T.textMuted }}>No upcoming events.</div>
+                      <div style={{ fontSize: 13, color: T.textMuted }}>Chưa có sự kiện nào.</div>
                     ) : upcomingFamily.slice(0, 4).map((item) => (
                       <button key={item.id} onClick={() => { setSelectedFamilyItem(item); setActivePanel("family-detail"); }} style={{ width: "100%", textAlign: "left", border: "none", background: "transparent", padding: "12px 0", borderBottom: `1px solid ${T.border}`, cursor: "pointer" }}>
                         <div>
@@ -396,18 +396,18 @@ export default function HousekeeperPage() {
               {tab === "expenses" && (
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Expenses</div>
-                    <button onClick={() => setShowTxForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ New</button>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Chi tiêu</div>
+                    <button onClick={() => setShowTxForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Mới</button>
                   </div>
                   {transactions.length === 0 ? (
-                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No transactions yet.</div>
+                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có giao dịch nào.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {transactions.map((tx) => (
                         <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("expense-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
                           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                             <div style={{ minWidth: 0, flex: 1 }}>
-                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{tx.description || "Expense"}</div>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{tx.description || "Chi phí"}</div>
                               <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{fmtRelative(tx.created_at)}</div>
                             </div>
                             <div style={{ fontSize: 14, fontWeight: 800, color: T.danger }}>-{fmtVND(Math.abs(Number(tx.amount || 0)))}</div>
@@ -422,11 +422,11 @@ export default function HousekeeperPage() {
               {tab === "care" && (
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Home care</div>
-                    <button onClick={() => setShowMaintenanceForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ New</button>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Chăm sóc nhà</div>
+                    <button onClick={() => setShowMaintenanceForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Mới</button>
                   </div>
                   {maintenanceItems.length === 0 ? (
-                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No home care items yet.</div>
+                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có mục chăm sóc nhà nào.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {maintenanceItems.map((item) => {
@@ -439,7 +439,7 @@ export default function HousekeeperPage() {
                             {canDelete && (
                               <button onClick={async (e) => {
                                 e.stopPropagation();
-                                const ok = window.confirm("Delete this item?");
+                                const ok = window.confirm("Xóa mục này?");
                                 if (!ok) {
                                   setRevealedItemKey(null);
                                   return;
@@ -449,7 +449,7 @@ export default function HousekeeperPage() {
                                   setMaintenanceItems((prev) => prev.filter((m) => m.id !== item.id));
                                 } catch (err) { alert(err.message); }
                                 finally { setRevealedItemKey(null); }
-                              }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", borderRadius: 18 }}>Delete</button>
+                              }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", borderRadius: 18 }}>Xóa</button>
                             )}
                             <button {...swipe} onClick={() => { setSelectedMaintenance(item); setActivePanel("maintenance-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, position: "relative", transform: canDelete && revealedItemKey === itemKey ? "translateX(-88px)" : "translateX(0)", transition: "transform 180ms ease" }}>
                               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
@@ -472,11 +472,11 @@ export default function HousekeeperPage() {
               {tab === "family" && (
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Family</div>
-                    <button onClick={() => setShowFamilyForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ New</button>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Gia đình</div>
+                    <button onClick={() => setShowFamilyForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Mới</button>
                   </div>
                   {familySchedule.length === 0 ? (
-                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No events yet.</div>
+                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có sự kiện nào.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {familySchedule.map((item) => {
@@ -488,7 +488,7 @@ export default function HousekeeperPage() {
                             {canDelete && (
                               <button onClick={async (e) => {
                                 e.stopPropagation();
-                                const ok = window.confirm("Delete this event?");
+                                const ok = window.confirm("Xóa sự kiện này?");
                                 if (!ok) {
                                   setRevealedItemKey(null);
                                   return;
@@ -498,7 +498,7 @@ export default function HousekeeperPage() {
                                   setFamilySchedule((prev) => prev.filter((f) => f.id !== item.id));
                                 } catch (err) { alert(err.message); }
                                 finally { setRevealedItemKey(null); }
-                              }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", borderRadius: 18 }}>Delete</button>
+                              }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", borderRadius: 18 }}>Xóa</button>
                             )}
                             <button {...swipe} onClick={() => { setSelectedFamilyItem(item); setActivePanel("family-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, position: "relative", transform: canDelete && revealedItemKey === itemKey ? "translateX(-88px)" : "translateX(0)", transition: "transform 180ms ease" }}>
                               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
@@ -528,42 +528,42 @@ export default function HousekeeperPage() {
             <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18, maxHeight: "78vh", overflowY: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>
-                  {activePanel === "help" && "Housekeeper Guide"}
-                  {activePanel === "expense-detail" && "Expense details"}
-                  {activePanel === "maintenance-detail" && "Home care details"}
-                  {activePanel === "family-detail" && "Family event details"}
+                  {activePanel === "help" && "Hướng dẫn"}
+                  {activePanel === "expense-detail" && "Chi tiết chi phí"}
+                  {activePanel === "maintenance-detail" && "Chi tiết chăm sóc nhà"}
+                  {activePanel === "family-detail" && "Chi tiết sự kiện gia đình"}
                 </div>
                 <button onClick={() => setActivePanel("")} style={{ border: "none", background: "transparent", cursor: "pointer" }}><MIcon name="close" size={22} color={T.textMuted} /></button>
               </div>
 
               {activePanel === "help" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Log expense from Home\n• Report and track care items\n• Open any family event for details</div></div>
-                  <button onClick={() => setShowMaintenanceForm(true)} style={panelBtn}>Report issue</button>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Thao tác nhanh</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Ghi chi phí từ Tổng quan\n• Báo cáo và theo dõi việc chăm sóc\n• Mở sự kiện gia đình để xem chi tiết</div></div>
+                  <button onClick={() => setShowMaintenanceForm(true)} style={panelBtn}>Báo cáo sự cố</button>
                 </div>
               )}
 
               {activePanel === "expense-detail" && selectedTransaction && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTransaction.description || "Expense"}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(selectedTransaction.transaction_date || selectedTransaction.created_at)}</div></div>
-                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}><div>Amount: <strong>{fmtVND(Math.abs(Number(selectedTransaction.amount || 0)))}</strong></div><div>Type: {selectedTransaction.type || "expense"}</div><div>Status: {selectedTransaction.status || "pending"}</div></div>
-                  <button onClick={() => { setActivePanel(""); setTab("expenses"); }} style={panelBtn}>Back to Expenses</button>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTransaction.description || "Chi phí"}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(selectedTransaction.transaction_date || selectedTransaction.created_at)}</div></div>
+                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}><div>Số tiền: <strong>{fmtVND(Math.abs(Number(selectedTransaction.amount || 0)))}</strong></div><div>Loại: {selectedTransaction.type || "chi phí"}</div><div>Trạng thái: {selectedTransaction.status || "chờ xử lý"}</div></div>
+                  <button onClick={() => { setActivePanel(""); setTab("expenses"); }} style={panelBtn}>Quay lại Chi tiêu</button>
                 </div>
               )}
 
               {activePanel === "maintenance-detail" && selectedMaintenance && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedMaintenance.title}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedMaintenance.location_in_house || "Unknown area"}</div></div>
-                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}><div>Status: <strong>{selectedMaintenance.status}</strong></div><div>{selectedMaintenance.description || "No notes"}</div></div>
-                  <button onClick={() => { handleMaintenanceStatusChange(selectedMaintenance); setActivePanel(""); }} style={panelBtn}>Update status</button>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedMaintenance.title}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedMaintenance.location_in_house || "Khu vực không xác định"}</div></div>
+                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}><div>Trạng thái: <strong>{selectedMaintenance.status}</strong></div><div>{selectedMaintenance.description || "Không có ghi chú"}</div></div>
+                  <button onClick={() => { handleMaintenanceStatusChange(selectedMaintenance); setActivePanel(""); }} style={panelBtn}>Cập nhật trạng thái</button>
                 </div>
               )}
 
               {activePanel === "family-detail" && selectedFamilyItem && (
                 <div style={{ display: "grid", gap: 12 }}>
                   <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedFamilyItem.title}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(selectedFamilyItem.event_date)}{selectedFamilyItem.event_time ? ` • ${selectedFamilyItem.event_time}` : ""}</div></div>
-                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}><div>Type: {selectedFamilyItem.schedule_type}</div><div>Member: {selectedFamilyItem.family_member}</div><div>{selectedFamilyItem.notes || "No extra notes"}</div></div>
-                  <button onClick={() => { setActivePanel(""); setTab("family"); }} style={panelBtn}>Back to Family</button>
+                  <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}><div>Loại: {selectedFamilyItem.schedule_type}</div><div>Thành viên: {selectedFamilyItem.family_member}</div><div>{selectedFamilyItem.notes || "Không có ghi chú bổ sung"}</div></div>
+                  <button onClick={() => { setActivePanel(""); setTab("family"); }} style={panelBtn}>Quay lại Gia đình</button>
                 </div>
               )}
             </div>
@@ -574,16 +574,16 @@ export default function HousekeeperPage() {
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 200, display: "flex", alignItems: "flex-end" }}>
             <div style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Report issue</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Báo cáo sự cố</div>
                 <button onClick={() => setShowMaintenanceForm(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}><MIcon name="close" size={22} color={T.textMuted} /></button>
               </div>
               <form onSubmit={handleMaintenanceSubmit}>
-                <input value={maintenanceFormData.title} onChange={(e) => setMaintenanceFormData({ ...maintenanceFormData, title: e.target.value })} placeholder="Issue title" required style={inputStyle} />
-                <input value={maintenanceFormData.location_in_house} onChange={(e) => setMaintenanceFormData({ ...maintenanceFormData, location_in_house: e.target.value })} placeholder="Area" required style={{ ...inputStyle, marginTop: 10 }} />
-                <textarea value={maintenanceFormData.description} onChange={(e) => setMaintenanceFormData({ ...maintenanceFormData, description: e.target.value })} placeholder="Notes" style={{ ...inputStyle, minHeight: 90, resize: "none", marginTop: 10 }} />
+                <input value={maintenanceFormData.title} onChange={(e) => setMaintenanceFormData({ ...maintenanceFormData, title: e.target.value })} placeholder="Tiêu đề sự cố" required style={inputStyle} />
+                <input value={maintenanceFormData.location_in_house} onChange={(e) => setMaintenanceFormData({ ...maintenanceFormData, location_in_house: e.target.value })} placeholder="Khu vực" required style={{ ...inputStyle, marginTop: 10 }} />
+                <textarea value={maintenanceFormData.description} onChange={(e) => setMaintenanceFormData({ ...maintenanceFormData, description: e.target.value })} placeholder="Ghi chú" style={{ ...inputStyle, minHeight: 90, resize: "none", marginTop: 10 }} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
-                  <button type="button" onClick={() => setShowMaintenanceForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Cancel</button>
-                  <button type="submit" style={{ height: 46, borderRadius: 12, border: "none", background: T.primary, color: "white", cursor: "pointer", fontWeight: 800 }}>Create</button>
+                  <button type="button" onClick={() => setShowMaintenanceForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Hủy</button>
+                  <button type="submit" style={{ height: 46, borderRadius: 12, border: "none", background: T.primary, color: "white", cursor: "pointer", fontWeight: 800 }}>Tạo</button>
                 </div>
               </form>
             </div>
@@ -594,26 +594,26 @@ export default function HousekeeperPage() {
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 200, display: "flex", alignItems: "flex-end" }}>
             <div style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Add family event</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Thêm sự kiện gia đình</div>
                 <button onClick={() => setShowFamilyForm(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}><MIcon name="close" size={22} color={T.textMuted} /></button>
               </div>
               <form onSubmit={handleFamilyScheduleSubmit}>
-                <input value={familyFormData.title} onChange={(e) => setFamilyFormData({ ...familyFormData, title: e.target.value })} placeholder="Event title" required style={inputStyle} />
+                <input value={familyFormData.title} onChange={(e) => setFamilyFormData({ ...familyFormData, title: e.target.value })} placeholder="Tiêu đề sự kiện" required style={inputStyle} />
                 <select value={familyFormData.schedule_type} onChange={(e) => setFamilyFormData({ ...familyFormData, schedule_type: e.target.value })} style={{ ...inputStyle, marginTop: 10 }}>
                   <option value="school">School</option>
                   <option value="health">Health</option>
                   <option value="activity">Activity</option>
                   <option value="other">Other</option>
                 </select>
-                <input value={familyFormData.family_member} onChange={(e) => setFamilyFormData({ ...familyFormData, family_member: e.target.value })} placeholder="Member" style={{ ...inputStyle, marginTop: 10 }} />
+                <input value={familyFormData.family_member} onChange={(e) => setFamilyFormData({ ...familyFormData, family_member: e.target.value })} placeholder="Thành viên gia đình" style={{ ...inputStyle, marginTop: 10 }} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
                   <input type="date" value={familyFormData.event_date} onChange={(e) => setFamilyFormData({ ...familyFormData, event_date: e.target.value })} required style={dateInputStyle} />
                   <input type="time" value={familyFormData.event_time} onChange={(e) => setFamilyFormData({ ...familyFormData, event_time: e.target.value })} style={inputStyle} />
                 </div>
-                <textarea value={familyFormData.notes} onChange={(e) => setFamilyFormData({ ...familyFormData, notes: e.target.value })} placeholder="Notes" style={{ ...inputStyle, minHeight: 90, resize: "none", marginTop: 10 }} />
+                <textarea value={familyFormData.notes} onChange={(e) => setFamilyFormData({ ...familyFormData, notes: e.target.value })} placeholder="Ghi chú" style={{ ...inputStyle, minHeight: 90, resize: "none", marginTop: 10 }} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
-                  <button type="button" onClick={() => setShowFamilyForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Cancel</button>
-                  <button type="submit" style={{ height: 46, borderRadius: 12, border: "none", background: T.primary, color: "white", cursor: "pointer", fontWeight: 800 }}>Save</button>
+                  <button type="button" onClick={() => setShowFamilyForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Hủy</button>
+                  <button type="submit" style={{ height: 46, borderRadius: 12, border: "none", background: T.primary, color: "white", cursor: "pointer", fontWeight: 800 }}>Lưu</button>
                 </div>
               </form>
             </div>

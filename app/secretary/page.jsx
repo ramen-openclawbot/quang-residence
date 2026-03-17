@@ -10,7 +10,7 @@ import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
 import { getSignedAmount, getLocalDateKey, getTodayKey } from "../../lib/transaction";
 import TransactionForm from "../../components/TransactionForm";
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS = ["Thg 1","Thg 2","Thg 3","Thg 4","Thg 5","Thg 6","Thg 7","Thg 8","Thg 9","Thg 10","Thg 11","Thg 12"];
 
 const T = {
   primary: "#56c91d",
@@ -25,10 +25,10 @@ const T = {
 };
 
 const TABS = [
-  { id: "home", label: "Home", icon: "home" },
-  { id: "transactions", label: "Transactions", icon: "receipt_long" },
-  { id: "tasks", label: "Tasks", icon: "task_alt" },
-  { id: "calendar", label: "Schedule", icon: "calendar_month" },
+  { id: "home", label: "Tổng quan", icon: "home" },
+  { id: "transactions", label: "Giao dịch", icon: "receipt_long" },
+  { id: "tasks", label: "Công việc", icon: "task_alt" },
+  { id: "calendar", label: "Lịch", icon: "calendar_month" },
 ];
 
 const cardStyle = {
@@ -175,7 +175,7 @@ export default function SecretaryPage() {
         setTransactions(txRes.data || []);
       }
     } catch (err) {
-      console.error("Secretary loadSummary error:", err);
+      console.error("Thư ký loadSummary error:", err);
     } finally {
       setLoading(false);
     }
@@ -197,7 +197,7 @@ export default function SecretaryPage() {
       }
       setTxFullLoaded(true);
     } catch (err) {
-      console.error("Secretary loadFullTransactions error:", err);
+      console.error("Thư ký loadFullTransactions error:", err);
     }
   }, [getToken]);
 
@@ -268,7 +268,7 @@ export default function SecretaryPage() {
         body: JSON.stringify({ task_id: taskId, event_type: eventType, status }),
       });
     } catch (error) {
-      console.warn("Secretary notifyTaskEvent failed:", error);
+      console.warn("Thư ký notifyTaskEvent failed:", error);
     }
   }
 
@@ -290,7 +290,7 @@ export default function SecretaryPage() {
 
   async function handleDeleteTask(task) {
     if (!profile?.id || task.created_by !== profile.id) return;
-    const ok = typeof window === "undefined" ? true : window.confirm("Delete this task?");
+    const ok = typeof window === "undefined" ? true : window.confirm("Xóa công việc này?");
     if (!ok) {
       setRevealedTaskId(null);
       return;
@@ -303,7 +303,7 @@ export default function SecretaryPage() {
         body: JSON.stringify({ kind: "tasks", id: task.id }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to delete task");
+      if (!res.ok) throw new Error(data.error || "Xóa công việc không thành công");
 
       setTasks((prev) => prev.filter((t) => t.id !== task.id));
       if (selectedTask?.id === task.id) {
@@ -311,7 +311,7 @@ export default function SecretaryPage() {
         setActivePanel("");
       }
     } catch (err) {
-      alert(err.message || "Failed to delete task");
+      alert(err.message || "Xóa công việc không thành công");
     } finally {
       setRevealedTaskId(null);
     }
@@ -435,10 +435,10 @@ export default function SecretaryPage() {
         <div style={{ padding: "22px 18px 18px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Avatar name={profile?.full_name || "Secretary"} />
+              <Avatar name={profile?.full_name || "Thư ký"} />
               <div>
                 <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Secretary Studio</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Secretary"}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Thư ký"}</div>
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -486,12 +486,12 @@ export default function SecretaryPage() {
           </div>
 
           {loading ? (
-            <div style={{ fontSize: 13, color: T.textMuted }}>Loading...</div>
+            <div style={{ fontSize: 13, color: T.textMuted }}>Đang tải...</div>
           ) : (
             <>
               {tab === "home" && (
                 <div>
-                  {/* Desk overview card — tap to reveal balance */}
+                  {/* Tổng quan bàn làm việc card — tap to reveal balance */}
                   <button
                     type="button"
                     onClick={() => setBalanceRevealed((v) => !v)}
@@ -535,10 +535,10 @@ export default function SecretaryPage() {
                       <div style={{ position: "relative", zIndex: 1, padding: 18, minHeight: 180 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                           <div>
-                            <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Desk overview</div>
-                            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Desk calm</div>
+                            <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Tổng quan bàn làm việc</div>
+                            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Bàn làm việc</div>
                           </div>
-                          <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Secretary</div>
+                          <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Thư ký</div>
                         </div>
 
                         {/* Water drop + ripple animation */}
@@ -569,7 +569,7 @@ export default function SecretaryPage() {
                         </div>
 
                         <div style={{ textAlign: "center", fontSize: 12, opacity: 0.55, fontWeight: 600, animation: "zenFloat 3s ease-in-out infinite" }}>
-                          Tap to reveal
+                          Nhấn để tiết lộ
                         </div>
                       </div>
                     ) : (
@@ -577,28 +577,28 @@ export default function SecretaryPage() {
                       <div style={{ position: "relative", zIndex: 1, padding: 18, animation: "zenFadeIn 0.4s ease-out" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                           <div>
-                            <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Desk overview</div>
-                            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Desk calm</div>
+                            <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Tổng quan bàn làm việc</div>
+                            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Bàn làm việc</div>
                           </div>
-                          <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Secretary</div>
+                          <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Thư ký</div>
                         </div>
-                        <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Tracked balance</div>
+                        <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Số dư theo dõi</div>
                         <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 10 }}>{fmtVND(totalBalance)}</div>
                         <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,0.12)", fontSize: 11, fontWeight: 700, marginBottom: 16 }}>
                           <div style={{ width: 6, height: 6, borderRadius: 999, background: usingLedgerFallback ? "#fbbf24" : "#86efac" }} />
-                          {usingLedgerFallback ? "Ledger fallback" : "Synced from funds"}
+                          {usingLedgerFallback ? "Số dư sổ cái" : "Đồng bộ từ quỹ"}
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                           <div>
-                            <div style={{ fontSize: 11, opacity: 0.7 }}>Pending</div>
+                            <div style={{ fontSize: 11, opacity: 0.7 }}>Chờ duyệt</div>
                             <div style={{ fontSize: 18, fontWeight: 800 }}>{pendingTx.length}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: 11, opacity: 0.7 }}>Today</div>
+                            <div style={{ fontSize: 11, opacity: 0.7 }}>Hôm nay</div>
                             <div style={{ fontSize: 18, fontWeight: 800 }}>{todayTasks.length}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: 11, opacity: 0.7 }}>Overdue</div>
+                            <div style={{ fontSize: 11, opacity: 0.7 }}>Quá hạn</div>
                             <div style={{ fontSize: 18, fontWeight: 800 }}>{overdueTasks.length}</div>
                           </div>
                         </div>
@@ -606,38 +606,38 @@ export default function SecretaryPage() {
                     )}
                   </button>
 
-                  {/* In/Out today cards — also hidden until revealed */}
+                  {/* In/Chi hôm nay cards — also hidden until revealed */}
                   {balanceRevealed ? (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14, animation: "zenFadeIn 0.5s ease-out 0.1s both" }}>
                       <div style={{ ...subtleCard, padding: 14 }}>
-                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>In today</div>
+                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Thu hôm nay</div>
                         <div style={{ fontSize: 20, fontWeight: 800, color: T.success, marginTop: 6 }}>{fmtVND(incomeToday)}</div>
                       </div>
                       <div style={{ ...subtleCard, padding: 14 }}>
-                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Out today</div>
+                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Chi hôm nay</div>
                         <div style={{ fontSize: 20, fontWeight: 800, color: T.danger, marginTop: 6 }}>{fmtVND(expenseToday)}</div>
                       </div>
                     </div>
                   ) : (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                       <div style={{ ...subtleCard, padding: 14 }}>
-                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>In today</div>
+                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Thu hôm nay</div>
                         <div style={{ fontSize: 20, fontWeight: 800, color: T.textMuted, marginTop: 6, opacity: 0.3 }}>• • •</div>
                       </div>
                       <div style={{ ...subtleCard, padding: 14 }}>
-                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Out today</div>
+                        <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Chi hôm nay</div>
                         <div style={{ fontSize: 20, fontWeight: 800, color: T.textMuted, marginTop: 6, opacity: 0.3 }}>• • •</div>
                       </div>
                     </div>
                   )}
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
-                    <QuickAction icon="upload_file" label="Upload slip" sub="Scan receipt and log transaction" onClick={() => setShowTxForm(true)} primary />
-                    <QuickAction icon="task_alt" label="New task" sub="Create a task in seconds" onClick={() => setShowTaskForm(true)} />
+                    <QuickAction icon="upload_file" label="Tải hóa đơn" sub="Quét hóa đơn và ghi giao dịch" onClick={() => setShowTxForm(true)} primary />
+                    <QuickAction icon="task_alt" label="Việc mới" sub="Tạo công việc nhanh chóng" onClick={() => setShowTaskForm(true)} />
                   </div>
 
                   <div style={{ ...subtleCard, padding: 16, marginBottom: 16 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Quiet assets</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Tài sản tĩnh</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 156, background: "#7c6852" }}>
                         <div
@@ -652,8 +652,8 @@ export default function SecretaryPage() {
                         />
                         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top right, rgba(255,255,255,0.28), transparent 36%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
-                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.84 }}>Art note</div>
-                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Bronze study</div>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.84 }}>Ghi chú nghệ thuật</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Nghiên cứu đồng</div>
                         </div>
                       </div>
                       <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 156, background: "#1e3224" }}>
@@ -669,8 +669,8 @@ export default function SecretaryPage() {
                         />
                         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top left, rgba(255,255,255,0.18), transparent 35%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
-                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.84 }}>Collection</div>
-                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Tea vessel</div>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.84 }}>Bộ sưu tập</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Bình trà</div>
                         </div>
                       </div>
                     </div>
@@ -678,20 +678,20 @@ export default function SecretaryPage() {
 
                   <div style={{ ...subtleCard, padding: 16, marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Today focus</div>
-                      <button onClick={() => setTab("tasks")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Công việc hôm nay</div>
+                      <button onClick={() => setTab("tasks")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở</button>
                     </div>
                     {todayTasks.length === 0 ? (
                       <div style={{ textAlign: "center", padding: "12px 0" }}>
                         <MIcon name="event_available" size={28} color={T.textMuted} />
-                        <div style={{ fontSize: 13, color: T.textMuted, marginTop: 6 }}>No tasks due today.</div>
+                        <div style={{ fontSize: 13, color: T.textMuted, marginTop: 6 }}>Chưa có công việc nào.</div>
                       </div>
                     ) : todayTasks.slice(0, 3).map((task) => (
                       <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
                         <div style={{ width: 10, height: 10, borderRadius: 999, background: task.priority === "urgent" ? T.danger : task.priority === "high" ? T.amber : T.primary, marginTop: 5, flexShrink: 0 }} />
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{task.title}</div>
-                          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description || "No notes"}</div>
+                          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description || "Không có ghi chú"}</div>
                         </div>
                       </div>
                     ))}
@@ -699,13 +699,13 @@ export default function SecretaryPage() {
 
                   <div style={{ ...cardStyle, padding: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Recent flow</div>
-                      <button onClick={() => setTab("transactions")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Luồng gần đây</div>
+                      <button onClick={() => setTab("transactions")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở</button>
                     </div>
                     {recentTransactions.length === 0 ? (
                       <div style={{ textAlign: "center", padding: "12px 0" }}>
                         <MIcon name="receipt_long" size={28} color={T.textMuted} />
-                        <div style={{ fontSize: 13, color: T.textMuted, marginTop: 6 }}>No transactions yet.</div>
+                        <div style={{ fontSize: 13, color: T.textMuted, marginTop: 6 }}>Chưa có giao dịch nào.</div>
                       </div>
                     ) : recentTransactions.slice(0, 5).map((tx) => {
                       const signedAmount = getSignedAmount(tx);
@@ -717,7 +717,7 @@ export default function SecretaryPage() {
                             <MIcon name={isPositive ? "south_west" : "north_east"} size={18} color={isPositive ? T.success : T.danger} />
                           </div>
                           <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tx.description || tx.recipient_name || "Transactions"}</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tx.description || tx.recipient_name || "Giao dịch"}</div>
                             <div style={{ fontSize: 12, color: T.textMuted }}>{fmtRelative(tx.created_at)}</div>
                           </div>
                         </div>
@@ -731,9 +731,9 @@ export default function SecretaryPage() {
               {tab === "transactions" && (
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Transactions</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Giao dịch</div>
                     <button onClick={() => setShowTxForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
-                      + Upload slip
+                      + Tải hóa đơn
                     </button>
                   </div>
 
@@ -748,20 +748,20 @@ export default function SecretaryPage() {
 
                   <div style={{ position: "relative", marginBottom: 14 }}>
                     <MIcon name="search" size={18} color={T.textMuted} style={{ position: "absolute", left: 14, top: 12 }} />
-                    <input value={txSearch} onChange={(e) => setTxSearch(e.target.value)} placeholder="Search transactions..." style={{ width: "100%", height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, paddingLeft: 40, paddingRight: 14, fontSize: 14, color: T.text, boxSizing: "border-box" }} />
+                    <input value={txSearch} onChange={(e) => setTxSearch(e.target.value)} placeholder="Tìm kiếm giao dịch..." style={{ width: "100%", height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, paddingLeft: 40, paddingRight: 14, fontSize: 14, color: T.text, boxSizing: "border-box" }} />
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
                     <div style={{ ...cardStyle, padding: 12, textAlign: "center" }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: T.success, letterSpacing: "0.06em" }}>Income</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: T.success, letterSpacing: "0.06em" }}>Thu nhập</div>
                       <div style={{ fontSize: 15, fontWeight: 800, color: T.success, marginTop: 4 }}>{fmtVND(txIncomeTotal)}</div>
                     </div>
                     <div style={{ ...cardStyle, padding: 12, textAlign: "center" }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: T.danger, letterSpacing: "0.06em" }}>Expense</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: T.danger, letterSpacing: "0.06em" }}>Chi tiêu</div>
                       <div style={{ fontSize: 15, fontWeight: 800, color: T.danger, marginTop: 4 }}>{fmtVND(txExpenseTotal)}</div>
                     </div>
                     <div style={{ ...cardStyle, padding: 12, textAlign: "center" }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: T.amber, letterSpacing: "0.06em" }}>Pending</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: T.amber, letterSpacing: "0.06em" }}>Chờ duyệt</div>
                       <div style={{ fontSize: 15, fontWeight: 800, color: T.amber, marginTop: 4 }}>{txPendingCount}</div>
                     </div>
                   </div>
@@ -769,7 +769,7 @@ export default function SecretaryPage() {
                   {txFiltered.length === 0 ? (
                     <div style={{ ...cardStyle, padding: 24, textAlign: "center" }}>
                       <MIcon name="search_off" size={32} color={T.textMuted} />
-                      <div style={{ fontSize: 13, color: T.textMuted, marginTop: 8 }}>No transactions found.</div>
+                      <div style={{ fontSize: 13, color: T.textMuted, marginTop: 8 }}>Chưa có giao dịch nào.</div>
                     </div>
                   ) : (
                     <>
@@ -786,7 +786,7 @@ export default function SecretaryPage() {
                               <div style={{ flex: 1, minWidth: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", columnGap: 12, alignItems: "start" }}>
                                 <div style={{ minWidth: 0 }}>
                                   <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                    {tx.description || tx.recipient_name || (isIncome ? "Income" : "Expense")}
+                                    {tx.description || tx.recipient_name || (isIncome ? "Thu nhập" : "Chi tiêu")}
                                   </div>
                                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, minWidth: 0, flexWrap: "wrap" }}>
                                     <div style={{ fontSize: 12, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -865,15 +865,15 @@ export default function SecretaryPage() {
               {tab === "tasks" && (
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Tasks</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Công việc</div>
                     <button onClick={() => setShowTaskForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
-                      + Create
+                      + Tạo
                     </button>
                   </div>
                   {tasks.length === 0 ? (
                     <div style={{ ...cardStyle, padding: 24, textAlign: "center" }}>
                       <MIcon name="task_alt" size={32} color={T.textMuted} />
-                      <div style={{ fontSize: 13, color: T.textMuted, marginTop: 8 }}>No tasks yet.</div>
+                      <div style={{ fontSize: 13, color: T.textMuted, marginTop: 8 }}>Chưa có công việc nào.</div>
                     </div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
@@ -884,7 +884,7 @@ export default function SecretaryPage() {
                           <div key={task.id} style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
                             {canDelete && (
                               <button onClick={(e) => { e.stopPropagation(); handleDeleteTask(task); }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", borderRadius: 18 }}>
-                                Delete
+                                Xóa
                               </button>
                             )}
                             <button
@@ -896,7 +896,7 @@ export default function SecretaryPage() {
                                 <div>
                                   <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
                                   {task.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description}</div>}
-                                  {task.due_date && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>Due: {fmtDate(task.due_date)}</div>}
+                                  {task.due_date && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>Hạn: {fmtDate(task.due_date)}</div>}
                                 </div>
                                 <div style={{
                                   fontSize: 11,
@@ -919,11 +919,11 @@ export default function SecretaryPage() {
 
               {tab === "calendar" && (
                 <div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 14 }}>Upcoming</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 14 }}>Sắp tới</div>
                   {upcomingItems.length === 0 ? (
                     <div style={{ ...cardStyle, padding: 24, textAlign: "center" }}>
                       <MIcon name="calendar_month" size={32} color={T.textMuted} />
-                      <div style={{ fontSize: 13, color: T.textMuted, marginTop: 8 }}>No upcoming items.</div>
+                      <div style={{ fontSize: 13, color: T.textMuted, marginTop: 8 }}>Chưa có công việc nào sắp tới.</div>
                     </div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
@@ -948,9 +948,9 @@ export default function SecretaryPage() {
             <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "24px 24px 0 0", padding: 18, maxHeight: "78vh", overflowY: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>
-                  {activePanel === "help" && "Secretary Guide"}
-                  {activePanel === "transaction-detail" && "Transaction details"}
-                  {activePanel === "task-detail" && "Task details"}
+                  {activePanel === "help" && "Hướng dẫn thư ký"}
+                  {activePanel === "transaction-detail" && "Chi tiết giao dịch"}
+                  {activePanel === "task-detail" && "Chi tiết công việc"}
                 </div>
                 <button onClick={() => setActivePanel("")} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
                   <MIcon name="close" size={22} color={T.textMuted} />
@@ -959,8 +959,8 @@ export default function SecretaryPage() {
 
               {activePanel === "help" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Upload a slip fast\n• Create a task quickly\n• Open any card to view details</div></div>
-                  <button onClick={() => setShowTxForm(true)} style={panelBtn}>Upload slip</button>
+                  <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Hành động nhanh</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Tải hóa đơn nhanh chóng\n• Tạo công việc nhanh chóng\n• Mở bất kỳ thẻ nào để xem chi tiết</div></div>
+                  <button onClick={() => setShowTxForm(true)} style={panelBtn}>Tải hóa đơn</button>
                 </div>
               )}
 
@@ -979,10 +979,10 @@ export default function SecretaryPage() {
 
               {activePanel === "task-detail" && selectedTask && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTask.title}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedTask.due_date ? fmtDate(selectedTask.due_date) : "No deadline"}</div></div>
-                  <div style={{ ...subtleCard, padding: 14, fontSize: 13, color: T.text }}>Status: <strong>{selectedTask.status}</strong><br/>Priority: {selectedTask.priority || "medium"}<br/>{selectedTask.description || "No notes"}</div>
-                  <button onClick={() => { toggleTaskStatus(selectedTask); setActivePanel(""); }} style={panelBtn}>Update status</button>
-                  {notifReturnTab && <button onClick={() => { setActivePanel(""); setTab(notifReturnTab); setNotifReturnTab(null); }} style={{ ...panelBtn, background: "white", border: `1px solid ${T.border}`, color: T.text }}>Back to previous tab</button>}
+                  <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTask.title}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedTask.due_date ? fmtDate(selectedTask.due_date) : "Không có hạn"}</div></div>
+                  <div style={{ ...subtleCard, padding: 14, fontSize: 13, color: T.text }}>Trạng thái: <strong>{selectedTask.status}</strong><br/>Ưu tiên: {selectedTask.priority || "trung bình"}<br/>{selectedTask.description || "Không có ghi chú"}</div>
+                  <button onClick={() => { toggleTaskStatus(selectedTask); setActivePanel(""); }} style={panelBtn}>Cập nhật trạng thái</button>
+                  {notifReturnTab && <button onClick={() => { setActivePanel(""); setTab(notifReturnTab); setNotifReturnTab(null); }} style={{ ...panelBtn, background: "white", border: `1px solid ${T.border}`, color: T.text }}>Quay lại tab trước</button>}
                 </div>
               )}
             </div>
@@ -993,34 +993,34 @@ export default function SecretaryPage() {
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 200, display: "flex", alignItems: "flex-end" }}>
             <div style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "24px 24px 0 0", padding: 18 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>New task</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Việc mới</div>
                 <button onClick={() => setShowTaskForm(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
                   <MIcon name="close" size={22} color={T.textMuted} />
                 </button>
               </div>
               <form onSubmit={handleCreateTask}>
-                <label htmlFor="task-title" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Task title</label>
-                <input id="task-title" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="Task title" required style={inputStyle} />
-                <label htmlFor="task-notes" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginTop: 10, marginBottom: 6 }}>Notes</label>
-                <textarea id="task-notes" value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} placeholder="Notes" style={{ ...inputStyle, minHeight: 90, resize: "none" }} />
+                <label htmlFor="task-title" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Tiêu đề công việc</label>
+                <input id="task-title" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="Tiêu đề công việc" required style={inputStyle} />
+                <label htmlFor="task-notes" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginTop: 10, marginBottom: 6 }}>Ghi chú</label>
+                <textarea id="task-notes" value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} placeholder="Ghi chú" style={{ ...inputStyle, minHeight: 90, resize: "none" }} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
                   <div>
-                    <label htmlFor="task-priority" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Priority</label>
+                    <label htmlFor="task-priority" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Ưu tiên</label>
                     <select id="task-priority" value={newTask.priority} onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })} style={inputStyle}>
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="urgent">Urgent</option>
+                      <option value="low">Thấp</option>
+                      <option value="medium">Trung bình</option>
+                      <option value="high">Cao</option>
+                      <option value="urgent">Khẩn cấp</option>
                     </select>
                   </div>
                   <div>
-                    <label htmlFor="task-due" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Due date</label>
+                    <label htmlFor="task-due" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Hạn hoàn thành</label>
                     <input id="task-due" type="date" value={newTask.due_date} onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })} style={dateInputStyle} />
                   </div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
-                  <button type="button" onClick={() => setShowTaskForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Cancel</button>
-                  <button type="submit" disabled={taskSubmitting} style={{ height: 46, borderRadius: 12, border: "none", background: taskSubmitting ? "#93e06e" : T.primary, color: "white", cursor: taskSubmitting ? "default" : "pointer", fontWeight: 800 }}>{taskSubmitting ? "Creating..." : "Create"}</button>
+                  <button type="button" onClick={() => setShowTaskForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Hủy</button>
+                  <button type="submit" disabled={taskSubmitting} style={{ height: 46, borderRadius: 12, border: "none", background: taskSubmitting ? "#93e06e" : T.primary, color: "white", cursor: taskSubmitting ? "default" : "pointer", fontWeight: 800 }}>{taskSubmitting ? "Đang tạo..." : "Tạo"}</button>
                 </div>
               </form>
             </div>

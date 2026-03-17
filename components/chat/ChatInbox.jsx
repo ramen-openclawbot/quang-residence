@@ -17,11 +17,11 @@ const KEYFRAMES = `
 
 // ─── Context helpers ─────────────────────────────────────────────
 const CTX_MAP = {
-  "/secretary": { label: "Secretary desk", hint: "Upload bank slip to create a transaction." },
-  "/driver": { label: "Driver log", hint: "Send a receipt photo to log an expense." },
-  "/housekeeper": { label: "Home operations", hint: "Send a receipt photo to log an expense." },
-  "/transactions": { label: "Transaction ledger", hint: "Upload bank slip to add a new entry." },
-  "/owner": { label: "Owner console", hint: "Ask me anything about your household." },
+  "/secretary": { label: "Bàn thư ký", hint: "Tải hóa đơn ngân hàng để tạo giao dịch." },
+  "/driver": { label: "Nhật ký tài xế", hint: "Gửi ảnh hóa đơn để ghi chi phí." },
+  "/housekeeper": { label: "Vận hành nhà", hint: "Gửi ảnh hóa đơn để ghi chi phí." },
+  "/transactions": { label: "Sổ giao dịch", hint: "Tải hóa đơn ngân hàng để thêm mục mới." },
+  "/owner": { label: "Bảng điều khiển chủ nhà", hint: "Hỏi tôi bất cứ điều gì về gia đình bạn." },
 };
 function getCtx(path) { return CTX_MAP[path] || { label: "ZenHome", hint: "How can I help?" }; }
 
@@ -176,9 +176,9 @@ export default function ChatInbox() {
 
     setTimeout(() => {
       if (/bank\s?slip|receipt|ho[aá]\s?[dđ][oơ]n|chuy[eể]n\s?kho[aả]n|upload|ảnh/i.test(text)) {
-        addAgent("Tap the camera icon below to upload your bank slip, and I'll scan it for you.");
+        addAgent("Nhấn biểu tượng camera bên dưới để tải hóa đơn ngân hàng, tôi sẽ quét giúp bạn.");
       } else {
-        addAgent("I can help you create transactions from bank slips. Tap the camera icon to get started!");
+        addAgent("Tôi có thể giúp bạn tạo giao dịch từ hóa đơn ngân hàng. Nhấn biểu tượng camera để bắt đầu!");
       }
     }, 600);
   }
@@ -190,7 +190,7 @@ export default function ChatInbox() {
     if (fileRef.current) fileRef.current.value = "";
 
     const previewUrl = URL.createObjectURL(file);
-    addUser("Bank slip", { imageUrl: previewUrl });
+    addUser("Hóa đơn ngân hàng", { imageUrl: previewUrl });
     setProcessing(true);
 
     try {
@@ -200,7 +200,7 @@ export default function ChatInbox() {
 
       const token = await getToken();
       if (!token) {
-        addAgent("Session expired. Please log in again.");
+        addAgent("Phiên đã hết hạn. Vui lòng đăng nhập lại.");
         setProcessing(false);
         return;
       }
@@ -214,7 +214,7 @@ export default function ChatInbox() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        addAgent("Could not read this image. Please try a clearer photo.");
+        addAgent("Không thể đọc ảnh này. Vui lòng thử ảnh rõ hơn.");
         setProcessing(false);
         return;
       }
@@ -230,10 +230,10 @@ export default function ChatInbox() {
         transaction_code: ocr.transaction_code || "",
         transaction_date: ocr.transaction_date || new Date().toISOString().slice(0, 10),
       });
-      addAgent("Scan successful! Review the details below:");
+      addAgent("Quét thành công! Xem chi tiết bên dưới:");
     } catch (err) {
       console.error("Chat OCR error:", err);
-      addAgent("Something went wrong during scanning. Please try again.");
+      addAgent("Đã xảy ra lỗi khi quét. Vui lòng thử lại.");
     } finally {
       setProcessing(false);
     }
@@ -244,7 +244,7 @@ export default function ChatInbox() {
     // Synchronous guard — prevents double-submit even on rapid clicks
     if (submittingRef.current) return;
     if (!data.amount || Number(data.amount) <= 0) {
-      addAgent("Please enter a valid amount.");
+      addAgent("Vui lòng nhập số tiền hợp lệ.");
       return;
     }
 
@@ -284,7 +284,7 @@ export default function ChatInbox() {
     try {
       const token = await getToken();
       if (!token) {
-        addAgent("Session expired. Please log in again.");
+        addAgent("Phiên đã hết hạn. Vui lòng đăng nhập lại.");
         setCreatingTx(false);
         submittingRef.current = false;
         return;
@@ -338,12 +338,12 @@ export default function ChatInbox() {
       setCreatedTxId(inserted.id);
       setPendingOcr(null);
       addAgent(
-        `Transaction created (${fmtVND(data.amount)}) and sent for approval! Would you like to attach supporting documents?`
+        `Đã tạo giao dịch (${fmtVND(data.amount)}) và gửi để duyệt! Bạn có muốn đính kèm tài liệu bổ sung?`
       );
       setAskingSupport(true);
     } catch (err) {
       console.error("Create tx error:", err);
-      addAgent("Failed to create transaction: " + (err.message || "Unknown error"));
+      addAgent("Tạo giao dịch thất bại: " + (err.message || "Lỗi không xác định"));
     } finally {
       setCreatingTx(false);
       submittingRef.current = false;
@@ -373,9 +373,9 @@ export default function ChatInbox() {
         .update({ ocr_raw_data: { ...existing, supporting_proof_urls: supportUrls } })
         .eq("id", createdTxId);
 
-      addAgent("Document attached! Upload more or tap 'Done' when finished.");
+      addAgent("Đã đính kèm tài liệu! Tải thêm hoặc nhấn 'Xong' khi hoàn tất.");
     } catch {
-      addAgent("Failed to upload document. Please try again.");
+      addAgent("Tải tài liệu thất bại. Vui lòng thử lại.");
     }
   }
 
@@ -383,7 +383,7 @@ export default function ChatInbox() {
     setAskingSupport(false);
     setCreatedTxId(null);
     setSlipUrl(null);
-    addAgent("All done! Send another bank slip anytime.");
+    addAgent("Hoàn tất! Gửi hóa đơn ngân hàng khác bất cứ lúc nào.");
   }
 
   function handleDupeConfirm() {
@@ -393,7 +393,7 @@ export default function ChatInbox() {
   function handleDupeDismiss() {
     setDupeWarning(null);
     setPendingOcr(null);
-    addAgent("Transaction cancelled. Upload a new slip to try again.");
+    addAgent("Đã hủy giao dịch. Tải hóa đơn mới để thử lại.");
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -529,7 +529,7 @@ export default function ChatInbox() {
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <MIcon name="document_scanner" size={16} color={T.primary} />
                     <span style={{ fontSize: 13, color: T.primary, fontWeight: 600 }}>
-                      Scanning
+                      Đang quét
                     </span>
                     <span style={{ display: "flex", gap: 3 }}>
                       {[0, 1, 2].map((i) => (
@@ -558,7 +558,7 @@ export default function ChatInbox() {
                   onConfirm={handleConfirmTx}
                   onCancel={() => {
                     setPendingOcr(null);
-                    addAgent("Cancelled. Upload a new slip anytime.");
+                    addAgent("Đã hủy. Tải hóa đơn mới bất cứ lúc nào.");
                   }}
                   loading={creatingTx}
                 />
@@ -591,13 +591,13 @@ export default function ChatInbox() {
                   onClick={() => fileRef.current?.click()}
                   style={{ ...actionBtnS, background: T.primary, color: "#fff" }}
                 >
-                  <MIcon name="add_a_photo" size={16} color="#fff" /> Upload
+                  <MIcon name="add_a_photo" size={16} color="#fff" /> Tải lên
                 </button>
                 <button
                   onClick={handleSkipSupport}
                   style={{ ...actionBtnS, background: "#f1f5f1", color: T.textSec }}
                 >
-                  Done
+                  Xong
                 </button>
               </div>
             )}
@@ -645,7 +645,7 @@ export default function ChatInbox() {
                   handleSend();
                 }
               }}
-              placeholder="Type a message..."
+              placeholder="Nhập tin nhắn..."
               disabled={processing || creatingTx}
               style={{
                 flex: 1,
@@ -837,13 +837,13 @@ function OCRCard({ data, onConfirm, onCancel, loading }) {
               transition: "all 0.2s",
             }}
           >
-            {t === "expense" ? "Out" : "In"}
+            {t === "expense" ? "Chi" : "Thu"}
           </button>
         ))}
       </div>
 
       <div style={{ marginBottom: 10 }}>
-        <div style={lbl}>Amount *</div>
+        <div style={lbl}>Số tiền *</div>
         <input
           type="number"
           value={form.amount}
@@ -854,31 +854,31 @@ function OCRCard({ data, onConfirm, onCancel, loading }) {
       </div>
 
       <div style={{ marginBottom: 10 }}>
-        <div style={lbl}>Description</div>
+        <div style={lbl}>Mô tả</div>
         <input
           value={form.description}
           onChange={(e) => upd("description", e.target.value)}
-          placeholder="What is this for?"
+          placeholder="Mục đích?"
           style={fld}
         />
       </div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         <div style={{ flex: 1 }}>
-          <div style={lbl}>Recipient</div>
+          <div style={lbl}>Người nhận</div>
           <input
             value={form.recipient_name}
             onChange={(e) => upd("recipient_name", e.target.value)}
-            placeholder="Name"
+            placeholder="Tên"
             style={fld}
           />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={lbl}>Bank</div>
+          <div style={lbl}>Ngân hàng</div>
           <input
             value={form.bank_name}
             onChange={(e) => upd("bank_name", e.target.value)}
-            placeholder="Bank"
+            placeholder="Ngân hàng"
             style={fld}
           />
         </div>
@@ -886,27 +886,27 @@ function OCRCard({ data, onConfirm, onCancel, loading }) {
 
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         <div style={{ flex: 1 }}>
-          <div style={lbl}>Account</div>
+          <div style={lbl}>Tài khoản</div>
           <input
             value={form.bank_account}
             onChange={(e) => upd("bank_account", e.target.value)}
-            placeholder="Number"
+            placeholder="Số"
             style={fld}
           />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={lbl}>Tx Code</div>
+          <div style={lbl}>Mã GD</div>
           <input
             value={form.transaction_code}
             onChange={(e) => upd("transaction_code", e.target.value)}
-            placeholder="Code"
+            placeholder="Mã"
             style={fld}
           />
         </div>
       </div>
 
       <div style={{ marginBottom: 14 }}>
-        <div style={lbl}>Date</div>
+        <div style={lbl}>Ngày</div>
         <input
           type="date"
           value={form.transaction_date}
@@ -927,7 +927,7 @@ function OCRCard({ data, onConfirm, onCancel, loading }) {
             color: T.textSec,
           }}
         >
-          Cancel
+          Hủy
         </button>
         <button
           onClick={() => onConfirm(form)}
@@ -940,7 +940,7 @@ function OCRCard({ data, onConfirm, onCancel, loading }) {
             color: "#fff",
           }}
         >
-          {loading ? "Creating..." : "Submit for review"}
+          {loading ? "Đang tạo..." : "Gửi để duyệt"}
         </button>
       </div>
     </div>
@@ -960,11 +960,11 @@ function DupeAlert({ dupes, onConfirm, onCancel }) {
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
         <MIcon name="warning" size={18} color="#f59e0b" filled />
         <span style={{ fontSize: 13, fontWeight: 700, color: "#92400e" }}>
-          Possible duplicate
+          Có thể trùng lặp
         </span>
       </div>
       <div style={{ fontSize: 12, color: "#92400e", marginBottom: 10, lineHeight: 1.5 }}>
-        Found {dupes.length} similar transaction(s) with the same amount near this date.
+        Tìm thấy {dupes.length} giao dịch tương tự với cùng số tiền gần ngày này.
       </div>
       <div style={{ display: "flex", gap: 8 }}>
         <button
@@ -977,7 +977,7 @@ function DupeAlert({ dupes, onConfirm, onCancel }) {
             color: "#92400e",
           }}
         >
-          Cancel
+          Hủy
         </button>
         <button
           onClick={onConfirm}
@@ -989,7 +989,7 @@ function DupeAlert({ dupes, onConfirm, onCancel }) {
             color: "#fff",
           }}
         >
-          Create anyway
+          Vẫn tạo
         </button>
       </div>
     </div>

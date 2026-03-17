@@ -162,9 +162,9 @@ export default function NotificationCenter({ userId, onOpenNotification }) {
           zIndex: 1000, overflow: "hidden", display: "flex", flexDirection: "column",
         }}>
           <div style={{ padding: "16px 16px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${T.border}` }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: T.text }}>Notifications</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: T.text }}>Thông báo</h3>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {unread > 0 && <button onClick={markAllRead} style={{ fontSize: 12, color: T.primary, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Mark all read</button>}
+              {unread > 0 && <button onClick={markAllRead} style={{ fontSize: 12, color: T.primary, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Đánh dấu đã đọc</button>}
               <button onClick={deleteAllNotifs} style={{ width: 28, height: 28, borderRadius: "50%", background: `${T.primary}10`, border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16, color: T.primary }}>settings</span>
               </button>
@@ -172,8 +172,8 @@ export default function NotificationCenter({ userId, onOpenNotification }) {
           </div>
 
           <div style={{ overflowY: "auto", flex: 1 }}>
-            {loading && notifs.length === 0 && <div style={{ padding: 24, textAlign: "center", color: T.textMuted, fontSize: 13 }}>Loading...</div>}
-            {!loading && notifs.length === 0 && <div style={{ padding: 32, textAlign: "center", color: T.textMuted, fontSize: 13 }}>No notifications</div>}
+            {loading && notifs.length === 0 && <div style={{ padding: 24, textAlign: "center", color: T.textMuted, fontSize: 13 }}>Đang tải...</div>}
+            {!loading && notifs.length === 0 && <div style={{ padding: 32, textAlign: "center", color: T.textMuted, fontSize: 13 }}>Không có thông báo</div>}
             {Object.entries(groupByDate()).map(([label, items]) => (
               <div key={label}>
                 <div style={{ padding: "10px 16px 6px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: T.textMuted }}>{label}</div>

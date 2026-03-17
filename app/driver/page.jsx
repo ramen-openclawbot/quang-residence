@@ -22,10 +22,10 @@ const T = {
 };
 
 const TABS = [
-  { id: "home", label: "Home", icon: "home" },
-  { id: "trips", label: "Trips", icon: "directions_car" },
-  { id: "expenses", label: "Expenses", icon: "receipt_long" },
-  { id: "tasks", label: "Tasks", icon: "task_alt" },
+  { id: "home", label: "Tổng quan", icon: "home" },
+  { id: "trips", label: "Chuyến đi", icon: "directions_car" },
+  { id: "expenses", label: "Chi tiêu", icon: "receipt_long" },
+  { id: "tasks", label: "Công việc", icon: "task_alt" },
 ];
 
 const cardStyle = {
@@ -308,10 +308,10 @@ export default function DriverPage() {
         <div style={{ padding: "22px 18px 18px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Avatar name={profile?.full_name || "Driver"} />
+              <Avatar name={profile?.full_name || "Tài xế"} />
               <div>
-                <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Driver Studio</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Driver"}</div>
+                <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Tài xế</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{profile?.full_name || "Tài xế"}</div>
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -325,7 +325,7 @@ export default function DriverPage() {
           </div>
 
           {loading ? (
-            <div style={{ fontSize: 13, color: T.textMuted }}>Loading...</div>
+            <div style={{ fontSize: 13, color: T.textMuted }}>Đang tải...</div>
           ) : (
             <>
               {tab === "home" && (
@@ -335,51 +335,51 @@ export default function DriverPage() {
                     <div style={{ position: "relative", zIndex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                         <div>
-                          <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>On the road</div>
-                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Road rhythm</div>
+                          <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Trên đường</div>
+                          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>Nhịp đường</div>
                         </div>
-                        <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Driver</div>
+                        <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Tài xế</div>
                       </div>
-                      <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Trips, tasks, and a clear road ahead.</div>
+                      <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Chuyến đi, công việc và con đường phía trước.</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Today</div><div style={{ fontSize: 18, fontWeight: 800 }}>{todayTrips.length}</div></div>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Open tasks</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Live</div><div style={{ fontSize: 18, fontWeight: 800 }}>{activeTrip ? 1 : 0}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Hôm nay</div><div style={{ fontSize: 18, fontWeight: 800 }}>{todayTrips.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Việc đang mở</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Trực tiếp</div><div style={{ fontSize: 18, fontWeight: 800 }}>{activeTrip ? 1 : 0}</div></div>
                       </div>
                     </div>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-                    <StatCard label="Out today" value={fmtVND(todayExpense)} color={T.danger} />
-                    <StatCard label="This month" value={fmtVND(monthExpense)} color={T.text} />
+                    <StatCard label="Chi hôm nay" value={fmtVND(todayExpense)} color={T.danger} />
+                    <StatCard label="Tháng này" value={fmtVND(monthExpense)} color={T.text} />
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
-                    <ActionCard icon="upload_file" label="Log expense" sub="Receipt, fuel, parking" onClick={() => setShowTxForm(true)} primary />
-                    <ActionCard icon="directions_car" label="Trips" sub="Open today’s route" onClick={() => setTab("trips")} />
+                    <ActionCard icon="upload_file" label="Ghi chi phí" sub="Hóa đơn, xăng, đỗ xe" onClick={() => setShowTxForm(true)} primary />
+                    <ActionCard icon="directions_car" label="Chuyến đi" sub="Mở lộ trình hôm nay" onClick={() => setTab("trips")} />
                   </div>
 
                   {activeTrip && (
                     <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                        <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Live now</div>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Đang chạy</div>
                         <div style={{ padding: "6px 10px", borderRadius: 999, background: "#fff7e6", color: T.amber, fontSize: 11, fontWeight: 800 }}>in_progress</div>
                       </div>
                       <div style={{ fontSize: 15, fontWeight: 800, color: T.text }}>{activeTrip.title}</div>
                       <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{activeTrip.pickup_location || "—"} → {activeTrip.dropoff_location || "—"}</div>
                       <button onClick={() => updateTripStatus(activeTrip, "completed")} style={{ marginTop: 12, height: 42, borderRadius: 12, border: "none", background: T.primary, color: "white", fontWeight: 800, padding: "0 14px", cursor: "pointer" }}>
-Complete trip
+Hoàn thành
                       </button>
                     </div>
                   )}
 
                   <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Today’s route</div>
-                      <button onClick={() => setTab("trips")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Lộ trình hôm nay</div>
+                      <button onClick={() => setTab("trips")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở</button>
                     </div>
                     {todayTrips.length === 0 ? (
-                      <div style={{ fontSize: 13, color: T.textMuted }}>No trips today.</div>
+                      <div style={{ fontSize: 13, color: T.textMuted }}>Hôm nay không có chuyến.</div>
                     ) : todayTrips.slice(0, 3).map((trip) => {
                       const tone = statusTone(trip.status);
                       return (
@@ -395,22 +395,22 @@ Complete trip
                   </div>
 
                   <div style={{ ...softCard, padding: 16, marginBottom: 16 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Road objects</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Bộ sưu tập</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "#273039" }}>
                         <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(10,14,18,0.06) 0%, rgba(10,14,18,0.46) 60%, rgba(10,14,18,0.82) 100%), url('/art-blocks/driver-rim-study.jpg')", backgroundSize: "cover", backgroundPosition: "center 34%", transform: "scale(1.05)" }} />
                         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top right, rgba(255,255,255,0.20), transparent 35%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
-                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Collection</div>
-                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Rim study</div>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Bộ sưu tập</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Nghiên cứu mâm</div>
                         </div>
                       </div>
                       <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", minHeight: 148, background: "#5f4736" }}>
                         <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(22,16,12,0.04) 0%, rgba(22,16,12,0.42) 58%, rgba(22,16,12,0.78) 100%), url('/art-blocks/driver-leather-map.jpg')", backgroundSize: "cover", backgroundPosition: "center 40%", transform: "scale(1.05)" }} />
                         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at top left, rgba(255,255,255,0.24), transparent 35%)" }} />
                         <div style={{ position: "absolute", left: 14, bottom: 14, right: 14, color: "white" }}>
-                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Travel piece</div>
-                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Leather map</div>
+                          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.82 }}>Phụ kiện du lịch</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>Bản đồ da</div>
                         </div>
                       </div>
                     </div>
@@ -418,11 +418,11 @@ Complete trip
 
                   <div style={{ ...cardStyle, padding: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Open tasks</div>
-                      <button onClick={() => setTab("tasks")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Việc đang mở</div>
+                      <button onClick={() => setTab("tasks")} style={{ border: "none", background: "transparent", color: T.primary, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Mở</button>
                     </div>
                     {openTasks.length === 0 ? (
-                      <div style={{ fontSize: 13, color: T.textMuted }}>No open tasks.</div>
+                      <div style={{ fontSize: 13, color: T.textMuted }}>Chưa có việc nào.</div>
                     ) : openTasks.slice(0, 4).map((task) => {
                       const tone = statusTone(task.status);
                       return (
@@ -430,7 +430,7 @@ Complete trip
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                             <div>
                               <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
-                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.due_date ? `Due: ${fmtDate(task.due_date)}` : "No deadline"}</div>
+                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.due_date ? `Hạn: ${fmtDate(task.due_date)}` : "Không có hạn"}</div>
                             </div>
                             <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
                           </div>
@@ -443,12 +443,12 @@ Complete trip
 
               {tab === "trips" && (
                 <div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 14 }}>Trips</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 14 }}>Chuyến đi</div>
                   {[{ title: "Hôm nay", items: todayTrips }, { title: "Sắp tới", items: upcomingTrips }].map((group) => (
                     <div key={group.title} style={{ marginBottom: 18 }}>
-                      <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>{group.title === "Hôm nay" ? "Today" : group.title === "Sắp tới" ? "Upcoming" : group.title}</div>
+                      <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>{group.title === "Hôm nay" ? "Hôm nay" : group.title === "Sắp tới" ? "Sắp tới" : group.title}</div>
                       {group.items.length === 0 ? (
-                        <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No trips.</div>
+                        <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có chuyến nào.</div>
                       ) : (
                         <div style={{ display: "grid", gap: 12 }}>
                           {group.items.map((trip) => {
@@ -464,9 +464,9 @@ Complete trip
                                   <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{trip.status}</div>
                                 </div>
                                 <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-                                  {trip.status === "scheduled" && <button onClick={() => updateTripStatus(trip, "in_progress")} style={primaryBtn}>Start</button>}
-                                  {trip.status === "pending" && <button onClick={() => updateTripStatus(trip, "in_progress")} style={primaryBtn}>Start</button>}
-                                  {trip.status === "in_progress" && <button onClick={() => updateTripStatus(trip, "completed")} style={primaryBtn}>Complete</button>}
+                                  {trip.status === "scheduled" && <button onClick={() => updateTripStatus(trip, "in_progress")} style={primaryBtn}>Bắt đầu</button>}
+                                  {trip.status === "pending" && <button onClick={() => updateTripStatus(trip, "in_progress")} style={primaryBtn}>Bắt đầu</button>}
+                                  {trip.status === "in_progress" && <button onClick={() => updateTripStatus(trip, "completed")} style={primaryBtn}>Hoàn thành</button>}
                                 </div>
                               </button>
                             );
@@ -481,11 +481,11 @@ Complete trip
               {tab === "expenses" && (
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Expenses</div>
-                    <button onClick={() => setShowTxForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ New</button>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Chi tiêu</div>
+                    <button onClick={() => setShowTxForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Mới</button>
                   </div>
                   {transactions.length === 0 ? (
-                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No expenses logged yet.</div>
+                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có chi phí nào.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {transactions.map((tx) => {
@@ -511,11 +511,11 @@ Complete trip
               {tab === "tasks" && (
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Tasks</div>
-                    <button onClick={() => setShowTaskForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Create</button>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Công việc</div>
+                    <button onClick={() => setShowTaskForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>+ Tạo</button>
                   </div>
                   {tasks.length === 0 ? (
-                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>No tasks yet.</div>
+                    <div style={{ ...softCard, padding: 18, color: T.textMuted, fontSize: 13 }}>Chưa có công việc nào.</div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
                       {tasks.map((task) => {
@@ -527,7 +527,7 @@ Complete trip
                           <div key={task.id} style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
                             {canDelete && (
                               <button onClick={(e) => { e.stopPropagation(); handleDeleteTask(task); }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", borderRadius: 18 }}>
-                                Delete
+                                Xóa
                               </button>
                             )}
                             <button {...swipe} onClick={() => { setSelectedTask(task); setActivePanel("task-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, position: "relative", transform: canDelete && revealedTaskId === task.id ? "translateX(-88px)" : "translateX(0)", transition: "transform 180ms ease" }}>
@@ -535,8 +535,8 @@ Complete trip
                                 <div>
                                   <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
                                   {task.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description}</div>}
-                                  <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{task.due_date ? `Due: ${fmtDate(task.due_date)}` : "No deadline"}</div>
-                                  <div style={{ fontSize: 11, color: T.textMuted, marginTop: 6 }}>Progress {progress}%</div>
+                                  <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{task.due_date ? `Hạn: ${fmtDate(task.due_date)}` : "Không có hạn"}</div>
+                                  <div style={{ fontSize: 11, color: T.textMuted, marginTop: 6 }}>Tiến độ {progress}%</div>
                                 </div>
                                 <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
                               </div>
@@ -559,10 +559,10 @@ Complete trip
             <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18, maxHeight: "78vh", overflowY: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>
-                  {activePanel === "help" && "Driver Guide"}
-                  {activePanel === "trip-detail" && "Trip details"}
-                  {activePanel === "expense-detail" && "Expense details"}
-                  {activePanel === "task-detail" && "Task details"}
+                  {activePanel === "help" && "Hướng dẫn"}
+                  {activePanel === "trip-detail" && "Chi tiết chuyến đi"}
+                  {activePanel === "expense-detail" && "Chi tiết chi phí"}
+                  {activePanel === "task-detail" && "Chi tiết công việc"}
                 </div>
                 <button onClick={() => setActivePanel("")} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
                   <MIcon name="close" size={22} color={T.textMuted} />
@@ -571,8 +571,8 @@ Complete trip
 
               {activePanel === "help" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick actions</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Log expense from Home\n• Open any trip for details\n• Update task status in one tap</div></div>
-                  <button onClick={() => setShowTxForm(true)} style={primaryBtn}>Log expense</button>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Thao tác nhanh</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Ghi chi phí từ Tổng quan\n• Mở bất kỳ chuyến nào để xem chi tiết\n• Cập nhật trạng thái công việc chỉ với một lần chạm</div></div>
+                  <button onClick={() => setShowTxForm(true)} style={primaryBtn}>Ghi chi phí</button>
                 </div>
               )}
 
@@ -583,14 +583,14 @@ Complete trip
                     <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(selectedTrip.scheduled_time)}</div>
                   </div>
                   <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}>
-                    <div>Pickup: {selectedTrip.pickup_location || "—"}</div>
-                    <div>Dropoff: {selectedTrip.dropoff_location || "—"}</div>
-                    <div>Status: <strong>{selectedTrip.status}</strong></div>
-                    {selectedTrip.notes && <div>Notes: {selectedTrip.notes}</div>}
+                    <div>Điểm đón: {selectedTrip.pickup_location || "—"}</div>
+                    <div>Điểm trả: {selectedTrip.dropoff_location || "—"}</div>
+                    <div>Trạng thái: <strong>{selectedTrip.status}</strong></div>
+                    {selectedTrip.notes && <div>Ghi chú: {selectedTrip.notes}</div>}
                   </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {(selectedTrip.status === "scheduled" || selectedTrip.status === "pending") && <button onClick={() => { updateTripStatus(selectedTrip, "in_progress"); setActivePanel(""); }} style={primaryBtn}>Start</button>}
-                    {selectedTrip.status === "in_progress" && <button onClick={() => { updateTripStatus(selectedTrip, "completed"); setActivePanel(""); }} style={primaryBtn}>Complete</button>}
+                    {(selectedTrip.status === "scheduled" || selectedTrip.status === "pending") && <button onClick={() => { updateTripStatus(selectedTrip, "in_progress"); setActivePanel(""); }} style={primaryBtn}>Bắt đầu</button>}
+                    {selectedTrip.status === "in_progress" && <button onClick={() => { updateTripStatus(selectedTrip, "completed"); setActivePanel(""); }} style={primaryBtn}>Hoàn thành</button>}
                   </div>
                 </div>
               )}
@@ -602,12 +602,12 @@ Complete trip
                     <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(selectedTransaction.transaction_date || selectedTransaction.created_at)}</div>
                   </div>
                   <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}>
-                    <div>Amount: <strong>{fmtVND(Math.abs(Number(selectedTransaction.amount || 0)))}</strong></div>
-                    <div>Type: {selectedTransaction.type || "expense"}</div>
-                    <div>Status: {selectedTransaction.status || "pending"}</div>
-                    {selectedTransaction.bank_name && <div>Bank: {selectedTransaction.bank_name}</div>}
+                    <div>Số tiền: <strong>{fmtVND(Math.abs(Number(selectedTransaction.amount || 0)))}</strong></div>
+                    <div>Loại: {selectedTransaction.type || "expense"}</div>
+                    <div>Trạng thái: {selectedTransaction.status || "pending"}</div>
+                    {selectedTransaction.bank_name && <div>Ngân hàng: {selectedTransaction.bank_name}</div>}
                   </div>
-                  <button onClick={() => { setActivePanel(""); setTab("expenses"); }} style={primaryBtn}>Back to Expenses</button>
+                  <button onClick={() => { setActivePanel(""); setTab("expenses"); }} style={primaryBtn}>Quay lại Chi tiêu</button>
                 </div>
               )}
 
@@ -618,14 +618,14 @@ Complete trip
                     <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedTask.due_date ? fmtDate(selectedTask.due_date) : "No deadline"}</div>
                   </div>
                   <div style={{ ...softCard, padding: 14, fontSize: 13, color: T.text, lineHeight: 1.7 }}>
-                    <div>Status: <strong>{selectedTask.status}</strong></div>
-                    <div>Progress: <strong>{taskProgress(selectedTask.status)}%</strong></div>
-                    <div>{selectedTask.description || "No notes"}</div>
+                    <div>Trạng thái: <strong>{selectedTask.status}</strong></div>
+                    <div>Tiến độ: <strong>{taskProgress(selectedTask.status)}%</strong></div>
+                    <div>{selectedTask.description || "Không có ghi chú"}</div>
                   </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {selectedTask.status !== "pending" && <button onClick={() => { updateTaskStatus(selectedTask, "pending"); setActivePanel(""); }} style={primaryBtn}>Mark pending</button>}
-                    {selectedTask.status !== "in_progress" && <button onClick={() => { updateTaskStatus(selectedTask, "in_progress"); setActivePanel(""); }} style={primaryBtn}>Mark in progress</button>}
-                    {selectedTask.status !== "done" && <button onClick={() => { updateTaskStatus(selectedTask, "done"); setActivePanel(""); }} style={primaryBtn}>Mark done</button>}
+                    {selectedTask.status !== "pending" && <button onClick={() => { updateTaskStatus(selectedTask, "pending"); setActivePanel(""); }} style={primaryBtn}>Đánh dấu đang chờ</button>}
+                    {selectedTask.status !== "in_progress" && <button onClick={() => { updateTaskStatus(selectedTask, "in_progress"); setActivePanel(""); }} style={primaryBtn}>Đánh dấu đang thực hiện</button>}
+                    {selectedTask.status !== "done" && <button onClick={() => { updateTaskStatus(selectedTask, "done"); setActivePanel(""); }} style={primaryBtn}>Đánh dấu hoàn thành</button>}
                   </div>
                 </div>
               )}
@@ -637,34 +637,34 @@ Complete trip
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 200, display: "flex", alignItems: "flex-end" }}>
             <div style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "24px 24px 0 0", padding: 18 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>New task</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Việc mới</div>
                 <button onClick={() => setShowTaskForm(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
                   <MIcon name="close" size={22} color={T.textMuted} />
                 </button>
               </div>
               <form onSubmit={handleCreateTask}>
-                <label htmlFor="driver-task-title" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Task title</label>
-                <input id="driver-task-title" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="Task title" required style={inputStyle} />
-                <label htmlFor="driver-task-notes" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginTop: 10, marginBottom: 6 }}>Notes</label>
-                <textarea id="driver-task-notes" value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} placeholder="Notes" style={{ ...inputStyle, minHeight: 90, resize: "none", paddingTop: 12, paddingBottom: 12 }} />
+                <label htmlFor="driver-task-title" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Tiêu đề</label>
+                <input id="driver-task-title" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="Tiêu đề" required style={inputStyle} />
+                <label htmlFor="driver-task-notes" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginTop: 10, marginBottom: 6 }}>Ghi chú</label>
+                <textarea id="driver-task-notes" value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} placeholder="Ghi chú" style={{ ...inputStyle, minHeight: 90, resize: "none", paddingTop: 12, paddingBottom: 12 }} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
                   <div>
-                    <label htmlFor="driver-task-priority" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Priority</label>
+                    <label htmlFor="driver-task-priority" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Ưu tiên</label>
                     <select id="driver-task-priority" value={newTask.priority} onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })} style={inputStyle}>
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="urgent">Urgent</option>
+                      <option value="low">Thấp</option>
+                      <option value="medium">Trung bình</option>
+                      <option value="high">Cao</option>
+                      <option value="urgent">Khẩn cấp</option>
                     </select>
                   </div>
                   <div>
-                    <label htmlFor="driver-task-due" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Due date</label>
+                    <label htmlFor="driver-task-due" style={{ fontSize: 12, fontWeight: 700, color: T.text, display: "block", marginBottom: 6 }}>Hạn hoàn thành</label>
                     <input id="driver-task-due" type="date" value={newTask.due_date} onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })} style={dateInputStyle} />
                   </div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
-                  <button type="button" onClick={() => setShowTaskForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Cancel</button>
-                  <button type="submit" disabled={taskSubmitting} style={{ height: 46, borderRadius: 12, border: "none", background: taskSubmitting ? "#93e06e" : T.primary, color: "white", cursor: taskSubmitting ? "default" : "pointer", fontWeight: 800 }}>{taskSubmitting ? "Creating..." : "Create"}</button>
+                  <button type="button" onClick={() => setShowTaskForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Hủy</button>
+                  <button type="submit" disabled={taskSubmitting} style={{ height: 46, borderRadius: 12, border: "none", background: taskSubmitting ? "#93e06e" : T.primary, color: "white", cursor: taskSubmitting ? "default" : "pointer", fontWeight: 800 }}>{taskSubmitting ? "Đang tạo..." : "Tạo"}</button>
                 </div>
               </form>
             </div>
