@@ -25,9 +25,14 @@ const T = {
 const cardStyle = {
   background: T.card,
   border: `1px solid ${T.border}`,
-  borderRadius: 18,
-  boxShadow: "0 8px 30px rgba(16,24,16,0.04)",
+  borderRadius: 14,
+  boxShadow: "0 4px 20px rgba(16,24,16,0.03)",
 };
+
+/* ─── Golden-ratio type scale (φ ≈ 1.618) ───
+   8 → 10 → 13 → 16 → 20 → 26
+   Spacing: 6 → 8 → 10 → 13 → 16 → 20 → 26
+   ────────────────────────────────────────────── */
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -177,11 +182,11 @@ export default function TransactionsPage() {
   return (
     <div style={{ background: T.bg, minHeight: "100vh", maxWidth: 430, margin: "0 auto", fontFamily: "'Manrope','Inter',-apple-system,sans-serif", boxShadow: "0 0 60px rgba(0,0,0,0.06)" }}>
         {/* Header */}
-        <div style={{ padding: "24px 18px 16px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+        <div style={{ padding: "20px 16px 13px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 13 }}>
             <div>
-              <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Audit Ledger</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: T.text }}>Transactions</div>
+              <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Audit Ledger</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Transactions</div>
             </div>
             <button onClick={() => {
               const from = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("from") : null;
@@ -194,24 +199,24 @@ export default function TransactionsPage() {
                 return;
               }
               window.history.back();
-            }} style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${T.border}`, background: T.card, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <MIcon name="arrow_back" size={20} color={T.text} />
+            }} style={{ width: 36, height: 36, borderRadius: "50%", border: `1px solid ${T.border}`, background: T.card, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <MIcon name="arrow_back" size={18} color={T.text} />
             </button>
           </div>
 
           {/* Month/Year filter */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              style={{ flex: 1, height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, padding: "0 12px", fontSize: 14, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}
+              style={{ flex: 1, height: 36, borderRadius: 10, border: `1px solid ${T.border}`, background: T.card, padding: "0 10px", fontSize: 12, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}
             >
               {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
             </select>
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
-              style={{ width: 90, height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, padding: "0 12px", fontSize: 14, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}
+              style={{ width: 80, height: 36, borderRadius: 10, border: `1px solid ${T.border}`, background: T.card, padding: "0 10px", fontSize: 12, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}
             >
               {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
@@ -219,48 +224,48 @@ export default function TransactionsPage() {
 
           {/* Search */}
           <div style={{ position: "relative" }}>
-            <MIcon name="search" size={18} color={T.textMuted} style={{ position: "absolute", left: 14, top: 12 }} />
+            <MIcon name="search" size={16} color={T.textMuted} style={{ position: "absolute", left: 12, top: 10 }} />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search transactions..."
-              style={{ width: "100%", height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, paddingLeft: 40, paddingRight: 14, fontSize: 14, color: T.text, boxSizing: "border-box" }}
+              style={{ width: "100%", height: 36, borderRadius: 10, border: `1px solid ${T.border}`, background: T.card, paddingLeft: 34, paddingRight: 12, fontSize: 12, color: T.text, boxSizing: "border-box" }}
             />
             {search && (
-              <button onClick={() => setSearch("")} style={{ position: "absolute", right: 10, top: 10, background: "none", border: "none", cursor: "pointer" }}>
-                <MIcon name="close" size={18} color={T.textMuted} />
+              <button onClick={() => setSearch("")} style={{ position: "absolute", right: 8, top: 8, background: "none", border: "none", cursor: "pointer" }}>
+                <MIcon name="close" size={16} color={T.textMuted} />
               </button>
             )}
           </div>
         </div>
 
         {/* Summary strip */}
-        <div style={{ padding: "0 18px 14px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-          <div style={{ ...cardStyle, padding: 12, textAlign: "center" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: T.success, letterSpacing: "0.06em" }}>Income</div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: T.success, marginTop: 4 }}>{fmtVND(totalIncome)}</div>
+        <div style={{ padding: "0 16px 10px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+          <div style={{ ...cardStyle, padding: "8px 10px", textAlign: "center" }}>
+            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: T.success, letterSpacing: "0.06em" }}>Income</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: T.success, marginTop: 3 }}>{fmtVND(totalIncome)}</div>
           </div>
-          <div style={{ ...cardStyle, padding: 12, textAlign: "center" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: T.danger, letterSpacing: "0.06em" }}>Expense</div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: T.danger, marginTop: 4 }}>{fmtVND(totalExpense)}</div>
+          <div style={{ ...cardStyle, padding: "8px 10px", textAlign: "center" }}>
+            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: T.danger, letterSpacing: "0.06em" }}>Expense</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: T.danger, marginTop: 3 }}>{fmtVND(totalExpense)}</div>
           </div>
-          <div style={{ ...cardStyle, padding: 12, textAlign: "center" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: T.amber, letterSpacing: "0.06em" }}>Pending</div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: T.amber, marginTop: 4 }}>{pendingCount}</div>
+          <div style={{ ...cardStyle, padding: "8px 10px", textAlign: "center" }}>
+            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: T.amber, letterSpacing: "0.06em" }}>Pending</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: T.amber, marginTop: 3 }}>{pendingCount}</div>
           </div>
         </div>
 
         {/* Transaction list */}
-        <div style={{ padding: "0 18px 100px" }}>
+        <div style={{ padding: "0 16px 100px" }}>
           {loading ? (
-            <div style={{ textAlign: "center", color: T.textMuted, padding: 40, fontSize: 14 }}>Loading...</div>
+            <div style={{ textAlign: "center", color: T.textMuted, padding: 26, fontSize: 12 }}>Loading...</div>
           ) : filtered.length === 0 ? (
-            <div style={{ textAlign: "center", color: T.textMuted, padding: 40 }}>
-              <MIcon name="receipt_long" size={40} color={T.border} />
-              <div style={{ marginTop: 12, fontSize: 14 }}>No transactions found</div>
+            <div style={{ textAlign: "center", color: T.textMuted, padding: 26 }}>
+              <MIcon name="receipt_long" size={32} color={T.border} />
+              <div style={{ marginTop: 10, fontSize: 12 }}>No transactions found</div>
             </div>
           ) : (
-            <div style={{ display: "grid", gap: 8 }}>
+            <div style={{ display: "grid", gap: 6 }}>
               {filtered.map((tx) => {
                 const signedAmount = getSignedAmount(tx);
                 const isIncome = signedAmount >= 0;
@@ -269,28 +274,28 @@ export default function TransactionsPage() {
                   <button
                     key={tx.id}
                     onClick={() => setDetail(tx)}
-                    style={{ ...cardStyle, padding: 14, width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
+                    style={{ ...cardStyle, padding: "10px 12px", width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}
                   >
                     {/* Icon */}
-                    <div style={{ width: 42, height: 42, borderRadius: 12, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <MIcon name={isIncome ? "trending_up" : "trending_down"} size={20} color={isIncome ? T.success : T.danger} />
+                    <div style={{ width: 34, height: 34, borderRadius: 10, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <MIcon name={isIncome ? "trending_up" : "trending_down"} size={16} color={isIncome ? T.success : T.danger} />
                     </div>
                     {/* Details */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
                           {tx.description || tx.recipient_name || (isIncome ? "Income" : "Expense")}
                         </div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: isIncome ? T.success : T.danger, flexShrink: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: isIncome ? T.success : T.danger, flexShrink: 0, whiteSpace: "nowrap" }}>
                           {isIncome ? "+" : "−"}{fmtVND(Math.abs(signedAmount))}
                         </div>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-                        <div style={{ fontSize: 12, color: T.textMuted }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3 }}>
+                        <div style={{ fontSize: 11, color: T.textMuted }}>
                           {tx.profiles?.full_name || "—"} · {fmtDate(tx.transaction_date || tx.created_at)}
                         </div>
-                        <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, background: `${statusColor}15`, color: statusColor, fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>
-                          <div style={{ width: 5, height: 5, borderRadius: "50%", background: statusColor }} />
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 6px", borderRadius: 5, background: `${statusColor}15`, color: statusColor, fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>
+                          <div style={{ width: 4, height: 4, borderRadius: "50%", background: statusColor }} />
                           {tx.status}
                         </div>
                       </div>
@@ -304,12 +309,12 @@ export default function TransactionsPage() {
                   onClick={() => fetchTransactions(true)}
                   disabled={loadingMore}
                   style={{
-                    width: "100%", height: 46, borderRadius: 12,
+                    width: "100%", height: 38, borderRadius: 10,
                     border: `1px solid ${T.border}`, background: T.card,
-                    color: T.primary, fontWeight: 800, fontSize: 14,
+                    color: T.primary, fontWeight: 700, fontSize: 12,
                     cursor: loadingMore ? "default" : "pointer",
                     opacity: loadingMore ? 0.6 : 1,
-                    marginTop: 4,
+                    marginTop: 3,
                   }}
                 >
                   {loadingMore ? "Loading..." : "Load more"}
