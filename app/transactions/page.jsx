@@ -49,6 +49,7 @@ export default function TransactionsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [search, setSearch] = useState("");
+  const [selectedDay, setSelectedDay] = useState(null); // null = all days, or 1-31
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [detail, setDetail] = useState(null);
@@ -126,11 +127,23 @@ export default function TransactionsPage() {
     return () => supabase.removeChannel(ch);
   }, [selectedMonth, selectedYear]);
 
-  // Filter by search only (for summary stats)
+  // Helper: get day of month from a transaction date
+  const getTxDay = (tx) => {
+    const d = new Date(tx.transaction_date || tx.created_at || Date.now());
+    return Number.isNaN(d.getTime()) ? null : d.getDate();
+  };
+
+  // Step 1: Filter by day (if selected)
+  const dayFiltered = useMemo(() => {
+    if (selectedDay === null) return transactions;
+    return transactions.filter((tx) => getTxDay(tx) === selectedDay);
+  }, [transactions, selectedDay]);
+
+  // Step 2: Filter by search
   const searchFiltered = useMemo(() => {
-    if (!search.trim()) return transactions;
+    if (!search.trim()) return dayFiltered;
     const q = search.toLowerCase();
-    return transactions.filter((tx) =>
+    return dayFiltered.filter((tx) =>
       (tx.description || "").toLowerCase().includes(q) ||
       (tx.recipient_name || "").toLowerCase().includes(q) ||
       (tx.bank_name || "").toLowerCase().includes(q) ||
@@ -139,20 +152,9 @@ export default function TransactionsPage() {
       (tx.profiles?.full_name || "").toLowerCase().includes(q) ||
       String(tx.amount || "").includes(q)
     );
-  }, [transactions, search]);
+  }, [dayFiltered, search]);
 
-  // Summary stats (computed from search-filtered, before activeFilter)
-  const totalIncome = useMemo(() => searchFiltered.reduce((s, t) => {
-    const signed = getSignedAmount(t);
-    return signed > 0 ? s + signed : s;
-  }, 0), [searchFiltered]);
-  const totalExpense = useMemo(() => searchFiltered.reduce((s, t) => {
-    const signed = getSignedAmount(t);
-    return signed < 0 ? s + Math.abs(signed) : s;
-  }, 0), [searchFiltered]);
-  const pendingCount = useMemo(() => searchFiltered.filter((t) => t.status === "pending").length, [searchFiltered]);
-
-  // Apply activeFilter on top of search
+  // Step 3: Apply activeFilter (income/expense/pending)
   const filtered = useMemo(() => {
     if (!activeFilter) return searchFiltered;
     return searchFiltered.filter((tx) => {
@@ -162,6 +164,25 @@ export default function TransactionsPage() {
       return true;
     });
   }, [searchFiltered, activeFilter]);
+
+  // Summary stats — computed from filtered (reflects day + search + activeFilter)
+  const totalIncome = useMemo(() => filtered.reduce((s, t) => {
+    const signed = getSignedAmount(t);
+    return signed > 0 ? s + signed : s;
+  }, 0), [filtered]);
+  const totalExpense = useMemo(() => filtered.reduce((s, t) => {
+    const signed = getSignedAmount(t);
+    return signed < 0 ? s + Math.abs(signed) : s;
+  }, 0), [filtered]);
+  const pendingCount = useMemo(() => filtered.filter((t) => t.status === "pending").length, [filtered]);
+
+  // Day options for the selected month/year
+  const dayOptions = useMemo(() => {
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    const days = [];
+    for (let d = 1; d <= daysInMonth; d++) days.push(d);
+    return days;
+  }, [selectedMonth, selectedYear]);
 
   // Group transactions by date
   const groupedByDate = useMemo(() => {
@@ -237,18 +258,26 @@ export default function TransactionsPage() {
             </button>
           </div>
 
-          {/* Month/Year filter */}
+          {/* Day / Month / Year filter */}
           <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
             <select
+              value={selectedDay === null ? "" : selectedDay}
+              onChange={(e) => setSelectedDay(e.target.value === "" ? null : Number(e.target.value))}
+              style={{ width: 72, height: 36, borderRadius: 10, border: `1px solid ${selectedDay !== null ? T.primary : T.border}`, background: selectedDay !== null ? `${T.primary}08` : T.card, padding: "0 8px", fontSize: 12, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}
+            >
+              <option value="">Tất cả</option>
+              {dayOptions.map((d) => <option key={d} value={d}>Ngày {d}</option>)}
+            </select>
+            <select
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              onChange={(e) => { setSelectedMonth(Number(e.target.value)); setSelectedDay(null); }}
               style={{ flex: 1, height: 36, borderRadius: 10, border: `1px solid ${T.border}`, background: T.card, padding: "0 10px", fontSize: 12, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}
             >
               {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
             </select>
             <select
               value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              onChange={(e) => { setSelectedYear(Number(e.target.value)); setSelectedDay(null); }}
               style={{ width: 80, height: 36, borderRadius: 10, border: `1px solid ${T.border}`, background: T.card, padding: "0 10px", fontSize: 12, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}
             >
               {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
@@ -362,13 +391,8 @@ export default function TransactionsPage() {
                               <MIcon name={isIncome ? "trending_up" : "trending_down"} size={16} color={isIncome ? T.success : T.danger} />
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
-                                  {tx.description || tx.recipient_name || (isIncome ? "Thu nhập" : "Chi tiêu")}
-                                </div>
-                                <div style={{ fontSize: 13, fontWeight: 700, color: isIncome ? T.success : T.danger, flexShrink: 0, whiteSpace: "nowrap" }}>
-                                  {isIncome ? "+" : "−"}{fmtVND(Math.abs(signedAmount))}
-                                </div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {tx.description || tx.recipient_name || (isIncome ? "Thu nhập" : "Chi tiêu")}
                               </div>
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3 }}>
                                 <div style={{ fontSize: 11, color: T.textMuted }}>

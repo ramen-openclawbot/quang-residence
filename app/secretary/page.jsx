@@ -114,6 +114,7 @@ export default function SecretaryPage() {
   const [pendingNotifTaskId, setPendingNotifTaskId] = useState(null);
   const [notifReturnTab, setNotifReturnTab] = useState(null);
   const [txSearch, setTxSearch] = useState("");
+  const [selectedDay, setSelectedDay] = useState(null); // null = all days, or 1-31
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [txActiveFilter, setTxActiveFilter] = useState(null); // "income" | "expense" | "pending" | null
@@ -374,14 +375,29 @@ export default function SecretaryPage() {
     const d = new Date(candidate || Date.now());
     return Number.isNaN(d.getTime()) ? new Date() : d;
   };
+  // Helper: get day of month from tx date
+  const getTxDay = (tx) => {
+    const d = getTxFilterDate(tx);
+    return d.getDate();
+  };
+
+  // Step 1: Month filter
   const txMonthFiltered = useMemo(() => transactions.filter((tx) => {
     const base = getTxFilterDate(tx);
     return base.getMonth() === selectedMonth && base.getFullYear() === selectedYear;
   }), [transactions, selectedMonth, selectedYear]);
+
+  // Step 2: Day filter
+  const txDayFiltered = useMemo(() => {
+    if (selectedDay === null) return txMonthFiltered;
+    return txMonthFiltered.filter((tx) => getTxDay(tx) === selectedDay);
+  }, [txMonthFiltered, selectedDay]);
+
+  // Step 3: Search filter
   const txSearchFiltered = useMemo(() => {
     const q = txSearch.trim().toLowerCase();
-    if (!q) return txMonthFiltered;
-    return txMonthFiltered.filter((tx) => [
+    if (!q) return txDayFiltered;
+    return txDayFiltered.filter((tx) => [
       tx.description,
       tx.recipient_name,
       tx.bank_name,
@@ -390,9 +406,9 @@ export default function SecretaryPage() {
       tx.status,
       tx.type,
     ].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
-  }, [txMonthFiltered, txSearch]);
+  }, [txDayFiltered, txSearch]);
 
-  // Apply activeFilter on top of search
+  // Step 4: Apply activeFilter (income/expense/pending)
   const txFiltered = useMemo(() => {
     if (!txActiveFilter) return txSearchFiltered;
     return txSearchFiltered.filter((tx) => {
@@ -420,21 +436,30 @@ export default function SecretaryPage() {
     return groups;
   }, [txFiltered]);
 
+  // Day options for selected month/year
+  const txDayOptions = useMemo(() => {
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    const days = [];
+    for (let d = 1; d <= daysInMonth; d++) days.push(d);
+    return days;
+  }, [selectedMonth, selectedYear]);
+
   /* Reset page when filters change */
-  useEffect(() => { setTxPage(0); }, [txSearch, selectedMonth, selectedYear, txActiveFilter]);
+  useEffect(() => { setTxPage(0); }, [txSearch, selectedMonth, selectedYear, selectedDay, txActiveFilter]);
 
   const txTotalPages = Math.max(1, Math.ceil(txFiltered.length / TX_PER_PAGE));
   const txPageItems = useMemo(() => txFiltered.slice(txPage * TX_PER_PAGE, (txPage + 1) * TX_PER_PAGE), [txFiltered, txPage]);
 
-  const txIncomeTotal = useMemo(() => txSearchFiltered.reduce((sum, tx) => {
+  // Summary stats — computed from txFiltered (reflects day + search + activeFilter)
+  const txIncomeTotal = useMemo(() => txFiltered.reduce((sum, tx) => {
     const signed = getSignedAmount(tx);
     return signed > 0 ? sum + signed : sum;
-  }, 0), [txSearchFiltered]);
-  const txExpenseTotal = useMemo(() => txSearchFiltered.reduce((sum, tx) => {
+  }, 0), [txFiltered]);
+  const txExpenseTotal = useMemo(() => txFiltered.reduce((sum, tx) => {
     const signed = getSignedAmount(tx);
     return signed < 0 ? sum + Math.abs(signed) : sum;
-  }, 0), [txSearchFiltered]);
-  const txPendingCount = useMemo(() => txSearchFiltered.filter((tx) => tx.status === "pending").length, [txSearchFiltered]);
+  }, 0), [txFiltered]);
+  const txPendingCount = useMemo(() => txFiltered.filter((tx) => tx.status === "pending").length, [txFiltered]);
 
   useEffect(() => {
     if (!transactions.length) return;
@@ -767,10 +792,14 @@ export default function SecretaryPage() {
                   </div>
 
                   <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                    <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} style={{ flex: 1, height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, padding: "0 12px", fontSize: 14, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}>
+                    <select value={selectedDay === null ? "" : selectedDay} onChange={(e) => setSelectedDay(e.target.value === "" ? null : Number(e.target.value))} style={{ width: 80, height: 42, borderRadius: 12, border: `1px solid ${selectedDay !== null ? T.primary : T.border}`, background: selectedDay !== null ? `${T.primary}08` : T.card, padding: "0 10px", fontSize: 14, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}>
+                      <option value="">Tất cả</option>
+                      {txDayOptions.map((d) => <option key={d} value={d}>Ngày {d}</option>)}
+                    </select>
+                    <select value={selectedMonth} onChange={(e) => { setSelectedMonth(Number(e.target.value)); setSelectedDay(null); }} style={{ flex: 1, height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, padding: "0 12px", fontSize: 14, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}>
                       {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
                     </select>
-                    <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} style={{ width: 90, height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, padding: "0 12px", fontSize: 14, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}>
+                    <select value={selectedYear} onChange={(e) => { setSelectedYear(Number(e.target.value)); setSelectedDay(null); }} style={{ width: 90, height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, padding: "0 12px", fontSize: 14, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}>
                       {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
                     </select>
                   </div>
@@ -865,23 +894,18 @@ export default function SecretaryPage() {
                                       <div style={{ width: 42, height: 42, borderRadius: 12, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                         <MIcon name={isIncome ? "trending_up" : "trending_down"} size={20} color={isIncome ? T.success : T.danger} />
                                       </div>
-                                      <div style={{ flex: 1, minWidth: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", columnGap: 12, alignItems: "start" }}>
-                                        <div style={{ minWidth: 0 }}>
-                                          <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                            {tx.description || tx.recipient_name || (isIncome ? "Thu nhập" : "Chi tiêu")}
-                                          </div>
-                                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, minWidth: 0, flexWrap: "wrap" }}>
-                                            <div style={{ fontSize: 12, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                              {tx.profiles?.full_name || "—"}
-                                            </div>
-                                            <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, background: `${statusColor}15`, color: statusColor, fontSize: 10, fontWeight: 700, textTransform: "uppercase", flexShrink: 0 }}>
-                                              <div style={{ width: 5, height: 5, borderRadius: "50%", background: statusColor }} />
-                                              {tx.status}
-                                            </div>
-                                          </div>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                          {tx.description || tx.recipient_name || (isIncome ? "Thu nhập" : "Chi tiêu")}
                                         </div>
-                                        <div style={{ fontSize: 14, fontWeight: 800, color: isIncome ? T.success : T.danger, whiteSpace: "nowrap", textAlign: "right", alignSelf: "center" }}>
-                                          {isIncome ? "+" : "−"}{fmtVND(Math.abs(signedAmount))}
+                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4, minWidth: 0 }}>
+                                          <div style={{ fontSize: 12, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                            {tx.profiles?.full_name || "—"}
+                                          </div>
+                                          <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, background: `${statusColor}15`, color: statusColor, fontSize: 10, fontWeight: 700, textTransform: "uppercase", flexShrink: 0 }}>
+                                            <div style={{ width: 5, height: 5, borderRadius: "50%", background: statusColor }} />
+                                            {tx.status}
+                                          </div>
                                         </div>
                                       </div>
                                     </button>
