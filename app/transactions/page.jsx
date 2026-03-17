@@ -52,6 +52,7 @@ export default function TransactionsPage() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [detail, setDetail] = useState(null);
+  const [activeFilter, setActiveFilter] = useState(null); // "income" | "expense" | "pending" | null
   const txCountRef = useRef(0);
   useEffect(() => { txCountRef.current = transactions.length; }, [transactions.length]);
 
@@ -125,8 +126,8 @@ export default function TransactionsPage() {
     return () => supabase.removeChannel(ch);
   }, [selectedMonth, selectedYear]);
 
-  // Filter by search
-  const filtered = useMemo(() => {
+  // Filter by search only (for summary stats)
+  const searchFiltered = useMemo(() => {
     if (!search.trim()) return transactions;
     const q = search.toLowerCase();
     return transactions.filter((tx) =>
@@ -140,16 +141,44 @@ export default function TransactionsPage() {
     );
   }, [transactions, search]);
 
-  // Summary stats
-  const totalIncome = useMemo(() => filtered.reduce((s, t) => {
+  // Summary stats (computed from search-filtered, before activeFilter)
+  const totalIncome = useMemo(() => searchFiltered.reduce((s, t) => {
     const signed = getSignedAmount(t);
     return signed > 0 ? s + signed : s;
-  }, 0), [filtered]);
-  const totalExpense = useMemo(() => filtered.reduce((s, t) => {
+  }, 0), [searchFiltered]);
+  const totalExpense = useMemo(() => searchFiltered.reduce((s, t) => {
     const signed = getSignedAmount(t);
     return signed < 0 ? s + Math.abs(signed) : s;
-  }, 0), [filtered]);
-  const pendingCount = useMemo(() => filtered.filter((t) => t.status === "pending").length, [filtered]);
+  }, 0), [searchFiltered]);
+  const pendingCount = useMemo(() => searchFiltered.filter((t) => t.status === "pending").length, [searchFiltered]);
+
+  // Apply activeFilter on top of search
+  const filtered = useMemo(() => {
+    if (!activeFilter) return searchFiltered;
+    return searchFiltered.filter((tx) => {
+      if (activeFilter === "income") return getSignedAmount(tx) > 0;
+      if (activeFilter === "expense") return getSignedAmount(tx) < 0;
+      if (activeFilter === "pending") return tx.status === "pending";
+      return true;
+    });
+  }, [searchFiltered, activeFilter]);
+
+  // Group transactions by date
+  const groupedByDate = useMemo(() => {
+    const groups = [];
+    let currentDate = null;
+    let currentGroup = null;
+    for (const tx of filtered) {
+      const dateKey = fmtDate(tx.transaction_date || tx.created_at);
+      if (dateKey !== currentDate) {
+        currentDate = dateKey;
+        currentGroup = { date: dateKey, rawDate: tx.transaction_date || tx.created_at, transactions: [] };
+        groups.push(currentGroup);
+      }
+      currentGroup.transactions.push(tx);
+    }
+    return groups;
+  }, [filtered]);
 
   const handleAction = (action, txId) => {
     setTransactions((prev) => prev.map((t) => {
@@ -240,23 +269,55 @@ export default function TransactionsPage() {
           </div>
         </div>
 
-        {/* Summary strip */}
+        {/* Summary strip — clickable filters */}
         <div style={{ padding: "0 16px 10px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-          <div style={{ ...cardStyle, padding: "8px 10px", textAlign: "center" }}>
-            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: T.success, letterSpacing: "0.06em" }}>Thu nhập</div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: T.success, marginTop: 3 }}>{fmtVND(totalIncome)}</div>
-          </div>
-          <div style={{ ...cardStyle, padding: "8px 10px", textAlign: "center" }}>
-            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: T.danger, letterSpacing: "0.06em" }}>Chi tiêu</div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: T.danger, marginTop: 3 }}>{fmtVND(totalExpense)}</div>
-          </div>
-          <div style={{ ...cardStyle, padding: "8px 10px", textAlign: "center" }}>
-            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: T.amber, letterSpacing: "0.06em" }}>Chờ duyệt</div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: T.amber, marginTop: 3 }}>{pendingCount}</div>
-          </div>
+          {[
+            { key: "income", label: "Thu nhập", value: fmtVND(totalIncome), color: T.success },
+            { key: "expense", label: "Chi tiêu", value: fmtVND(totalExpense), color: T.danger },
+            { key: "pending", label: "Chờ duyệt", value: pendingCount, color: T.amber },
+          ].map((item) => {
+            const isActive = activeFilter === item.key;
+            return (
+              <button
+                key={item.key}
+                onClick={() => setActiveFilter(isActive ? null : item.key)}
+                style={{
+                  ...cardStyle,
+                  padding: "8px 10px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  border: isActive ? `2px solid ${item.color}` : `1px solid ${T.border}`,
+                  background: isActive ? `${item.color}10` : T.card,
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: item.color, letterSpacing: "0.06em" }}>{item.label}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: item.color, marginTop: 3 }}>{item.value}</div>
+              </button>
+            );
+          })}
         </div>
+        {/* Active filter indicator */}
+        {activeFilter && (
+          <div style={{ padding: "0 16px 8px" }}>
+            <button
+              onClick={() => setActiveFilter(null)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 4,
+                padding: "4px 10px", borderRadius: 8,
+                background: `${activeFilter === "income" ? T.success : activeFilter === "expense" ? T.danger : T.amber}15`,
+                color: activeFilter === "income" ? T.success : activeFilter === "expense" ? T.danger : T.amber,
+                fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer",
+              }}
+            >
+              <MIcon name="filter_list" size={14} color={activeFilter === "income" ? T.success : activeFilter === "expense" ? T.danger : T.amber} />
+              {activeFilter === "income" ? "Thu nhập" : activeFilter === "expense" ? "Chi tiêu" : "Chờ duyệt"}
+              <MIcon name="close" size={12} color={activeFilter === "income" ? T.success : activeFilter === "expense" ? T.danger : T.amber} />
+            </button>
+          </div>
+        )}
 
-        {/* Transaction list */}
+        {/* Transaction list — grouped by date */}
         <div style={{ padding: "0 16px 100px" }}>
           {loading ? (
             <div style={{ textAlign: "center", color: T.textMuted, padding: 26, fontSize: 12 }}>Đang tải...</div>
@@ -267,45 +328,64 @@ export default function TransactionsPage() {
             </div>
           ) : (
             <div style={{ display: "grid", gap: 6 }}>
-              {filtered.map((tx) => {
-                const signedAmount = getSignedAmount(tx);
-                const isIncome = signedAmount >= 0;
-                const statusColor = tx.status === "approved" ? T.success : tx.status === "pending" ? T.amber : T.danger;
+              {groupedByDate.map((group) => {
+                const dayIncome = group.transactions.reduce((s, t) => { const v = getSignedAmount(t); return v > 0 ? s + v : s; }, 0);
+                const dayExpense = group.transactions.reduce((s, t) => { const v = getSignedAmount(t); return v < 0 ? s + Math.abs(v) : s; }, 0);
                 return (
-                  <button
-                    key={tx.id}
-                    onClick={() => setDetail(tx)}
-                    style={{ ...cardStyle, padding: "10px 12px", width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}
-                  >
-                    {/* Icon */}
-                    <div style={{ width: 34, height: 34, borderRadius: 10, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <MIcon name={isIncome ? "trending_up" : "trending_down"} size={16} color={isIncome ? T.success : T.danger} />
-                    </div>
-                    {/* Details */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
-                          {tx.description || tx.recipient_name || (isIncome ? "Thu nhập" : "Chi tiêu")}
-                        </div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: isIncome ? T.success : T.danger, flexShrink: 0, whiteSpace: "nowrap" }}>
-                          {isIncome ? "+" : "−"}{fmtVND(Math.abs(signedAmount))}
-                        </div>
+                  <div key={group.date}>
+                    {/* Date header */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0 6px" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        {group.date}
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3 }}>
-                        <div style={{ fontSize: 11, color: T.textMuted }}>
-                          {tx.profiles?.full_name || "—"} · {fmtDate(tx.transaction_date || tx.created_at)}
-                        </div>
-                        <div style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 6px", borderRadius: 5, background: `${statusColor}15`, color: statusColor, fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>
-                          <div style={{ width: 4, height: 4, borderRadius: "50%", background: statusColor }} />
-                          {STATUS_VI[tx.status] || tx.status}
-                        </div>
+                      <div style={{ display: "flex", gap: 8, fontSize: 10, fontWeight: 700 }}>
+                        {dayIncome > 0 && <span style={{ color: T.success }}>+{fmtVND(dayIncome)}</span>}
+                        {dayExpense > 0 && <span style={{ color: T.danger }}>−{fmtVND(dayExpense)}</span>}
                       </div>
                     </div>
-                  </button>
+                    {/* Transactions for this date */}
+                    <div style={{ display: "grid", gap: 6 }}>
+                      {group.transactions.map((tx) => {
+                        const signedAmount = getSignedAmount(tx);
+                        const isIncome = signedAmount >= 0;
+                        const statusColor = tx.status === "approved" ? T.success : tx.status === "pending" ? T.amber : T.danger;
+                        return (
+                          <button
+                            key={tx.id}
+                            onClick={() => setDetail(tx)}
+                            style={{ ...cardStyle, padding: "10px 12px", width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}
+                          >
+                            <div style={{ width: 34, height: 34, borderRadius: 10, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                              <MIcon name={isIncome ? "trending_up" : "trending_down"} size={16} color={isIncome ? T.success : T.danger} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+                                  {tx.description || tx.recipient_name || (isIncome ? "Thu nhập" : "Chi tiêu")}
+                                </div>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: isIncome ? T.success : T.danger, flexShrink: 0, whiteSpace: "nowrap" }}>
+                                  {isIncome ? "+" : "−"}{fmtVND(Math.abs(signedAmount))}
+                                </div>
+                              </div>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3 }}>
+                                <div style={{ fontSize: 11, color: T.textMuted }}>
+                                  {tx.profiles?.full_name || "—"}
+                                </div>
+                                <div style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 6px", borderRadius: 5, background: `${statusColor}15`, color: statusColor, fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>
+                                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: statusColor }} />
+                                  {STATUS_VI[tx.status] || tx.status}
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
               {/* Load more */}
-              {hasMore && !search.trim() && (
+              {hasMore && !search.trim() && !activeFilter && (
                 <button
                   onClick={() => fetchTransactions(true)}
                   disabled={loadingMore}

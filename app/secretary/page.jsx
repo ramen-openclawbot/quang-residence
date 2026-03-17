@@ -116,6 +116,7 @@ export default function SecretaryPage() {
   const [txSearch, setTxSearch] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [txActiveFilter, setTxActiveFilter] = useState(null); // "income" | "expense" | "pending" | null
 
   const [funds, setFunds] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -377,7 +378,7 @@ export default function SecretaryPage() {
     const base = getTxFilterDate(tx);
     return base.getMonth() === selectedMonth && base.getFullYear() === selectedYear;
   }), [transactions, selectedMonth, selectedYear]);
-  const txFiltered = useMemo(() => {
+  const txSearchFiltered = useMemo(() => {
     const q = txSearch.trim().toLowerCase();
     if (!q) return txMonthFiltered;
     return txMonthFiltered.filter((tx) => [
@@ -391,21 +392,49 @@ export default function SecretaryPage() {
     ].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
   }, [txMonthFiltered, txSearch]);
 
+  // Apply activeFilter on top of search
+  const txFiltered = useMemo(() => {
+    if (!txActiveFilter) return txSearchFiltered;
+    return txSearchFiltered.filter((tx) => {
+      if (txActiveFilter === "income") return getSignedAmount(tx) > 0;
+      if (txActiveFilter === "expense") return getSignedAmount(tx) < 0;
+      if (txActiveFilter === "pending") return tx.status === "pending";
+      return true;
+    });
+  }, [txSearchFiltered, txActiveFilter]);
+
+  // Group transactions by date for display
+  const txGroupedByDate = useMemo(() => {
+    const groups = [];
+    let currentDate = null;
+    let currentGroup = null;
+    for (const tx of txFiltered) {
+      const dateKey = fmtDate(tx.transaction_date || tx.created_at);
+      if (dateKey !== currentDate) {
+        currentDate = dateKey;
+        currentGroup = { date: dateKey, transactions: [] };
+        groups.push(currentGroup);
+      }
+      currentGroup.transactions.push(tx);
+    }
+    return groups;
+  }, [txFiltered]);
+
   /* Reset page when filters change */
-  useEffect(() => { setTxPage(0); }, [txSearch, selectedMonth, selectedYear]);
+  useEffect(() => { setTxPage(0); }, [txSearch, selectedMonth, selectedYear, txActiveFilter]);
 
   const txTotalPages = Math.max(1, Math.ceil(txFiltered.length / TX_PER_PAGE));
   const txPageItems = useMemo(() => txFiltered.slice(txPage * TX_PER_PAGE, (txPage + 1) * TX_PER_PAGE), [txFiltered, txPage]);
 
-  const txIncomeTotal = useMemo(() => txMonthFiltered.reduce((sum, tx) => {
+  const txIncomeTotal = useMemo(() => txSearchFiltered.reduce((sum, tx) => {
     const signed = getSignedAmount(tx);
     return signed > 0 ? sum + signed : sum;
-  }, 0), [txMonthFiltered]);
-  const txExpenseTotal = useMemo(() => txMonthFiltered.reduce((sum, tx) => {
+  }, 0), [txSearchFiltered]);
+  const txExpenseTotal = useMemo(() => txSearchFiltered.reduce((sum, tx) => {
     const signed = getSignedAmount(tx);
     return signed < 0 ? sum + Math.abs(signed) : sum;
-  }, 0), [txMonthFiltered]);
-  const txPendingCount = useMemo(() => txMonthFiltered.filter((tx) => tx.status === "pending").length, [txMonthFiltered]);
+  }, 0), [txSearchFiltered]);
+  const txPendingCount = useMemo(() => txSearchFiltered.filter((tx) => tx.status === "pending").length, [txSearchFiltered]);
 
   useEffect(() => {
     if (!transactions.length) return;
@@ -751,20 +780,53 @@ export default function SecretaryPage() {
                     <input value={txSearch} onChange={(e) => setTxSearch(e.target.value)} placeholder="Tìm kiếm giao dịch..." style={{ width: "100%", height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, paddingLeft: 40, paddingRight: 14, fontSize: 14, color: T.text, boxSizing: "border-box" }} />
                   </div>
 
+                  {/* Summary strip — clickable filters */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
-                    <div style={{ ...cardStyle, padding: 12, textAlign: "center" }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: T.success, letterSpacing: "0.06em" }}>Thu nhập</div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: T.success, marginTop: 4 }}>{fmtVND(txIncomeTotal)}</div>
-                    </div>
-                    <div style={{ ...cardStyle, padding: 12, textAlign: "center" }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: T.danger, letterSpacing: "0.06em" }}>Chi tiêu</div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: T.danger, marginTop: 4 }}>{fmtVND(txExpenseTotal)}</div>
-                    </div>
-                    <div style={{ ...cardStyle, padding: 12, textAlign: "center" }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: T.amber, letterSpacing: "0.06em" }}>Chờ duyệt</div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: T.amber, marginTop: 4 }}>{txPendingCount}</div>
-                    </div>
+                    {[
+                      { key: "income", label: "Thu nhập", value: fmtVND(txIncomeTotal), color: T.success },
+                      { key: "expense", label: "Chi tiêu", value: fmtVND(txExpenseTotal), color: T.danger },
+                      { key: "pending", label: "Chờ duyệt", value: txPendingCount, color: T.amber },
+                    ].map((item) => {
+                      const isActive = txActiveFilter === item.key;
+                      return (
+                        <button
+                          key={item.key}
+                          onClick={() => setTxActiveFilter(isActive ? null : item.key)}
+                          style={{
+                            ...cardStyle,
+                            padding: 12,
+                            textAlign: "center",
+                            cursor: "pointer",
+                            border: isActive ? `2px solid ${item.color}` : `1px solid ${T.border}`,
+                            background: isActive ? `${item.color}10` : T.card,
+                            transition: "all 0.2s ease",
+                          }}
+                        >
+                          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: item.color, letterSpacing: "0.06em" }}>{item.label}</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: item.color, marginTop: 4 }}>{item.value}</div>
+                        </button>
+                      );
+                    })}
                   </div>
+                  {/* Active filter indicator */}
+                  {txActiveFilter && (
+                    <div style={{ marginBottom: 10 }}>
+                      <button
+                        onClick={() => setTxActiveFilter(null)}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 4,
+                          padding: "4px 10px", borderRadius: 8,
+                          background: `${txActiveFilter === "income" ? T.success : txActiveFilter === "expense" ? T.danger : T.amber}15`,
+                          color: txActiveFilter === "income" ? T.success : txActiveFilter === "expense" ? T.danger : T.amber,
+                          fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer",
+                        }}
+                      >
+                        <MIcon name="filter_list" size={14} color={txActiveFilter === "income" ? T.success : txActiveFilter === "expense" ? T.danger : T.amber} />
+                        {txActiveFilter === "income" ? "Thu nhập" : txActiveFilter === "expense" ? "Chi tiêu" : "Chờ duyệt"}
+                        <MIcon name="close" size={12} color={txActiveFilter === "income" ? T.success : txActiveFilter === "expense" ? T.danger : T.amber} />
+                      </button>
+                    </div>
+                  )}
 
                   {txFiltered.length === 0 ? (
                     <div style={{ ...cardStyle, padding: 24, textAlign: "center" }}>
@@ -774,35 +836,59 @@ export default function SecretaryPage() {
                   ) : (
                     <>
                       <div style={{ display: "grid", gap: 8 }}>
-                        {txPageItems.map((tx) => {
-                          const signedAmount = getSignedAmount(tx);
-                          const isIncome = signedAmount >= 0;
-                          const statusColor = tx.status === "approved" ? T.success : tx.status === "pending" ? T.amber : T.danger;
+                        {txGroupedByDate.map((group) => {
+                          const dayIncome = group.transactions.reduce((s, t) => { const v = getSignedAmount(t); return v > 0 ? s + v : s; }, 0);
+                          const dayExpense = group.transactions.reduce((s, t) => { const v = getSignedAmount(t); return v < 0 ? s + Math.abs(v) : s; }, 0);
+                          // Only show transactions in current page range
+                          const groupTxInPage = group.transactions.filter((tx) => txPageItems.includes(tx));
+                          if (groupTxInPage.length === 0) return null;
                           return (
-                            <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("transaction-detail"); }} style={{ ...cardStyle, padding: 14, width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, border: `1px solid ${T.border}` }}>
-                              <div style={{ width: 42, height: 42, borderRadius: 12, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                <MIcon name={isIncome ? "trending_up" : "trending_down"} size={20} color={isIncome ? T.success : T.danger} />
-                              </div>
-                              <div style={{ flex: 1, minWidth: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", columnGap: 12, alignItems: "start" }}>
-                                <div style={{ minWidth: 0 }}>
-                                  <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                    {tx.description || tx.recipient_name || (isIncome ? "Thu nhập" : "Chi tiêu")}
-                                  </div>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, minWidth: 0, flexWrap: "wrap" }}>
-                                    <div style={{ fontSize: 12, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                      {tx.profiles?.full_name || "—"} · {fmtDate(tx.transaction_date || tx.created_at)}
-                                    </div>
-                                    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, background: `${statusColor}15`, color: statusColor, fontSize: 10, fontWeight: 700, textTransform: "uppercase", flexShrink: 0 }}>
-                                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: statusColor }} />
-                                      {tx.status}
-                                    </div>
-                                  </div>
+                            <div key={group.date}>
+                              {/* Date header */}
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0 6px" }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                                  {group.date}
                                 </div>
-                                <div style={{ fontSize: 14, fontWeight: 800, color: isIncome ? T.success : T.danger, whiteSpace: "nowrap", textAlign: "right", alignSelf: "center" }}>
-                                  {isIncome ? "+" : "−"}{fmtVND(Math.abs(signedAmount))}
+                                <div style={{ display: "flex", gap: 8, fontSize: 10, fontWeight: 700 }}>
+                                  {dayIncome > 0 && <span style={{ color: T.success }}>+{fmtVND(dayIncome)}</span>}
+                                  {dayExpense > 0 && <span style={{ color: T.danger }}>−{fmtVND(dayExpense)}</span>}
                                 </div>
                               </div>
-                            </button>
+                              {/* Transactions for this date */}
+                              <div style={{ display: "grid", gap: 8 }}>
+                                {groupTxInPage.map((tx) => {
+                                  const signedAmount = getSignedAmount(tx);
+                                  const isIncome = signedAmount >= 0;
+                                  const statusColor = tx.status === "approved" ? T.success : tx.status === "pending" ? T.amber : T.danger;
+                                  return (
+                                    <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("transaction-detail"); }} style={{ ...cardStyle, padding: 14, width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, border: `1px solid ${T.border}` }}>
+                                      <div style={{ width: 42, height: 42, borderRadius: 12, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                        <MIcon name={isIncome ? "trending_up" : "trending_down"} size={20} color={isIncome ? T.success : T.danger} />
+                                      </div>
+                                      <div style={{ flex: 1, minWidth: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", columnGap: 12, alignItems: "start" }}>
+                                        <div style={{ minWidth: 0 }}>
+                                          <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                            {tx.description || tx.recipient_name || (isIncome ? "Thu nhập" : "Chi tiêu")}
+                                          </div>
+                                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, minWidth: 0, flexWrap: "wrap" }}>
+                                            <div style={{ fontSize: 12, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                              {tx.profiles?.full_name || "—"}
+                                            </div>
+                                            <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, background: `${statusColor}15`, color: statusColor, fontSize: 10, fontWeight: 700, textTransform: "uppercase", flexShrink: 0 }}>
+                                              <div style={{ width: 5, height: 5, borderRadius: "50%", background: statusColor }} />
+                                              {tx.status}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div style={{ fontSize: 14, fontWeight: 800, color: isIncome ? T.success : T.danger, whiteSpace: "nowrap", textAlign: "right", alignSelf: "center" }}>
+                                          {isIncome ? "+" : "−"}{fmtVND(Math.abs(signedAmount))}
+                                        </div>
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
                           );
                         })}
                       </div>
@@ -855,7 +941,7 @@ export default function SecretaryPage() {
 
                       {/* Page info */}
                       <div style={{ textAlign: "center", fontSize: 12, color: T.textMuted, marginTop: 8 }}>
-                        {txFiltered.length} transactions · Page {txPage + 1} of {txTotalPages}
+                        {txFiltered.length} giao dịch · Trang {txPage + 1} / {txTotalPages}
                       </div>
                     </>
                   )}
