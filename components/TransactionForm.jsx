@@ -17,7 +17,7 @@ const T = {
   danger: "#dc2626",
   dangerSoft: "#fef2f2",
   shadow: "0 8px 30px rgba(16,24,16,0.04)",
-  font: "'Manrope', 'Inter', -apple-system, sans-serif",
+  font: "'Be Vietnam Pro', 'Inter', -apple-system, sans-serif",
 };
 
 export default function TransactionForm({ onClose, onSuccess }) {

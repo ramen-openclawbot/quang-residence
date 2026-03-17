@@ -24,7 +24,7 @@ export default function Home() {
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: "#f6f8f6",
-      fontFamily: "'Manrope', sans-serif",
+      fontFamily: "'Be Vietnam Pro', sans-serif",
     }}>
       <div style={{ textAlign: "center" }}>
         <div style={{

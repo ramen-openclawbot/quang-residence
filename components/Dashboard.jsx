@@ -702,7 +702,7 @@ export default function Dashboard() {
           100% { background-position: 200% 0; }
         }
       `}</style>
-      <div style={{ minHeight: "100vh", backgroundColor: T.bg, fontFamily: "'Manrope', 'Inter', -apple-system, sans-serif", maxWidth: 430, margin: "0 auto", position: "relative", boxShadow: "0 0 60px rgba(0,0,0,0.08)" }}>
+      <div style={{ minHeight: "100vh", backgroundColor: T.bg, fontFamily: "'Be Vietnam Pro', 'Inter', -apple-system, sans-serif", maxWidth: 430, margin: "0 auto", position: "relative", boxShadow: "0 0 60px rgba(0,0,0,0.08)" }}>
 
         {/* Header */}
         {tab === "home" ? (

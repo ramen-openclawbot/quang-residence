@@ -6,7 +6,7 @@ import TransactionDetail from "../../components/shared/TransactionDetail";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { getSignedAmount } from "../../lib/transaction";
-import { fmtAmountVND as fmtVND, fmtDateEN as fmtDate } from "../../lib/format";
+import { fmtAmountVND as fmtVND, fmtDate } from "../../lib/format";
 
 /* ─── design tokens (must match app-wide palette) ─── */
 const T = {
@@ -34,7 +34,8 @@ const cardStyle = {
    Spacing: 6 → 8 → 10 → 13 → 16 → 20 → 26
    ────────────────────────────────────────────── */
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS = ["Tháng 1","Tháng 2","Tháng 3","Tháng 4","Tháng 5","Tháng 6","Tháng 7","Tháng 8","Tháng 9","Tháng 10","Tháng 11","Tháng 12"];
+const STATUS_VI = { approved: "Đã duyệt", pending: "Chờ duyệt", rejected: "Từ chối" };
 
 /* ═══════════════════════════════════════════════════════
    MAIN PAGE — Transaction Ledger
@@ -167,7 +168,7 @@ export default function TransactionsPage() {
   // Auth guard: only owner + secretary
   if (authLoading) {
     return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: T.bg }}>
-      <div style={{ fontSize: 13, color: T.textMuted }}>Loading...</div>
+      <div style={{ fontSize: 13, color: T.textMuted }}>Đang tải...</div>
     </div>;
   }
   if (!user) {
@@ -180,13 +181,13 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div style={{ background: T.bg, minHeight: "100vh", maxWidth: 430, margin: "0 auto", fontFamily: "'Manrope','Inter',-apple-system,sans-serif", boxShadow: "0 0 60px rgba(0,0,0,0.06)" }}>
+    <div style={{ background: T.bg, minHeight: "100vh", maxWidth: 430, margin: "0 auto", fontFamily: "'Be Vietnam Pro','Inter',-apple-system,sans-serif", boxShadow: "0 0 60px rgba(0,0,0,0.06)" }}>
         {/* Header */}
         <div style={{ padding: "20px 16px 13px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 13 }}>
             <div>
-              <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Audit Ledger</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Transactions</div>
+              <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Sổ kiểm toán</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Giao dịch</div>
             </div>
             <button onClick={() => {
               const from = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("from") : null;
@@ -228,7 +229,7 @@ export default function TransactionsPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search transactions..."
+              placeholder="Tìm giao dịch..."
               style={{ width: "100%", height: 36, borderRadius: 10, border: `1px solid ${T.border}`, background: T.card, paddingLeft: 34, paddingRight: 12, fontSize: 12, color: T.text, boxSizing: "border-box" }}
             />
             {search && (
@@ -242,15 +243,15 @@ export default function TransactionsPage() {
         {/* Summary strip */}
         <div style={{ padding: "0 16px 10px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
           <div style={{ ...cardStyle, padding: "8px 10px", textAlign: "center" }}>
-            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: T.success, letterSpacing: "0.06em" }}>Income</div>
+            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: T.success, letterSpacing: "0.06em" }}>Thu nhập</div>
             <div style={{ fontSize: 12, fontWeight: 800, color: T.success, marginTop: 3 }}>{fmtVND(totalIncome)}</div>
           </div>
           <div style={{ ...cardStyle, padding: "8px 10px", textAlign: "center" }}>
-            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: T.danger, letterSpacing: "0.06em" }}>Expense</div>
+            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: T.danger, letterSpacing: "0.06em" }}>Chi tiêu</div>
             <div style={{ fontSize: 12, fontWeight: 800, color: T.danger, marginTop: 3 }}>{fmtVND(totalExpense)}</div>
           </div>
           <div style={{ ...cardStyle, padding: "8px 10px", textAlign: "center" }}>
-            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: T.amber, letterSpacing: "0.06em" }}>Pending</div>
+            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: T.amber, letterSpacing: "0.06em" }}>Chờ duyệt</div>
             <div style={{ fontSize: 12, fontWeight: 800, color: T.amber, marginTop: 3 }}>{pendingCount}</div>
           </div>
         </div>
@@ -258,11 +259,11 @@ export default function TransactionsPage() {
         {/* Transaction list */}
         <div style={{ padding: "0 16px 100px" }}>
           {loading ? (
-            <div style={{ textAlign: "center", color: T.textMuted, padding: 26, fontSize: 12 }}>Loading...</div>
+            <div style={{ textAlign: "center", color: T.textMuted, padding: 26, fontSize: 12 }}>Đang tải...</div>
           ) : filtered.length === 0 ? (
             <div style={{ textAlign: "center", color: T.textMuted, padding: 26 }}>
               <MIcon name="receipt_long" size={32} color={T.border} />
-              <div style={{ marginTop: 10, fontSize: 12 }}>No transactions found</div>
+              <div style={{ marginTop: 10, fontSize: 12 }}>Không tìm thấy giao dịch</div>
             </div>
           ) : (
             <div style={{ display: "grid", gap: 6 }}>
@@ -284,7 +285,7 @@ export default function TransactionsPage() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
-                          {tx.description || tx.recipient_name || (isIncome ? "Income" : "Expense")}
+                          {tx.description || tx.recipient_name || (isIncome ? "Thu nhập" : "Chi tiêu")}
                         </div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: isIncome ? T.success : T.danger, flexShrink: 0, whiteSpace: "nowrap" }}>
                           {isIncome ? "+" : "−"}{fmtVND(Math.abs(signedAmount))}
@@ -296,7 +297,7 @@ export default function TransactionsPage() {
                         </div>
                         <div style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 6px", borderRadius: 5, background: `${statusColor}15`, color: statusColor, fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>
                           <div style={{ width: 4, height: 4, borderRadius: "50%", background: statusColor }} />
-                          {tx.status}
+                          {STATUS_VI[tx.status] || tx.status}
                         </div>
                       </div>
                     </div>
@@ -317,7 +318,7 @@ export default function TransactionsPage() {
                     marginTop: 3,
                   }}
                 >
-                  {loadingMore ? "Loading..." : "Load more"}
+                  {loadingMore ? "Đang tải..." : "Xem thêm"}
                 </button>
               )}
             </div>
