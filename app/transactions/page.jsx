@@ -5,7 +5,7 @@ import { MIcon } from "../../components/shared/StaffShell";
 import TransactionDetail from "../../components/shared/TransactionDetail";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
-import { classifyTransaction, getSignedAmount, getTransactionDateKey } from "../../lib/transaction";
+import { getSignedAmount, getTransactionDateKey, matchesTransactionFilter } from "../../lib/transaction";
 import { fmtAmountVND as fmtVND, fmtDate } from "../../lib/format";
 
 /* ─── design tokens (must match app-wide palette) ─── */
@@ -160,7 +160,7 @@ export default function TransactionsPage() {
   // Step 3: Apply activeFilter (income/expense/pending)
   const filtered = useMemo(() => {
     if (!activeFilter) return searchFiltered;
-    return searchFiltered.filter((tx) => classifyTransaction(tx) === activeFilter);
+    return searchFiltered.filter((tx) => matchesTransactionFilter(tx, activeFilter));
   }, [searchFiltered, activeFilter]);
 
   // Summary stats — computed from filtered (reflects day + search + activeFilter)

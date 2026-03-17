@@ -7,7 +7,7 @@ import TransactionDetail from "../../components/shared/TransactionDetail";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
-import { classifyTransaction, getSignedAmount, getLocalDateKey, getTodayKey, getTransactionDateKey } from "../../lib/transaction";
+import { getSignedAmount, getLocalDateKey, getTodayKey, getTransactionDateKey, matchesTransactionFilter } from "../../lib/transaction";
 import TransactionForm from "../../components/TransactionForm";
 
 const MONTHS = ["Thg 1","Thg 2","Thg 3","Thg 4","Thg 5","Thg 6","Thg 7","Thg 8","Thg 9","Thg 10","Thg 11","Thg 12"];
@@ -413,7 +413,7 @@ export default function SecretaryPage() {
   // Step 4: Apply activeFilter (income/expense/pending)
   const txFiltered = useMemo(() => {
     if (!txActiveFilter) return txSearchFiltered;
-    return txSearchFiltered.filter((tx) => classifyTransaction(tx) === txActiveFilter);
+    return txSearchFiltered.filter((tx) => matchesTransactionFilter(tx, txActiveFilter));
   }, [txSearchFiltered, txActiveFilter]);
 
   // Group transactions by date for display
