@@ -277,11 +277,11 @@ export default function TransactionsPage() {
                     </div>
                     {/* Details */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "60%" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
                           {tx.description || tx.recipient_name || (isIncome ? "Income" : "Expense")}
                         </div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: isIncome ? T.success : T.text, flexShrink: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: isIncome ? T.success : T.danger, flexShrink: 0 }}>
                           {isIncome ? "+" : "−"}{fmtVND(Math.abs(signedAmount))}
                         </div>
                       </div>
