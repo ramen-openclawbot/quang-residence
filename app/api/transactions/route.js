@@ -3,6 +3,19 @@ import { resolveUser, supabaseAdmin, notify } from "../../../lib/api-auth";
 
 const MAX_REJECT_REASON_LENGTH = 500;
 
+function getSignedAmount(tx) {
+  const amount = Math.abs(Number(tx?.amount || 0));
+  const type = String(tx?.type || "").trim().toLowerCase();
+  const direction = String(tx?.adjustment_direction || "").trim().toLowerCase();
+  if (type === "income") return amount;
+  if (type === "expense") return -amount;
+  if (type === "adjustment") {
+    if (direction === "increase") return amount;
+    if (direction === "decrease") return -amount;
+  }
+  return 0;
+}
+
 // ─── GET: list transactions for owner / secretary ──────────────────────
 export async function GET(request) {
   try {
@@ -43,7 +56,43 @@ export async function GET(request) {
       console.error("Transaction GET error:", error);
       return NextResponse.json({ error: "Failed to fetch transactions." }, { status: 500 });
     }
-    return NextResponse.json({ success: true, data: data || [], total: count, hasMore: (offset + limit) < (count || 0) });
+
+    // Month-level summary across the full filtered month/year set (not only current page)
+    let summary = null;
+    if (month !== null && year !== null) {
+      let summaryQuery = supabaseAdmin
+        .from("transactions")
+        .select("type, amount, adjustment_direction, status")
+        .order("created_at", { ascending: false })
+        .limit(3000);
+
+      const m = Number(month);
+      const y = Number(year);
+      const startDate = new Date(y, m, 1).toISOString();
+      const endDate = new Date(y, m + 1, 0, 23, 59, 59).toISOString();
+      summaryQuery = summaryQuery
+        .gte("transaction_date", startDate)
+        .lte("transaction_date", endDate);
+
+      const { data: summaryRows, error: summaryError } = await summaryQuery;
+      if (summaryError) {
+        console.warn("Transaction summary query error:", summaryError);
+      } else {
+        const rows = summaryRows || [];
+        const income = rows.reduce((sum, tx) => {
+          const signed = getSignedAmount(tx);
+          return signed > 0 ? sum + signed : sum;
+        }, 0);
+        const expense = rows.reduce((sum, tx) => {
+          const signed = getSignedAmount(tx);
+          return signed < 0 ? sum + Math.abs(signed) : sum;
+        }, 0);
+        const pending = rows.filter((tx) => String(tx?.status || "").trim().toLowerCase() === "pending").length;
+        summary = { income, expense, pending, sampleSize: rows.length };
+      }
+    }
+
+    return NextResponse.json({ success: true, data: data || [], total: count, hasMore: (offset + limit) < (count || 0), summary });
   } catch (err) {
     console.error("Transaction GET error:", err);
     return NextResponse.json({ error: "An error occurred while fetching transactions." }, { status: 500 });

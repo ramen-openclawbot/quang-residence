@@ -55,6 +55,7 @@ export default function TransactionsPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [detail, setDetail] = useState(null);
   const [activeFilter, setActiveFilter] = useState(null); // "income" | "expense" | "pending" | null
+  const [monthSummary, setMonthSummary] = useState(null);
   const txCountRef = useRef(0);
   useEffect(() => { txCountRef.current = transactions.length; }, [transactions.length]);
 
@@ -81,6 +82,7 @@ export default function TransactionsPage() {
           setTransactions(json.data || []);
         }
         setHasMore(json.hasMore || false);
+        if (!append) setMonthSummary(json.summary || null);
       } else {
         /* Fallback: direct Supabase query */
         const startDate = new Date(selectedYear, selectedMonth, 1).toISOString();
@@ -94,6 +96,7 @@ export default function TransactionsPage() {
           .limit(PAGE_SIZE);
         setTransactions(data || []);
         setHasMore(false);
+        setMonthSummary(null);
       }
     } catch (err) {
       console.error("fetchTransactions error:", err);
@@ -173,6 +176,11 @@ export default function TransactionsPage() {
     return signed < 0 ? s + Math.abs(signed) : s;
   }, 0), [filtered]);
   const pendingCount = useMemo(() => filtered.filter((t) => t.status === "pending").length, [filtered]);
+
+  const usingMonthSummary = useMemo(() => !search.trim() && selectedDay === null && !activeFilter && !!monthSummary, [search, selectedDay, activeFilter, monthSummary]);
+  const displayIncome = usingMonthSummary ? Number(monthSummary?.income || 0) : totalIncome;
+  const displayExpense = usingMonthSummary ? Number(monthSummary?.expense || 0) : totalExpense;
+  const displayPending = usingMonthSummary ? Number(monthSummary?.pending || 0) : pendingCount;
 
 
   // Group transactions by date (stable even if same date appears non-contiguously)
@@ -312,9 +320,9 @@ export default function TransactionsPage() {
         {/* Summary strip — clickable filters */}
         <div style={{ padding: "0 16px 10px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
           {[
-            { key: "income", label: "Thu nhập", value: fmtVND(totalIncome), color: T.success },
-            { key: "expense", label: "Chi tiêu", value: fmtVND(totalExpense), color: T.danger },
-            { key: "pending", label: "Chờ duyệt", value: pendingCount, color: T.amber },
+            { key: "income", label: "Thu nhập", value: fmtVND(displayIncome), color: T.success },
+            { key: "expense", label: "Chi tiêu", value: fmtVND(displayExpense), color: T.danger },
+            { key: "pending", label: "Chờ duyệt", value: displayPending, color: T.amber },
           ].map((item) => {
             const isActive = activeFilter === item.key;
             return (
