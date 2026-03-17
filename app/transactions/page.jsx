@@ -383,7 +383,7 @@ export default function TransactionsPage() {
                           <button
                             key={tx.id}
                             onClick={() => setDetail(tx)}
-                            style={{ ...cardStyle, padding: "10px 12px", width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, boxSizing: "border-box" }}
+                            style={{ ...cardStyle, padding: "9px 10px", width: "calc(100% - 4px)", margin: "0 auto", textAlign: "left", cursor: "pointer", display: "grid", gridTemplateColumns: "34px minmax(0, 1fr) auto", alignItems: "center", columnGap: 9, boxSizing: "border-box", maxWidth: "100%" }}
                           >
                             <div style={{ width: 34, height: 34, borderRadius: 10, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                               <MIcon name={isIncome ? "trending_up" : "trending_down"} size={16} color={isIncome ? T.success : T.danger} />
@@ -402,8 +402,8 @@ export default function TransactionsPage() {
                                 </div>
                               </div>
                             </div>
-                            <div style={{ textAlign: "right", flexShrink: 0, minWidth: 108 }}>
-                              <div style={{ fontSize: 13, fontWeight: 800, color: signedAmount >= 0 ? T.success : T.danger, whiteSpace: "nowrap" }}>
+                            <div style={{ textAlign: "right", minWidth: 86, paddingLeft: 4 }}>
+                              <div style={{ fontSize: 12, fontWeight: 800, color: signedAmount >= 0 ? T.success : T.danger, whiteSpace: "nowrap" }}>
                                 {signedAmount >= 0 ? "+" : "−"}{fmtVND(Math.abs(signedAmount))}
                               </div>
                             </div>
