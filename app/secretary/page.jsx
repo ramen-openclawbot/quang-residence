@@ -411,12 +411,27 @@ export default function SecretaryPage() {
   // Step 4: Apply activeFilter (income/expense/pending)
   const txFiltered = useMemo(() => {
     if (!txActiveFilter) return txSearchFiltered;
-    return txSearchFiltered.filter((tx) => {
-      const signed = getSignedAmount(tx);
+
+    const classifyTx = (tx) => {
       const type = String(tx?.type || "").trim().toLowerCase();
-      if (txActiveFilter === "income") return signed > 0 || (signed === 0 && type === "income");
-      if (txActiveFilter === "expense") return signed < 0 || (signed === 0 && type === "expense");
+      const direction = String(tx?.adjustment_direction || "").trim().toLowerCase();
+      if (type === "income") return "income";
+      if (type === "expense") return "expense";
+      if (type === "adjustment") {
+        if (direction === "increase") return "income";
+        if (direction === "decrease") return "expense";
+      }
+      const signed = getSignedAmount(tx);
+      if (signed > 0) return "income";
+      if (signed < 0) return "expense";
+      return "other";
+    };
+
+    return txSearchFiltered.filter((tx) => {
       if (txActiveFilter === "pending") return tx.status === "pending";
+      const bucket = classifyTx(tx);
+      if (txActiveFilter === "income") return bucket === "income";
+      if (txActiveFilter === "expense") return bucket === "expense";
       return true;
     });
   }, [txSearchFiltered, txActiveFilter]);
@@ -910,6 +925,11 @@ export default function SecretaryPage() {
                                             <div style={{ width: 5, height: 5, borderRadius: "50%", background: statusColor }} />
                                             {STATUS_VI[tx.status] || tx.status}
                                           </div>
+                                        </div>
+                                      </div>
+                                      <div style={{ textAlign: "right", flexShrink: 0, minWidth: 112 }}>
+                                        <div style={{ fontSize: 14, fontWeight: 800, color: signedAmount >= 0 ? T.success : T.danger, whiteSpace: "nowrap" }}>
+                                          {signedAmount >= 0 ? "+" : "−"}{fmtVND(Math.abs(signedAmount))}
                                         </div>
                                       </div>
                                     </button>
