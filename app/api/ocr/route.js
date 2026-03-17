@@ -142,6 +142,7 @@ export async function POST(request) {
     // AUTH CHECK
     const auth = await resolveUser(request, { requireProfile: false });
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    const { user } = auth;
 
     const { imageBase64, imageMimeType, templateHint } = await request.json();
 

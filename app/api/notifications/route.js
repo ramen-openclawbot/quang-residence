@@ -33,11 +33,15 @@ export async function PATCH(request) {
   const now = new Date().toISOString();
 
   if (mark_all) {
-    await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from("notifications")
       .update({ read_at: now })
       .eq("user_id", user.id)
       .is("read_at", null);
+    if (error) {
+      console.error("Notifications mark_all error:", error);
+      return NextResponse.json({ error: "Failed to mark notifications as read." }, { status: 500 });
+    }
   } else if (notification_id) {
     const { data } = await supabaseAdmin
       .from("notifications")

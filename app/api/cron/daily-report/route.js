@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "../../../../lib/api-auth";
 import { getSignedAmount } from "../../../../lib/transaction";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -240,7 +235,7 @@ Format: markdown với emoji. Tối đa 300 từ.`,
       });
     }
 
-    console.log(`✅ Daily report generated for ${reportDate}`);
+    // Daily report generated successfully
 
     return NextResponse.json({
       success: true,
