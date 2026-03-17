@@ -64,9 +64,11 @@ export default function TransactionsPage() {
     if (append) setLoadingMore(true); else if (!silent) setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const offset = append ? txCountRef.current : 0;
+      const isServerFilteredMode = !!activeFilter;
+      const requestLimit = isServerFilteredMode ? 3000 : PAGE_SIZE;
+      const offset = append && !isServerFilteredMode ? txCountRef.current : 0;
       const params = new URLSearchParams({
-        limit: String(PAGE_SIZE),
+        limit: String(requestLimit),
         offset: String(offset),
         month: String(selectedMonth),
         year: String(selectedYear),
@@ -81,7 +83,7 @@ export default function TransactionsPage() {
         } else {
           setTransactions(json.data || []);
         }
-        setHasMore(json.hasMore || false);
+        setHasMore(isServerFilteredMode ? false : (json.hasMore || false));
         if (!append) setMonthSummary(json.summary || null);
       } else {
         /* Fallback: direct Supabase query */
@@ -93,7 +95,7 @@ export default function TransactionsPage() {
           .gte("transaction_date", startDate)
           .lte("transaction_date", endDate)
           .order("created_at", { ascending: false })
-          .limit(PAGE_SIZE);
+          .limit(requestLimit);
         setTransactions(data || []);
         setHasMore(false);
         setMonthSummary(null);
@@ -105,9 +107,9 @@ export default function TransactionsPage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [selectedMonth, selectedYear]);
+  }, [selectedMonth, selectedYear, activeFilter]);
 
-  /* Reset + fetch when month/year changes */
+  /* Reset + fetch when month/year/activeFilter changes */
   useEffect(() => {
     fetchTransactions(false);
   }, [fetchTransactions]);
