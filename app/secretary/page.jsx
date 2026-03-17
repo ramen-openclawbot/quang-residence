@@ -130,7 +130,7 @@ export default function SecretaryPage() {
 
   const [txFullLoaded, setTxFullLoaded] = useState(false);
   const [txPage, setTxPage] = useState(0);
-  const TX_PER_PAGE = 5;
+  const TX_PER_PAGE = 10;
 
   const [serverSummary, setServerSummary] = useState(null);
   const [taskSubmitting, setTaskSubmitting] = useState(false);
@@ -151,9 +151,9 @@ export default function SecretaryPage() {
   }, [activePanel, showTaskForm, showTxForm]);
 
   /* ── Home summary: single API call for dashboard data ── */
-  const loadSummary = useCallback(async () => {
+  const loadSummary = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const token = await getToken();
       const res = await fetch("/api/dashboard/secretary", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -183,7 +183,7 @@ export default function SecretaryPage() {
   }, [getToken]);
 
   /* ── Full transactions: loaded only when Transactions tab is first opened ── */
-  const loadFullTransactions = useCallback(async (limit = 30) => {
+  const loadFullTransactions = useCallback(async (limit = 200) => {
     try {
       const token = await getToken();
       const txApiRes = await fetch(`/api/transactions?limit=${limit}`, {
@@ -203,11 +203,11 @@ export default function SecretaryPage() {
   }, [getToken]);
 
   /* Convenience reload used after mutations (task create, audit action, tx submit) */
-  const reloadAll = useCallback(async () => {
+  const reloadAll = useCallback(async (silent = false) => {
     if (txFullLoaded) {
-      await Promise.all([loadSummary(), loadFullTransactions()]);
+      await Promise.all([loadSummary(silent), loadFullTransactions()]);
     } else {
-      await loadSummary();
+      await loadSummary(silent);
     }
   }, [txFullLoaded, loadSummary, loadFullTransactions]);
 
@@ -1058,7 +1058,7 @@ export default function SecretaryPage() {
                   onAction={() => {
                     setActivePanel("");
                     setSelectedTransaction(null);
-                    reloadAll();
+                    reloadAll(true);
                   }}
                 />
               )}

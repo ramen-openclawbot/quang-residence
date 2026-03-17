@@ -57,8 +57,8 @@ export default function TransactionsPage() {
   useEffect(() => { txCountRef.current = transactions.length; }, [transactions.length]);
 
   /* ── Fetch via server API with month/year filter + pagination ── */
-  const fetchTransactions = useCallback(async (append = false) => {
-    if (append) setLoadingMore(true); else setLoading(true);
+  const fetchTransactions = useCallback(async (append = false, silent = false) => {
+    if (append) setLoadingMore(true); else if (!silent) setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const offset = append ? txCountRef.current : 0;
@@ -115,12 +115,12 @@ export default function TransactionsPage() {
     if (matched) setDetail(matched);
   }, [transactions, detail]);
 
-  // Realtime subscription for new/updated/deleted transactions
+  // Realtime subscription for new/updated/deleted transactions (silent reload — no spinner)
   useEffect(() => {
     const ch = supabase
       .channel("transactions-ledger")
       .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => {
-        fetchTransactions(false);
+        fetchTransactions(false, true);
       })
       .subscribe();
     return () => supabase.removeChannel(ch);
@@ -181,12 +181,15 @@ export default function TransactionsPage() {
   }, [filtered]);
 
   const handleAction = (action, txId) => {
+    // Optimistic update + close detail immediately
     setTransactions((prev) => prev.map((t) => {
       if (t.id !== txId) return t;
       if (action === "reject") return { ...t, status: "rejected" };
       return { ...t, status: "approved" };
     }));
     setDetail(null);
+    // Silent background refetch to sync with server
+    fetchTransactions(false, true);
   };
 
   // Year options: current year ± 2
