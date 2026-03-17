@@ -383,7 +383,7 @@ export default function TransactionsPage() {
                           <button
                             key={tx.id}
                             onClick={() => setDetail(tx)}
-                            style={{ ...cardStyle, padding: "10px 12px", width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, boxSizing: "border-box" }}
+                            style={{ ...cardStyle, padding: "10px 12px", width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, boxSizing: "border-box" }}
                           >
                             <div style={{ width: 34, height: 34, borderRadius: 10, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                               <MIcon name={isIncome ? "trending_up" : "trending_down"} size={16} color={isIncome ? T.success : T.danger} />

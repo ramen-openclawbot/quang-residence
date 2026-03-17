@@ -888,7 +888,7 @@ export default function SecretaryPage() {
                                   const statusColor = tx.status === "approved" ? T.success : tx.status === "pending" ? T.amber : T.danger;
                                   const STATUS_VI = { approved: "Đã duyệt", pending: "Chờ duyệt", rejected: "Từ chối" };
                                   return (
-                                    <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("transaction-detail"); }} style={{ ...cardStyle, padding: 14, width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, border: `1px solid ${T.border}`, boxSizing: "border-box" }}>
+                                    <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("transaction-detail"); }} style={{ ...cardStyle, padding: 14, width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, border: `1px solid ${T.border}`, boxSizing: "border-box" }}>
                                       <div style={{ width: 42, height: 42, borderRadius: 12, background: isIncome ? "#ecfdf3" : (txType === "adjustment" && signedAmount === 0) ? "#f5f5f5" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                         <MIcon name={isIncome ? "trending_up" : "trending_down"} size={20} color={isIncome ? T.success : T.danger} />
                                       </div>
