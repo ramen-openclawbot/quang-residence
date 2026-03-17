@@ -115,6 +115,7 @@ export default function SecretaryPage() {
   const [notifReturnTab, setNotifReturnTab] = useState(null);
   const [txSearch, setTxSearch] = useState("");
   const [selectedDay, setSelectedDay] = useState(null); // null = all days, or 1-31
+  const [selectedDate, setSelectedDate] = useState(""); // YYYY-MM-DD
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [txActiveFilter, setTxActiveFilter] = useState(null); // "income" | "expense" | "pending" | null
@@ -432,13 +433,6 @@ export default function SecretaryPage() {
     return groups;
   }, [txFiltered]);
 
-  // Day options for selected month/year
-  const txDayOptions = useMemo(() => {
-    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-    const days = [];
-    for (let d = 1; d <= daysInMonth; d++) days.push(d);
-    return days;
-  }, [selectedMonth, selectedYear]);
 
   /* Reset page when filters change */
   useEffect(() => { setTxPage(0); }, [txSearch, selectedMonth, selectedYear, selectedDay, txActiveFilter]);
@@ -788,14 +782,39 @@ export default function SecretaryPage() {
                   </div>
 
                   <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                    <select value={selectedDay === null ? "" : selectedDay} onChange={(e) => setSelectedDay(e.target.value === "" ? null : Number(e.target.value))} style={{ width: 80, height: 42, borderRadius: 12, border: `1px solid ${selectedDay !== null ? T.primary : T.border}`, background: selectedDay !== null ? `${T.primary}08` : T.card, padding: "0 10px", fontSize: 14, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}>
-                      <option value="">Tất cả</option>
-                      {txDayOptions.map((d) => <option key={d} value={d}>Ngày {d}</option>)}
-                    </select>
-                    <select value={selectedMonth} onChange={(e) => { setSelectedMonth(Number(e.target.value)); setSelectedDay(null); }} style={{ flex: 1, height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, padding: "0 12px", fontSize: 14, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}>
+                    <div style={{ position: "relative", flex: 1 }}>
+                      <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setSelectedDate(value);
+                          if (!value) {
+                            setSelectedDay(null);
+                            return;
+                          }
+                          const [y, m, d] = value.split("-").map(Number);
+                          if (y && m && d) {
+                            setSelectedYear(y);
+                            setSelectedMonth(m - 1);
+                            setSelectedDay(d);
+                          }
+                        }}
+                        style={{ width: "100%", height: 42, borderRadius: 12, border: `1px solid ${selectedDate ? T.primary : T.border}`, background: selectedDate ? `${T.primary}08` : T.card, padding: "0 12px", fontSize: 14, fontWeight: 600, color: T.text, boxSizing: "border-box", WebkitAppearance: "none", appearance: "none" }}
+                      />
+                    </div>
+                    {selectedDate && (
+                      <button
+                        onClick={() => { setSelectedDate(""); setSelectedDay(null); }}
+                        style={{ height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, padding: "0 12px", fontSize: 12, fontWeight: 700, color: T.textMuted, cursor: "pointer" }}
+                      >
+                        Xóa ngày
+                      </button>
+                    )}
+                    <select value={selectedMonth} onChange={(e) => { setSelectedMonth(Number(e.target.value)); setSelectedDay(null); setSelectedDate(""); }} style={{ flex: 1, height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, padding: "0 12px", fontSize: 14, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}>
                       {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
                     </select>
-                    <select value={selectedYear} onChange={(e) => { setSelectedYear(Number(e.target.value)); setSelectedDay(null); }} style={{ width: 90, height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, padding: "0 12px", fontSize: 14, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}>
+                    <select value={selectedYear} onChange={(e) => { setSelectedYear(Number(e.target.value)); setSelectedDay(null); setSelectedDate(""); }} style={{ width: 90, height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, padding: "0 12px", fontSize: 14, fontWeight: 600, color: T.text, appearance: "none", WebkitAppearance: "none" }}>
                       {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
                     </select>
                   </div>
