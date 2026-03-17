@@ -1,12 +1,12 @@
 # HANDOFF.md — ZenHome App
 
-_Last updated: 2026-03-16 12:18 GMT+7_
+_Last updated: 2026-03-18 GMT+7_
 
 ## Repo
 - Local path: `/Users/mrquang/dev app/zenhome-app`
 - GitHub: `https://github.com/ramen-openclawbot/quang-residence.git`
 - Branch: `main`
-- Current pushed commit: `57ce9ac`
+- Current pushed commit: `a980291`
 
 ## Current product state
 ZenHome is now in a **product-hardening + CRUD-completion** phase, not an auth/firefighting phase.
@@ -411,6 +411,136 @@ Full-screen detail panel showing all transaction fields including bank slip imag
 ### Income tracking
 Owner home screen shows **"Income this month"** = sum of all `type: "income"` transactions in the current month. This reflects income entered by the secretary in real time.
 
+## Session 2026-03-17 — Transaction UX: Filters, Date Grouping, Pagination
+
+### Features shipped
+
+**Clickable summary filter blocks** — `/transactions` (owner) + secretary Transactions tab
+- The 3 summary blocks (Thu nhập / Chi tiêu / Chờ duyệt) are now tappable
+- Tapping a block activates a filter; tapping again deactivates (toggle behavior)
+- An active-filter chip appears below the blocks with a ✕ to clear
+- Summary totals reflect only the active filter
+
+**Date grouping with daily headers**
+- Transactions in the list are now grouped by date (dd/mm/yyyy Vietnamese locale)
+- Each date header shows the day's income (+) and expense (−) totals on the right
+
+**Day filter dropdown**
+- Added day selector next to month/year selectors
+- When a day is selected, only transactions for that specific date show
+- Day filter composes with month/year + search + type filters correctly
+- Summary totals reflect the selected day
+
+**Remove per-card amount (from card body)**
+- Transaction cards no longer show the amount inside the card body
+- Amount is visible in the date-group header instead, reducing visual noise
+
+**Silent reload after approval**
+- After secretary/owner approves/rejects a transaction, the list reloads silently (no loading spinner)
+- Uses `fetchTransactions(false, true)` / `reloadAll(true)` pattern
+- Fixes previously reported "stuck list" after approval
+
+**Pagination / page-size increase**
+- `TX_PER_PAGE` increased from 5 → 10
+- `loadFullTransactions` default limit increased from 30 → 200 rows (secretary)
+
+Key commits: `a82d078`, `66a6575`, `821ccae`
+
+---
+
+## Session 2026-03-18 — Bug Fixes & Mobile Optimization
+
+### Bugs fixed
+
+**Bug #1: Income/expense filter leaking wrong transactions**
+- Symptom: selecting "Thu nhập" filter still showed expense transactions; date headers showed negative amounts when income filter was active
+- Root cause: (a) `tx.type` could carry leading/trailing whitespace; (b) filter depended solely on `getSignedAmount()` which returns `0` for unknown types — those zero-amount transactions were not cleanly bucketed; (c) `isIncome = signedAmount >= 0` (card display) was inconsistent with filter's `> 0` threshold
+- Fix:
+  - Added `.trim()` to type normalization in `getSignedAmount()` (`lib/transaction.js`)
+  - Enhanced filter logic with a fallback direct type check: `signed > 0 || (signed === 0 && type === "income")`
+  - Changed card `isIncome` from `>= 0` to `> 0` for consistency
+  - Applied same fix to both `app/secretary/page.jsx` and `app/transactions/page.jsx`
+
+**Bug #2: Transaction cards overflowing mobile screens**
+- Symptom: card text cut off on the right edge on mobile
+- Root cause: `<button style={{ width: "100%" }}>` did not have `boxSizing: "border-box"` — padding + border pushed total width beyond the container
+- Fix applied across all 5 transaction-display surfaces:
+  - Added `boxSizing: "border-box"` to all card buttons
+  - Added `overflow: "hidden"` to text-container divs
+  - Added `flexShrink: 0` + `whiteSpace: "nowrap"` to amount and status badge elements
+  - Added `overflowX: "hidden"` to `StaffShell` outer wrapper and `/transactions` page wrapper
+
+**Bug #3: Secretary status labels in English**
+- Secretary transaction cards were showing raw English status values (`pending`, `approved`, `rejected`)
+- Fixed to use Vietnamese labels (`Chờ duyệt`, `Đã duyệt`, `Từ chối`) consistent with owner page
+- Same fix applied to owner dashboard recent-transaction list
+
+### Files modified (2026-03-18)
+
+| File | Change |
+|---|---|
+| `lib/transaction.js` | `.trim()` added to type field in `getSignedAmount()` |
+| `app/secretary/page.jsx` | Filter logic hardened, card overflow fixed, Vietnamese status labels |
+| `app/transactions/page.jsx` | Filter logic hardened, card overflow fixed, outer wrapper overflow |
+| `app/driver/page.jsx` | Card overflow fixed (`boxSizing`, text constraints, `flexShrink`) |
+| `app/housekeeper/page.jsx` | Card overflow fixed (`boxSizing`, text constraints, `flexShrink`) |
+| `app/owner/page.jsx` | Recent-tx card overflow fixed, Vietnamese status labels |
+| `components/shared/StaffShell.jsx` | Added `overflowX: "hidden"` to root wrapper |
+
+### Filter chain reference (both pages)
+
+```
+transactions
+  → [month filter — fetch-level or useMemo]
+  → dayFiltered    (selectedDay)
+  → searchFiltered (text search)
+  → filtered       (income / expense / pending)
+  → groupedByDate  (date-grouped display, uses filtered)
+```
+
+Filter logic for income/expense:
+```js
+const signed = getSignedAmount(tx);
+const type = String(tx?.type || "").trim().toLowerCase();
+if (activeFilter === "income")  return signed > 0 || (signed === 0 && type === "income");
+if (activeFilter === "expense") return signed < 0 || (signed === 0 && type === "expense");
+```
+
+---
+
+## Session 2026-03-18 (late night) — Transaction filter + mobile UX stabilization
+
+### Issues reported from real device screenshots
+1. Day filter could show empty state for an existing date (timezone/date parsing inconsistency)
+2. Income/expense filter looked incorrect in list cards even when summary totals were right
+3. Amount column disappeared on mobile cards
+4. Day dropdown was cumbersome on mobile
+5. React rendering glitch: same date appearing in non-contiguous blocks caused key collisions and mixed-looking card output
+
+### Root causes + fixes shipped
+- **Date filter normalization:** switched day/month matching to local date-key parsing via shared transaction helpers instead of ad-hoc `new Date(...)` comparisons.
+- **Filter strictness:** centralized filter matching with signed-amount guards (`income => signed > 0`, `expense => signed < 0`, `pending => status === pending`).
+- **Card amount visibility:** transaction cards refactored to mobile-safe grid layout with dedicated right-side amount column so amount is always visible.
+- **Mobile date UX:** replaced day dropdown with native `input[type="date"]` calendar picker on both Secretary Transactions and `/transactions` pages.
+- **Grouped rendering bug:** replaced contiguous-only grouping with map-based date buckets to prevent duplicate-date key collisions.
+
+### Commits (chronological)
+- `3fc7f8d` — stabilize transaction date/type filters and restore card amounts
+- `4561d1e` — force visible amount column in transaction list cards
+- `6594caf` — mobile-safe transaction card layout with always-visible amount
+- `51b02bc` — replace day dropdown with mobile date picker calendar
+- `54a96e1` — enforce strict income/expense filter matching by signed amount
+- `a980291` — remove duplicate-date key collisions in grouped transaction rendering
+
+### Files touched in this stabilization pass
+- `lib/transaction.js`
+- `app/secretary/page.jsx`
+- `app/transactions/page.jsx`
+
+---
+
 ## Summary for the next agent
-This app is now in a **transaction audit + operations** phase.
+This app is in a **transaction audit + operations** phase.
 Priority areas: complete the audit pipeline, deepen CRUD flows for tasks/maintenance/schedule, expand self-service to other roles.
+
+Transaction list UX has gone through multiple quick iterations today; current branch includes strict filter guards, native mobile date picker, mobile-safe amount column, and stabilized date grouping.
