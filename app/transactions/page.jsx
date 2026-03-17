@@ -175,21 +175,19 @@ export default function TransactionsPage() {
   const pendingCount = useMemo(() => filtered.filter((t) => t.status === "pending").length, [filtered]);
 
 
-  // Group transactions by date
+  // Group transactions by date (stable even if same date appears non-contiguously)
   const groupedByDate = useMemo(() => {
-    const groups = [];
-    let currentDate = null;
-    let currentGroup = null;
+    const order = [];
+    const bucket = new Map();
     for (const tx of filtered) {
       const dateKey = fmtDate(tx.transaction_date || tx.created_at);
-      if (dateKey !== currentDate) {
-        currentDate = dateKey;
-        currentGroup = { date: dateKey, rawDate: tx.transaction_date || tx.created_at, transactions: [] };
-        groups.push(currentGroup);
+      if (!bucket.has(dateKey)) {
+        bucket.set(dateKey, []);
+        order.push(dateKey);
       }
-      currentGroup.transactions.push(tx);
+      bucket.get(dateKey).push(tx);
     }
-    return groups;
+    return order.map((date) => ({ date, transactions: bucket.get(date) || [] }));
   }, [filtered]);
 
   const handleAction = (action, txId) => {
