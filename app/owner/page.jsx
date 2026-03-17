@@ -106,7 +106,6 @@ export default function OwnerPage() {
   const [passwordMsg, setPasswordMsg] = useState("");
   const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
   const [inviteForm, setInviteForm] = useState({ email: "", full_name: "", role: "driver" });
-  const [funds, setFunds] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [staffProfiles, setStaffProfiles] = useState([]);
@@ -146,14 +145,12 @@ export default function OwnerPage() {
   async function fetchData() {
     try {
       setLoading(true);
-      const [fundsRes, txRes, tasksRes, profilesRes, settingsRes] = await Promise.all([
-        supabase.from("funds").select("*").order("id"),
+      const [txRes, tasksRes, profilesRes, settingsRes] = await Promise.all([
         supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(30),
         supabase.from("tasks").select("*").order("due_date", { ascending: true }).limit(20),
         supabase.from("profiles").select("id, full_name, role"),
         supabase.from("home_settings").select("*").order("setting_key"),
       ]);
-      setFunds(fundsRes.data || []);
       setTransactions(txRes.data || []);
       setTasks(tasksRes.data || []);
       setStaffProfiles(profilesRes.data || []);
@@ -282,12 +279,7 @@ export default function OwnerPage() {
     }
   }
 
-  const fundsBalance = useMemo(() => funds.reduce((sum, fund) => sum + Number(fund.current_balance || 0), 0), [funds]);
-  const fundedEntries = useMemo(() => funds.filter((fund) => Number(fund.current_balance || 0) !== 0).length, [funds]);
   const ledgerBalance = useMemo(() => transactions.reduce((sum, tx) => sum + getSignedAmount(tx), 0), [transactions]);
-  const usingLedgerFallback = useMemo(() => fundedEntries === 0 && transactions.length > 0, [fundedEntries, transactions.length]);
-  const totalBalance = useMemo(() => (usingLedgerFallback ? ledgerBalance : fundsBalance), [usingLedgerFallback, fundsBalance, ledgerBalance]);
-  const activeFunds = useMemo(() => funds.filter((fund) => Number(fund.current_balance || 0) > 0).length, [funds]);
   const pendingTransactions = useMemo(() => transactions.filter((tx) => tx.status === "pending"), [transactions]);
   const openTasks = useMemo(() => tasks.filter((task) => task.status !== "done"), [tasks]);
   const today = useMemo(() => getTodayKey(), []);
@@ -300,7 +292,6 @@ export default function OwnerPage() {
     const signed = getSignedAmount(tx);
     return signed > 0 ? sum + signed : sum;
   }, 0), [transactions, thisMonthKey]);
-  const topFunds = useMemo(() => [...funds].sort((a, b) => Number(b.current_balance || 0) - Number(a.current_balance || 0)).slice(0, 4), [funds]);
   const recentTasks = useMemo(() => tasks.slice(0, 4), [tasks]);
   const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);
 
@@ -434,15 +425,14 @@ export default function OwnerPage() {
                           <div style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 700 }}>Owner</div>
                         </div>
                         <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Finance, estate, team, and rhythm.</div>
-                        <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 10 }}>{fmtVND(totalBalance)}</div>
+                        <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 10 }}>{fmtVND(ledgerBalance)}</div>
                         <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,0.12)", fontSize: 11, fontWeight: 700, marginBottom: 16 }}>
-                          <div style={{ width: 6, height: 6, borderRadius: 999, background: usingLedgerFallback ? "#fbbf24" : "#86efac" }} />
-                          {usingLedgerFallback ? "Ledger fallback" : "Synced from funds"}
+                          <div style={{ width: 6, height: 6, borderRadius: 999, background: "#86efac" }} />
+                          Ledger balance
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                           <div><div style={{ fontSize: 11, opacity: 0.7 }}>Pending</div><div style={{ fontSize: 18, fontWeight: 800 }}>{pendingTransactions.length}</div></div>
                           <div><div style={{ fontSize: 11, opacity: 0.7 }}>Open tasks</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
-                          <div><div style={{ fontSize: 11, opacity: 0.7 }}>Active funds</div><div style={{ fontSize: 18, fontWeight: 800 }}>{activeFunds}</div></div>
                         </div>
                       </div>
                     )}
@@ -566,55 +556,40 @@ export default function OwnerPage() {
             </div>
 
             <div style={{ textAlign: "center", marginBottom: 24 }}>
-              <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Total liquid balance</div>
-              <div style={{ fontSize: 36, fontWeight: 900, color: T.text, marginTop: 8 }}>{fmtVND(totalBalance)}</div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, color: T.primary, fontSize: 13, fontWeight: 800, marginTop: 8 }}><MIcon name="trending_up" size={16} color={T.primary} />Stable runway across active funds</div>
-            </div>
-
-            <div style={{ ...softCard, padding: 16, marginBottom: 18 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Fund allocation</div>
-              <div style={{ display: "grid", gap: 12 }}>
-                {topFunds.map((fund) => {
-                  const balance = Number(fund.current_balance || 0);
-                  const share = totalBalance > 0 ? Math.round((balance / totalBalance) * 100) : 0;
-                  return (
-                    <div key={fund.id} style={{ paddingBottom: 10, borderBottom: `1px solid ${T.border}` }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{fund.name}</div>
-                          <div style={{ fontSize: 12, color: T.textMuted }}>{share}% of active balance</div>
-                        </div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{fmtVND(balance)}</div>
-                      </div>
-                      <div style={{ height: 8, borderRadius: 999, background: "#edf3ea", overflow: "hidden" }}>
-                        <div style={{ width: `${share}%`, height: "100%", borderRadius: 999, background: T.primary }} />
-                      </div>
-                    </div>
-                  );
-                })}
+              <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Net balance</div>
+              <div style={{ fontSize: 36, fontWeight: 900, color: T.text, marginTop: 8 }}>{fmtVND(ledgerBalance)}</div>
+              <div style={{ display: "flex", justifyContent: "center", gap: 20, marginTop: 12 }}>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, textTransform: "uppercase" }}>Income</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: T.success, marginTop: 2 }}>+{fmtVND(incomeThisMonth)}</div>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, textTransform: "uppercase" }}>Spent</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: T.danger, marginTop: 2 }}>-{fmtVND(spentThisMonth)}</div>
+                </div>
               </div>
             </div>
 
             <button onClick={() => window.location.href = "/transactions"} style={{ ...cardStyle, width: "100%", padding: 14, marginBottom: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 38, height: 38, borderRadius: 10, background: `${T.primary}12`, display: "flex", alignItems: "center", justifyContent: "center" }}><MIcon name="receipt_long" size={20} color={T.primary} /></div>
-                <div><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Audit Ledger</div><div style={{ fontSize: 12, color: T.textMuted }}>Review all transactions</div></div>
+                <div><div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Audit Ledger</div><div style={{ fontSize: 12, color: T.textMuted }}>Review all transactions</div></div>
               </div>
               <MIcon name="chevron_right" size={20} color={T.textMuted} />
             </button>
 
             <div style={{ ...cardStyle, padding: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>Recent approvals / spend</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 12 }}>Recent transactions</div>
               {transactions.slice(0, 6).map((tx) => {
                 const signedAmount = getSignedAmount(tx);
                 const isPositive = signedAmount >= 0;
                 return (
-                <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{tx.description || tx.recipient_name || "Transaction"}</div>
-                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{fmtDate(tx.transaction_date || tx.created_at)} • {tx.status || "pending"}</div>
+                <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.description || tx.recipient_name || "Transaction"}</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 3 }}>{fmtDate(tx.transaction_date || tx.created_at)} · {tx.status || "pending"}</div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: isPositive ? T.success : T.danger }}>{isPositive ? "+" : "-"}{fmtVND(Math.abs(signedAmount))}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: isPositive ? T.success : T.danger, flexShrink: 0 }}>{isPositive ? "+" : "-"}{fmtVND(Math.abs(signedAmount))}</div>
                 </div>
               );})}
             </div>
@@ -855,7 +830,7 @@ export default function OwnerPage() {
 
               {activePanel === "help" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick help</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Home: overall view\n• Wealth: funds and spend\n• Ambience: estate state\n• Agenda: upcoming priorities\n• Settings: system controls</div></div>
+                  <div style={{ ...softCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Quick help</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Home: overall view\n• Wealth: income and spend\n• Ambience: estate state\n• Agenda: upcoming priorities\n• Settings: system controls</div></div>
                   <button onClick={() => { setActivePanel(""); setTab("home"); }} style={{ ...panelBtn }}>Về Home</button>
                 </div>
               )}

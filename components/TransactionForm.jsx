@@ -28,8 +28,6 @@ export default function TransactionForm({ onClose, onSuccess }) {
   const [type, setType] = useState("expense");
   const [adjustmentDirection, setAdjustmentDirection] = useState("increase");
   const [step, setStep] = useState("upload"); // "upload" | "scanning" | "review"
-  const [funds, setFunds] = useState([]);
-
   // Step 1: Upload
   const [slipFiles, setSlipFiles] = useState([]);
   const [slipPreviews, setSlipPreviews] = useState([]);
@@ -41,25 +39,6 @@ export default function TransactionForm({ onClose, onSuccess }) {
   // Step 3: Review
   const [scanResults, setScanResults] = useState([]);
   const [submitting, setSubmitting] = useState(false);
-  const [selectedFundId, setSelectedFundId] = useState("");
-
-  // Load funds
-  useEffect(() => {
-    let mounted = true;
-    async function loadFunds() {
-      const { data, error } = await supabase.from("funds").select("id, name, fund_type").order("id");
-      if (error) {
-        console.error("Load funds error:", error);
-        return;
-      }
-      if (!mounted) return;
-      setFunds(data || []);
-    }
-    loadFunds();
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   // ==================== HELPERS ====================
   const fileToBase64 = (file) =>
@@ -218,7 +197,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
               transaction_code: ocrData?.transaction_code || "",
               transaction_date: ocrData?.transaction_date || new Date().toISOString().slice(0, 10),
               notes: "",
-              fund_id: selectedFundId || "",
+              fund_id: "",
             },
             supportingImages: [],
             supportingPreviews: [],
@@ -241,7 +220,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
               transaction_code: "",
               transaction_date: new Date().toISOString().slice(0, 10),
               notes: "",
-              fund_id: selectedFundId || "",
+              fund_id: "",
             },
             supportingImages: [],
             supportingPreviews: [],
@@ -366,7 +345,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
         const payload = {
           type,
           amount: Number(result.form.amount || 0),
-          fund_id: result.form.fund_id ? Number(result.form.fund_id) : null,
+          fund_id: null,
           description: result.form.description || null,
           recipient_name: result.form.recipient_name || null,
           bank_name: result.form.bank_name || null,
@@ -414,7 +393,6 @@ export default function TransactionForm({ onClose, onSuccess }) {
       setSlipPreviews([]);
       setScanResults([]);
       setCompressedFiles([]);
-      setSelectedFundId("");
       setStep("upload");
       onSuccess?.();
     } catch (err) {
@@ -428,7 +406,6 @@ export default function TransactionForm({ onClose, onSuccess }) {
   // ==================== ADJUSTMENT FORM STATE ====================
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
-  const [adjustFundId, setAdjustFundId] = useState("");
   const [adjustDate, setAdjustDate] = useState(new Date().toISOString().slice(0, 10));
   const [adjustLinkedTx, setAdjustLinkedTx] = useState("");
   const [adjustSubmitting, setAdjustSubmitting] = useState(false);
@@ -453,7 +430,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
       const payload = {
         type: "adjustment",
         amount: Number(adjustAmount),
-        fund_id: adjustFundId ? Number(adjustFundId) : null,
+        fund_id: null,
         description: adjustReason.trim(),
         adjustment_direction: adjustmentDirection,
         reason: adjustReason.trim(),
@@ -489,7 +466,6 @@ export default function TransactionForm({ onClose, onSuccess }) {
       // Reset
       setAdjustAmount("");
       setAdjustReason("");
-      setAdjustFundId("");
       setAdjustDate(new Date().toISOString().slice(0, 10));
       setAdjustLinkedTx("");
       setAdjustmentDirection("increase");
@@ -710,17 +686,6 @@ export default function TransactionForm({ onClose, onSuccess }) {
                 </div>
               </div>
 
-              {/* Fund */}
-              <div style={sectionCardStyle}>
-                <div style={labelStyle}>Fund</div>
-                <select value={adjustFundId} onChange={(e) => setAdjustFundId(e.target.value)} style={selectStyle}>
-                  <option value="">Select fund</option>
-                  {funds.map((fund) => (
-                    <option key={fund.id} value={fund.id}>{fund.name}</option>
-                  ))}
-                </select>
-              </div>
-
               {/* Date */}
               <div style={sectionCardStyle}>
                 <div style={labelStyle}>Date</div>
@@ -759,7 +724,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
               }}>
                 <MIcon name="info" size={18} color="#2563eb" style={{ flexShrink: 0, marginTop: 1 }} />
                 <div style={{ fontSize: 12, color: "#1e40af", lineHeight: 1.5 }}>
-                  This adjustment will be submitted for review. Owner or secretary must approve before it affects the fund balance.
+                  This adjustment will be submitted for review. Owner or secretary must approve before it takes effect.
                 </div>
               </div>
 
@@ -838,20 +803,6 @@ export default function TransactionForm({ onClose, onSuccess }) {
                     )}
                   </>
                 )}
-              </div>
-
-              {/* Fund selector for all transactions */}
-              <div style={sectionCardStyle}>
-                <div style={labelStyle}>Fund (applies to all)</div>
-                <select value={selectedFundId} onChange={(e) => setSelectedFundId(e.target.value)} style={selectStyle}>
-                  <option value="">Select fund</option>
-                  {funds.map((fund) => (
-                    <option key={fund.id} value={fund.id}>{fund.name}</option>
-                  ))}
-                </select>
-                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 8 }}>
-                  Approved transactions will update this fund balance.
-                </div>
               </div>
 
               {/* Scan button */}

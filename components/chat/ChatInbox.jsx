@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
@@ -96,12 +96,12 @@ export default function ChatInbox() {
   const scrollRef = useRef(null);
   const fileRef = useRef(null);
   const inputRef = useRef(null);
+  const submittingRef = useRef(false); // Prevents double-submit
 
   // ─── ALL useState hooks MUST be above any conditional return ──
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [funds, setFunds] = useState([]);
   const [badge, setBadge] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [pendingOcr, setPendingOcr] = useState(null);
@@ -115,19 +115,6 @@ export default function ChatInbox() {
   const [boxHeight, setBoxHeight] = useState(540);
 
   // ─── ALL useEffect hooks MUST be above any conditional return ──
-
-  // Load funds once
-  useEffect(() => {
-    let mounted = true;
-    supabase
-      .from("funds")
-      .select("id, name, fund_type")
-      .order("id")
-      .then(({ data }) => {
-        if (mounted && data) setFunds(data);
-      });
-    return () => { mounted = false; };
-  }, []);
 
   // FAB position + chat box sizing (recalculate on resize)
   useEffect(() => {
@@ -242,7 +229,6 @@ export default function ChatInbox() {
         bank_account: ocr.bank_account || "",
         transaction_code: ocr.transaction_code || "",
         transaction_date: ocr.transaction_date || new Date().toISOString().slice(0, 10),
-        fund_id: "",
       });
       addAgent("Scan successful! Review the details below:");
     } catch (err) {
@@ -255,6 +241,8 @@ export default function ChatInbox() {
 
   // ─── CONFIRM TRANSACTION ──────────────────────────────────────
   async function handleConfirmTx(data) {
+    // Synchronous guard — prevents double-submit even on rapid clicks
+    if (submittingRef.current) return;
     if (!data.amount || Number(data.amount) <= 0) {
       addAgent("Please enter a valid amount.");
       return;
@@ -291,19 +279,21 @@ export default function ChatInbox() {
 
     setDupeWarning(null);
     setCreatingTx(true);
+    submittingRef.current = true;
 
     try {
       const token = await getToken();
       if (!token) {
         addAgent("Session expired. Please log in again.");
         setCreatingTx(false);
+        submittingRef.current = false;
         return;
       }
 
       const payload = {
         type: data.type || "expense",
         amount: Number(data.amount),
-        fund_id: data.fund_id ? Number(data.fund_id) : null,
+        fund_id: null,
         description: data.description || null,
         recipient_name: data.recipient_name || null,
         bank_name: data.bank_name || null,
@@ -356,6 +346,7 @@ export default function ChatInbox() {
       addAgent("Failed to create transaction: " + (err.message || "Unknown error"));
     } finally {
       setCreatingTx(false);
+      submittingRef.current = false;
     }
   }
 
@@ -420,7 +411,7 @@ export default function ChatInbox() {
         aria-label={open ? "Close chat" : "Open chat"}
         style={{
           position: "fixed",
-          bottom: 24,
+          bottom: 92,
           right: fabRight,
           zIndex: 10000,
           width: 56,
@@ -471,7 +462,7 @@ export default function ChatInbox() {
           style={{
             position: "fixed",
             zIndex: 10001,
-            bottom: 90,
+            bottom: 160,
             right: fabRight,
             width: boxWidth,
             height: boxHeight,
@@ -564,7 +555,6 @@ export default function ChatInbox() {
               <div style={{ marginBottom: 10, animation: "cFadeIn 0.3s ease-out" }}>
                 <OCRCard
                   data={pendingOcr}
-                  funds={funds}
                   onConfirm={handleConfirmTx}
                   onCancel={() => {
                     setPendingOcr(null);
@@ -791,7 +781,7 @@ function UserBubble({ msg }) {
   );
 }
 
-function OCRCard({ data, funds, onConfirm, onCancel, loading }) {
+function OCRCard({ data, onConfirm, onCancel, loading }) {
   const [form, setForm] = useState({ ...data });
   const upd = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -915,31 +905,14 @@ function OCRCard({ data, funds, onConfirm, onCancel, loading }) {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-        <div style={{ flex: 1 }}>
-          <div style={lbl}>Date</div>
-          <input
-            type="date"
-            value={form.transaction_date}
-            onChange={(e) => upd("transaction_date", e.target.value)}
-            style={fld}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={lbl}>Fund</div>
-          <select
-            value={form.fund_id}
-            onChange={(e) => upd("fund_id", e.target.value)}
-            style={{ ...fld, appearance: "auto" }}
-          >
-            <option value="">Select fund</option>
-            {funds.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div style={{ marginBottom: 14 }}>
+        <div style={lbl}>Date</div>
+        <input
+          type="date"
+          value={form.transaction_date}
+          onChange={(e) => upd("transaction_date", e.target.value)}
+          style={fld}
+        />
       </div>
 
       <div style={{ display: "flex", gap: 8 }}>
