@@ -585,11 +585,11 @@ export default function OwnerPage() {
                 const isPositive = signedAmount >= 0;
                 return (
                 <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.description || tx.recipient_name || "Giao dịch"}</div>
-                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 3 }}>{fmtDate(tx.transaction_date || tx.created_at)} · {tx.status || "pending"}</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fmtDate(tx.transaction_date || tx.created_at)} · {tx.status === "approved" ? "Đã duyệt" : tx.status === "rejected" ? "Từ chối" : "Chờ duyệt"}</div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: isPositive ? T.success : T.danger, flexShrink: 0 }}>{isPositive ? "+" : "-"}{fmtVND(Math.abs(signedAmount))}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: isPositive ? T.success : T.danger, flexShrink: 0, whiteSpace: "nowrap" }}>{isPositive ? "+" : "-"}{fmtVND(Math.abs(signedAmount))}</div>
                 </div>
               );})}
             </div>

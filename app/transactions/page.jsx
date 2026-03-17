@@ -158,8 +158,10 @@ export default function TransactionsPage() {
   const filtered = useMemo(() => {
     if (!activeFilter) return searchFiltered;
     return searchFiltered.filter((tx) => {
-      if (activeFilter === "income") return getSignedAmount(tx) > 0;
-      if (activeFilter === "expense") return getSignedAmount(tx) < 0;
+      const signed = getSignedAmount(tx);
+      const type = String(tx?.type || "").trim().toLowerCase();
+      if (activeFilter === "income") return signed > 0 || (signed === 0 && type === "income");
+      if (activeFilter === "expense") return signed < 0 || (signed === 0 && type === "expense");
       if (activeFilter === "pending") return tx.status === "pending";
       return true;
     });
@@ -234,7 +236,7 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div style={{ background: T.bg, minHeight: "100vh", maxWidth: 430, margin: "0 auto", fontFamily: "'Be Vietnam Pro','Inter',-apple-system,sans-serif", boxShadow: "0 0 60px rgba(0,0,0,0.06)" }}>
+    <div style={{ background: T.bg, minHeight: "100vh", maxWidth: 430, margin: "0 auto", fontFamily: "'Be Vietnam Pro','Inter',-apple-system,sans-serif", boxShadow: "0 0 60px rgba(0,0,0,0.06)", overflow: "hidden" }}>
         {/* Header */}
         <div style={{ padding: "20px 16px 13px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 13 }}>
@@ -379,26 +381,27 @@ export default function TransactionsPage() {
                     <div style={{ display: "grid", gap: 6 }}>
                       {group.transactions.map((tx) => {
                         const signedAmount = getSignedAmount(tx);
-                        const isIncome = signedAmount >= 0;
+                        const isIncome = signedAmount > 0;
+                        const txType = String(tx?.type || "").trim().toLowerCase();
                         const statusColor = tx.status === "approved" ? T.success : tx.status === "pending" ? T.amber : T.danger;
                         return (
                           <button
                             key={tx.id}
                             onClick={() => setDetail(tx)}
-                            style={{ ...cardStyle, padding: "10px 12px", width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}
+                            style={{ ...cardStyle, padding: "10px 12px", width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, boxSizing: "border-box" }}
                           >
                             <div style={{ width: 34, height: 34, borderRadius: 10, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                               <MIcon name={isIncome ? "trending_up" : "trending_down"} size={16} color={isIncome ? T.success : T.danger} />
                             </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
                               <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {tx.description || tx.recipient_name || (isIncome ? "Thu nhập" : "Chi tiêu")}
+                                {tx.description || tx.recipient_name || (txType === "income" ? "Thu nhập" : txType === "adjustment" ? "Điều chỉnh" : "Chi tiêu")}
                               </div>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3 }}>
-                                <div style={{ fontSize: 11, color: T.textMuted }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3, gap: 8 }}>
+                                <div style={{ fontSize: 11, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
                                   {tx.profiles?.full_name || "—"}
                                 </div>
-                                <div style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 6px", borderRadius: 5, background: `${statusColor}15`, color: statusColor, fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>
+                                <div style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 6px", borderRadius: 5, background: `${statusColor}15`, color: statusColor, fontSize: 9, fontWeight: 700, textTransform: "uppercase", flexShrink: 0, whiteSpace: "nowrap" }}>
                                   <div style={{ width: 4, height: 4, borderRadius: "50%", background: statusColor }} />
                                   {STATUS_VI[tx.status] || tx.status}
                                 </div>

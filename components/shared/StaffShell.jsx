@@ -59,7 +59,7 @@ export default function StaffShell({ children, role }) {
     <div style={{
       minHeight: "100vh", backgroundColor: T.bg, fontFamily: T.font,
       maxWidth: 430, margin: "0 auto", position: "relative",
-      boxShadow: "0 0 60px rgba(0,0,0,0.06)",
+      boxShadow: "0 0 60px rgba(0,0,0,0.06)", overflowX: "hidden",
     }}>
       <main style={{ paddingBottom: 84 }}>
         {children}

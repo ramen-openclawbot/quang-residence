@@ -412,8 +412,10 @@ export default function SecretaryPage() {
   const txFiltered = useMemo(() => {
     if (!txActiveFilter) return txSearchFiltered;
     return txSearchFiltered.filter((tx) => {
-      if (txActiveFilter === "income") return getSignedAmount(tx) > 0;
-      if (txActiveFilter === "expense") return getSignedAmount(tx) < 0;
+      const signed = getSignedAmount(tx);
+      const type = String(tx?.type || "").trim().toLowerCase();
+      if (txActiveFilter === "income") return signed > 0 || (signed === 0 && type === "income");
+      if (txActiveFilter === "expense") return signed < 0 || (signed === 0 && type === "expense");
       if (txActiveFilter === "pending") return tx.status === "pending";
       return true;
     });
@@ -766,16 +768,16 @@ export default function SecretaryPage() {
                       const isPositive = signedAmount >= 0;
                       return (
                       <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: `1px solid ${T.border}` }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1, overflow: "hidden" }}>
                           <div style={{ width: 38, height: 38, borderRadius: 12, background: isPositive ? "#eafaf2" : "#fff1f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                             <MIcon name={isPositive ? "south_west" : "north_east"} size={18} color={isPositive ? T.success : T.danger} />
                           </div>
-                          <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ minWidth: 0, flex: 1, overflow: "hidden" }}>
                             <div style={{ fontSize: 14, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tx.description || tx.recipient_name || "Giao dịch"}</div>
                             <div style={{ fontSize: 12, color: T.textMuted }}>{fmtRelative(tx.created_at)}</div>
                           </div>
                         </div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: isPositive ? T.success : T.danger }}>{isPositive ? "+" : "-"}{fmtVND(Math.abs(signedAmount))}</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: isPositive ? T.success : T.danger, flexShrink: 0, whiteSpace: "nowrap" }}>{isPositive ? "+" : "-"}{fmtVND(Math.abs(signedAmount))}</div>
                       </div>
                     );})}
                   </div>
@@ -887,24 +889,26 @@ export default function SecretaryPage() {
                               <div style={{ display: "grid", gap: 8 }}>
                                 {groupTxInPage.map((tx) => {
                                   const signedAmount = getSignedAmount(tx);
-                                  const isIncome = signedAmount >= 0;
+                                  const isIncome = signedAmount > 0;
+                                  const txType = String(tx?.type || "").trim().toLowerCase();
                                   const statusColor = tx.status === "approved" ? T.success : tx.status === "pending" ? T.amber : T.danger;
+                                  const STATUS_VI = { approved: "Đã duyệt", pending: "Chờ duyệt", rejected: "Từ chối" };
                                   return (
-                                    <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("transaction-detail"); }} style={{ ...cardStyle, padding: 14, width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, border: `1px solid ${T.border}` }}>
-                                      <div style={{ width: 42, height: 42, borderRadius: 12, background: isIncome ? "#ecfdf3" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                    <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("transaction-detail"); }} style={{ ...cardStyle, padding: 14, width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, border: `1px solid ${T.border}`, boxSizing: "border-box" }}>
+                                      <div style={{ width: 42, height: 42, borderRadius: 12, background: isIncome ? "#ecfdf3" : (txType === "adjustment" && signedAmount === 0) ? "#f5f5f5" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                         <MIcon name={isIncome ? "trending_up" : "trending_down"} size={20} color={isIncome ? T.success : T.danger} />
                                       </div>
-                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
                                         <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                          {tx.description || tx.recipient_name || (isIncome ? "Thu nhập" : "Chi tiêu")}
+                                          {tx.description || tx.recipient_name || (txType === "income" ? "Thu nhập" : txType === "adjustment" ? "Điều chỉnh" : "Chi tiêu")}
                                         </div>
-                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4, minWidth: 0 }}>
-                                          <div style={{ fontSize: 12, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4, gap: 8 }}>
+                                          <div style={{ fontSize: 12, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
                                             {tx.profiles?.full_name || "—"}
                                           </div>
-                                          <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, background: `${statusColor}15`, color: statusColor, fontSize: 10, fontWeight: 700, textTransform: "uppercase", flexShrink: 0 }}>
+                                          <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, background: `${statusColor}15`, color: statusColor, fontSize: 10, fontWeight: 700, textTransform: "uppercase", flexShrink: 0, whiteSpace: "nowrap" }}>
                                             <div style={{ width: 5, height: 5, borderRadius: "50%", background: statusColor }} />
-                                            {tx.status}
+                                            {STATUS_VI[tx.status] || tx.status}
                                           </div>
                                         </div>
                                       </div>

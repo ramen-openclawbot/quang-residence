@@ -492,14 +492,14 @@ Hoàn thành
                         const signedAmount = getSignedAmount(tx);
                         const isPositive = signedAmount >= 0;
                         return (
-                        <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("expense-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
+                        <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("expense-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, boxSizing: "border-box" }}>
                           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{tx.description || tx.recipient_name || "Expense"}</div>
+                            <div style={{ minWidth: 0, flex: 1, overflow: "hidden" }}>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.description || tx.recipient_name || "Chi phí"}</div>
                               <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{fmtRelative(tx.created_at)}</div>
-                              {tx.bank_name && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{tx.bank_name}</div>}
+                              {tx.bank_name && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.bank_name}</div>}
                             </div>
-                            <div style={{ fontSize: 14, fontWeight: 800, color: isPositive ? T.success : T.danger }}>{isPositive ? "+" : "-"}{fmtVND(Math.abs(signedAmount))}</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: isPositive ? T.success : T.danger, flexShrink: 0, whiteSpace: "nowrap" }}>{isPositive ? "+" : "-"}{fmtVND(Math.abs(signedAmount))}</div>
                           </div>
                         </button>
                       );})}
