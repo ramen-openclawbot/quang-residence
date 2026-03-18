@@ -13,7 +13,7 @@ Extract these fields:
 - bank_name: string (the bank processing the transfer, e.g. Techcombank, MB Bank, Vietcombank)
 - bank_account: string (account number if visible)
 - description: string (the transfer note/message, "Lời nhắn" or "Nội dung")
-- transaction_date: string (ISO format YYYY-MM-DD if possible, or original text)
+- transaction_date: string (MUST be YYYY-MM-DD if any date exists on slip; check fields like "Transfer date", "Ngày giao dịch", "Ngày chuyển khoản")
 - transaction_code: string (mã giao dịch)
 - suggested_category: string (one of: food, utilities, household, delivery, transport, entertainment, salary, pr, maintenance, travel, kitchen, subscription, other)
 
@@ -39,7 +39,7 @@ Extract ONLY these fields (return JSON):
 - recipient_name: string
 - bank_account: string
 - description: string (Lời nhắn or Nội dung field)
-- transaction_date: string (YYYY-MM-DD format if possible)
+- transaction_date: string (MUST be YYYY-MM-DD if any date exists on slip; check labels like "Transfer date", "Ngày giao dịch", "Ngày chuyển khoản")
 - transaction_code: string (mã giao dịch)
 
 Return ONLY valid JSON, no markdown.`;
@@ -54,6 +54,53 @@ function normalizeBankIdentifier(bankName) {
     .toLowerCase()
     .replace(/\s+/g, "")
     .replace(/[^a-z0-9]/g, "");
+}
+
+function normalizeTransactionDate(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  // Already ISO-like
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  // dd/mm/yyyy or dd-mm-yyyy
+  const dmy = raw.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\b/);
+  if (dmy) {
+    const d = String(Number(dmy[1])).padStart(2, "0");
+    const m = String(Number(dmy[2])).padStart(2, "0");
+    let y = Number(dmy[3]);
+    if (y < 100) y += 2000;
+    if (y >= 2000 && Number(m) >= 1 && Number(m) <= 12 && Number(d) >= 1 && Number(d) <= 31) {
+      return `${y}-${m}-${d}`;
+    }
+  }
+
+  // English month format: "15 Mar 2026 at 10:35 PM"
+  const monthMap = {
+    jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+    jul: "07", aug: "08", sep: "09", sept: "09", oct: "10", nov: "11", dec: "12",
+  };
+  const en = raw.match(/\b(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})\b/);
+  if (en) {
+    const d = String(Number(en[1])).padStart(2, "0");
+    const mKey = en[2].toLowerCase().slice(0, 4).replace(/\.$/, "").slice(0, 3);
+    const m = monthMap[mKey];
+    const y = en[3];
+    if (m) return `${y}-${m}-${d}`;
+  }
+
+  // Last fallback: Date parser
+  const fallback = new Date(raw);
+  if (!Number.isNaN(fallback.getTime())) {
+    const y = fallback.getFullYear();
+    const m = String(fallback.getMonth() + 1).padStart(2, "0");
+    const d = String(fallback.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  return null;
 }
 
 /**
@@ -226,6 +273,9 @@ export async function POST(request) {
         { status: 422 }
       );
     }
+
+    // Normalize transaction date aggressively (critical for downstream logic)
+    parsed.transaction_date = normalizeTransactionDate(parsed.transaction_date);
 
     // After successful extraction, save or update template if bank was identified
     const bankName = parsed.bank_name;
