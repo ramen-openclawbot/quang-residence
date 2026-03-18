@@ -326,7 +326,7 @@ export default function ChatInbox() {
         bank_name: ocr.bank_name || "",
         bank_account: ocr.bank_account || "",
         transaction_code: ocr.transaction_code || "",
-        transaction_date: ocr.transaction_date || new Date().toISOString().slice(0, 10),
+        transaction_date: ocr.transaction_date || "",
       });
       addAgent("Quét thành công! Xem chi tiết bên dưới:");
     } catch (err) {
@@ -933,6 +933,7 @@ function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
   const [recent, setRecent] = useState([]);
   const upd = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   const categoryMissing = form.type === "expense" && !form.category_id;
+  const dateMissing = !form.transaction_date;
 
   useEffect(() => {
     try {
@@ -1019,11 +1020,11 @@ function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
         <div style={{ flex: 1 }}><div style={lbl}>Tài khoản</div><input value={form.bank_account} onChange={(e) => upd("bank_account", e.target.value)} placeholder="Số" style={fld} /></div>
         <div style={{ flex: 1 }}><div style={lbl}>Mã GD</div><input value={form.transaction_code} onChange={(e) => upd("transaction_code", e.target.value)} placeholder="Mã" style={fld} /></div>
       </div>
-      <div style={{ marginBottom: 14 }}><div style={lbl}>Ngày</div><input type="date" value={form.transaction_date} onChange={(e) => upd("transaction_date", e.target.value)} style={fld} /></div>
+      <div style={{ marginBottom: 14 }}><div style={lbl}>Ngày giao dịch *</div><input type="date" value={form.transaction_date} onChange={(e) => upd("transaction_date", e.target.value)} style={fld} /><div style={{ marginTop: 4, fontSize: 10, color: T.textMuted }}>Lấy theo ngày chuyển khoản trên hóa đơn ngân hàng.</div></div>
 
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={onCancel} disabled={loading} style={{ ...actionBtnS, flex: 1, justifyContent: "center", background: "#f1f5f1", color: T.textSec }}>Hủy</button>
-        <button onClick={() => onConfirm(form)} disabled={loading || categoryMissing} style={{ ...actionBtnS, flex: 2, justifyContent: "center", background: (loading || categoryMissing) ? `${T.primary}80` : T.primary, color: "#fff" }}>{loading ? "Đang tạo..." : "Gửi để duyệt"}</button>
+        <button onClick={() => onConfirm(form)} disabled={loading || categoryMissing || dateMissing} style={{ ...actionBtnS, flex: 2, justifyContent: "center", background: (loading || categoryMissing || dateMissing) ? `${T.primary}80` : T.primary, color: "#fff" }}>{loading ? "Đang tạo..." : "Gửi để duyệt"}</button>
       </div>
 
       {showPicker && (

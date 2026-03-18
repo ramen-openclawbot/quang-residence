@@ -244,7 +244,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
               bank_name: ocrData?.bank_name || "",
               bank_account: ocrData?.bank_account || "",
               transaction_code: ocrData?.transaction_code || "",
-              transaction_date: ocrData?.transaction_date || new Date().toISOString().slice(0, 10),
+              transaction_date: ocrData?.transaction_date || "",
               notes: "",
               fund_id: "",
             },
@@ -494,6 +494,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
   const hasMissingExpenseCategory =
     type === "expense" && scanResults.some((r) => r.form.amount && !r.form.category_id);
+  const hasMissingTransactionDate = scanResults.some((r) => r.form.amount && !r.form.transaction_date);
 
   const handleAdjustSubmit = async () => {
     if (!adjustAmount || Number(adjustAmount) <= 0) {
@@ -1129,13 +1130,16 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
                       {/* Date */}
                       <div>
-                        <div style={labelStyle}>Ngày</div>
+                        <div style={labelStyle}>Ngày giao dịch *</div>
                         <input
                           type="date"
                           value={result.form.transaction_date}
                           onChange={(e) => updateResultForm(resultIdx, "transaction_date", e.target.value)}
                           style={dateInputStyle}
                         />
+                        <div style={{ marginTop: 4, fontSize: 11, color: T.textMuted }}>
+                          Lấy theo ngày chuyển khoản ghi trên bank slip.
+                        </div>
                       </div>
 
                       {/* Notes */}
@@ -1256,6 +1260,11 @@ export default function TransactionForm({ onClose, onSuccess }) {
               )}
 
               {/* Submit button */}
+              {scanResults.length > 0 && hasMissingTransactionDate && (
+                <div style={{ fontSize: 12, color: T.danger, marginBottom: 8 }}>
+                  Vui lòng chọn Ngày giao dịch cho tất cả giao dịch trước khi gửi.
+                </div>
+              )}
               {scanResults.length > 0 && hasMissingExpenseCategory && (
                 <div style={{ fontSize: 12, color: T.danger, marginBottom: 8 }}>
                   Vui lòng chọn phân loại chi tiêu cho tất cả giao dịch trước khi gửi.
@@ -1265,11 +1274,11 @@ export default function TransactionForm({ onClose, onSuccess }) {
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={submitting || !scanResults.some((r) => r.form.amount) || hasMissingExpenseCategory}
+                  disabled={submitting || !scanResults.some((r) => r.form.amount) || hasMissingExpenseCategory || hasMissingTransactionDate}
                   style={{
                     ...submitBtnStyle,
-                    opacity: submitting || !scanResults.some((r) => r.form.amount) || hasMissingExpenseCategory ? 0.5 : 1,
-                    cursor: submitting || !scanResults.some((r) => r.form.amount) || hasMissingExpenseCategory ? "not-allowed" : "pointer",
+                    opacity: submitting || !scanResults.some((r) => r.form.amount) || hasMissingExpenseCategory || hasMissingTransactionDate ? 0.5 : 1,
+                    cursor: submitting || !scanResults.some((r) => r.form.amount) || hasMissingExpenseCategory || hasMissingTransactionDate ? "not-allowed" : "pointer",
                   }}
                 >
                   {submitting ? "Đang tạo..." : `Tạo ${scanResults.filter((r) => r.form.amount).length} giao dịch${scanResults.filter((r) => r.form.amount).length !== 1 ? "" : ""}`}
