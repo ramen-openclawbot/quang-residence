@@ -121,7 +121,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
     (async () => {
       const { data } = await supabase
         .from("categories")
-        .select("id, name, name_vi, sort_order")
+        .select("id, code, name, name_vi, sort_order")
         .order("sort_order", { ascending: true });
       if (!canceled) setExpenseCategories(data || []);
     })();
@@ -362,6 +362,8 @@ export default function TransactionForm({ onClose, onSuccess }) {
         // Upload main slip image
         const slipUrl = await uploadFileToStorage(result.file, "slip");
 
+        const selectedCategory = expenseCategories.find((c) => String(c.id) === String(result.form.category_id));
+
         const payload = {
           type,
           amount: Number(result.form.amount || 0),
@@ -383,6 +385,14 @@ export default function TransactionForm({ onClose, onSuccess }) {
             supporting_proof_urls: supportingProofUrls,
             template_matched: result.templateMatched,
             bank_identifier: result.bankIdentifier,
+            category_meta: selectedCategory
+              ? {
+                  id: selectedCategory.id,
+                  code: selectedCategory.code || null,
+                  label_vi: selectedCategory.name_vi || selectedCategory.name || null,
+                  source: "user_selected",
+                }
+              : null,
           },
         };
 

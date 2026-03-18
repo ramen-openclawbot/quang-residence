@@ -163,7 +163,7 @@ export default function ChatInbox() {
     (async () => {
       const { data } = await supabase
         .from("categories")
-        .select("id, name, name_vi, sort_order")
+        .select("id, code, name, name_vi, sort_order")
         .order("sort_order", { ascending: true });
       if (!canceled) setExpenseCategories(data || []);
     })();
@@ -311,6 +311,7 @@ export default function ChatInbox() {
         return;
       }
 
+      const selectedCategory = expenseCategories.find((c) => String(c.id) === String(data.category_id));
       const payload = {
         type: data.type || "expense",
         amount: Number(data.amount),
@@ -328,7 +329,17 @@ export default function ChatInbox() {
         slip_image_url: slipUrl,
         status: "pending",
         source: "app",
-        ocr_raw_data: data,
+        ocr_raw_data: {
+          ...data,
+          category_meta: selectedCategory
+            ? {
+                id: selectedCategory.id,
+                code: selectedCategory.code || null,
+                label_vi: selectedCategory.name_vi || selectedCategory.name || null,
+                source: "user_selected",
+              }
+            : null,
+        },
       };
 
       const { data: inserted, error } = await supabase
