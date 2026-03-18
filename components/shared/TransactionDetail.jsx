@@ -83,6 +83,11 @@ export default function TransactionDetail({ tx, profile, onClose, onAction }) {
 
   const statusColor = tx.status === "approved" ? T.success : tx.status === "rejected" ? T.danger : T.amber;
   const statusLabel = tx.status === "approved" ? "Đã duyệt" : tx.status === "rejected" ? "Đã từ chối" : "Chờ duyệt";
+  const category = tx.categories
+    ? { label: tx.categories.name_vi || tx.categories.name || "Chưa phân loại", code: tx.categories.code || null, color: tx.categories.color || "#94a3b8" }
+    : tx.ocr_raw_data?.category_meta
+      ? { label: tx.ocr_raw_data.category_meta.label_vi || tx.ocr_raw_data.category_meta.code || "Chưa phân loại", code: tx.ocr_raw_data.category_meta.code || null, color: "#94a3b8" }
+      : null;
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(8,15,8,0.32)", display: "flex", justifyContent: "center", alignItems: "flex-end" }}>
@@ -118,6 +123,14 @@ export default function TransactionDetail({ tx, profile, onClose, onAction }) {
             <InfoRow label="Ngân hàng" value={tx.bank_name} />
             <InfoRow label="Số tài khoản" value={tx.bank_account} mono />
             <InfoRow label="Mã giao dịch" value={tx.transaction_code} mono />
+            {category && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: T.textMuted, marginBottom: 6 }}>Phân loại</div>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, background: `${category.color}22`, color: category.color, border: `1px solid ${category.color}33`, fontSize: 11, fontWeight: 700 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: 999, background: category.color }} />{category.label}{category.code ? ` (${category.code})` : ""}
+                </span>
+              </div>
+            )}
             <InfoRow label="Ngày" value={fmtDate(tx.transaction_date)} />
             <InfoRow label="Đã gửi" value={`${fmtDate(tx.created_at)} ${fmtTime(tx.created_at)}`} />
             <InfoRow label="Người gửi" value={tx.profiles?.full_name || "—"} />

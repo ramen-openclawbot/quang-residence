@@ -37,6 +37,14 @@ const cardStyle = {
 const MONTHS = ["Tháng 1","Tháng 2","Tháng 3","Tháng 4","Tháng 5","Tháng 6","Tháng 7","Tháng 8","Tháng 9","Tháng 10","Tháng 11","Tháng 12"];
 const STATUS_VI = { approved: "Đã duyệt", pending: "Chờ duyệt", rejected: "Từ chối" };
 
+function getCategoryMeta(tx) {
+  const c = tx?.categories;
+  if (c) return { label: c.name_vi || c.name || "Chưa phân loại", color: c.color || "#94a3b8" };
+  const m = tx?.ocr_raw_data?.category_meta;
+  if (m) return { label: m.label_vi || m.code || "Chưa phân loại", color: "#94a3b8" };
+  return { label: "Chưa phân loại", color: "#94a3b8" };
+}
+
 /* ═══════════════════════════════════════════════════════
    MAIN PAGE — Transaction Ledger
    ═══════════════════════════════════════════════════════ */
@@ -413,7 +421,14 @@ export default function TransactionsPage() {
                               <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {tx.description || tx.recipient_name || (txType === "income" ? "Thu nhập" : txType === "adjustment" ? "Điều chỉnh" : "Chi tiêu")}
                               </div>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3, gap: 8 }}>
+                              {(() => { const cat = getCategoryMeta(tx); return (
+                                <div style={{ marginTop: 4 }}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 8px", borderRadius: 999, background: `${cat.color}22`, color: cat.color, border: `1px solid ${cat.color}33`, fontSize: 10, fontWeight: 700 }}>
+                                    <span style={{ width: 5, height: 5, borderRadius: 999, background: cat.color }} />{cat.label}
+                                  </span>
+                                </div>
+                              ); })()}
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4, gap: 8 }}>
                                 <div style={{ fontSize: 11, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
                                   {tx.profiles?.full_name || "—"}
                                 </div>

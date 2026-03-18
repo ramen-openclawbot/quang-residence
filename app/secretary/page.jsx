@@ -31,6 +31,14 @@ const TABS = [
   { id: "calendar", label: "Lịch", icon: "calendar_month" },
 ];
 
+function getCategoryMeta(tx) {
+  const c = tx?.categories;
+  if (c) return { label: c.name_vi || c.name || "Chưa phân loại", color: c.color || "#94a3b8" };
+  const m = tx?.ocr_raw_data?.category_meta;
+  if (m) return { label: m.label_vi || m.code || "Chưa phân loại", color: "#94a3b8" };
+  return { label: "Chưa phân loại", color: "#94a3b8" };
+}
+
 const cardStyle = {
   background: T.card,
   border: `1px solid ${T.border}`,
@@ -760,6 +768,13 @@ export default function SecretaryPage() {
                           </div>
                           <div style={{ minWidth: 0, flex: 1, overflow: "hidden" }}>
                             <div style={{ fontSize: 14, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tx.description || tx.recipient_name || "Giao dịch"}</div>
+                            {(() => { const cat = getCategoryMeta(tx); return (
+                              <div style={{ marginTop: 5 }}>
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 8px", borderRadius: 999, background: `${cat.color}22`, color: cat.color, border: `1px solid ${cat.color}33`, fontSize: 10, fontWeight: 700 }}>
+                                  <span style={{ width: 5, height: 5, borderRadius: 999, background: cat.color }} />{cat.label}
+                                </span>
+                              </div>
+                            ); })()}
                             <div style={{ fontSize: 12, color: T.textMuted }}>{fmtRelative(tx.created_at)}</div>
                           </div>
                         </div>
@@ -913,6 +928,13 @@ export default function SecretaryPage() {
                                         <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                           {tx.description || tx.recipient_name || (txType === "income" ? "Thu nhập" : txType === "adjustment" ? "Điều chỉnh" : "Chi tiêu")}
                                         </div>
+                                        {(() => { const cat = getCategoryMeta(tx); return (
+                                          <div style={{ marginTop: 6 }}>
+                                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 8px", borderRadius: 999, background: `${cat.color}22`, color: cat.color, border: `1px solid ${cat.color}33`, fontSize: 10, fontWeight: 700 }}>
+                                              <span style={{ width: 5, height: 5, borderRadius: 999, background: cat.color }} />{cat.label}
+                                            </span>
+                                          </div>
+                                        ); })()}
                                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4, gap: 8 }}>
                                           <div style={{ fontSize: 12, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
                                             {tx.profiles?.full_name || "—"}

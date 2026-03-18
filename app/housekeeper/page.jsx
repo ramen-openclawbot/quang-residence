@@ -116,6 +116,14 @@ function tone(status) {
   return { bg: "#fff1f1", color: T.pink };
 }
 
+function getCategoryMeta(tx) {
+  const c = tx?.categories;
+  if (c) return { label: c.name_vi || c.name || "Chưa phân loại", color: c.color || "#94a3b8" };
+  const m = tx?.ocr_raw_data?.category_meta;
+  if (m) return { label: m.label_vi || m.code || "Chưa phân loại", color: "#94a3b8" };
+  return { label: "Chưa phân loại", color: "#94a3b8" };
+}
+
 export default function HousekeeperPage() {
   const { profile, signOut } = useAuth();
   const [tab, setTab] = useState("home");
@@ -193,7 +201,7 @@ export default function HousekeeperPage() {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const [txData, maintenanceData, scheduleData] = await Promise.all([
-        supabase.from("transactions").select("*").eq("created_by", profile.id).gte("created_at", thirtyDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(30),
+        supabase.from("transactions").select("*, categories!category_id(id, code, name_vi, name, color)").eq("created_by", profile.id).gte("created_at", thirtyDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(30),
         supabase.from("home_maintenance").select("*").order("created_at", { ascending: false }),
         supabase.from("family_schedule").select("*").order("event_date", { ascending: true }),
       ]);
@@ -411,6 +419,13 @@ export default function HousekeeperPage() {
                         <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("expense-detail"); }} style={{ ...cardStyle, width: "calc(100% - 4px)", margin: "0 auto", padding: 14, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, boxSizing: "border-box", display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", columnGap: 10, alignItems: "start" }}>
                           <div style={{ minWidth: 0, overflow: "hidden" }}>
                             <div style={{ fontSize: 14, fontWeight: 800, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.description || tx.recipient_name || "Chi phí"}</div>
+                            {(() => { const cat = getCategoryMeta(tx); return (
+                              <div style={{ marginTop: 6 }}>
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 8px", borderRadius: 999, background: `${cat.color}22`, color: cat.color, border: `1px solid ${cat.color}33`, fontSize: 10, fontWeight: 700 }}>
+                                  <span style={{ width: 5, height: 5, borderRadius: 999, background: cat.color }} />{cat.label}
+                                </span>
+                              </div>
+                            ); })()}
                             <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{fmtRelative(tx.created_at)}</div>
                             {tx.bank_name && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.bank_name}</div>}
                           </div>
