@@ -119,8 +119,14 @@ function suggestCategoryId({ description = "", recipient_name = "", bank_name = 
   }
 
   // Personal-name-like transfer note (e.g. "VU TRAN CHI TAM") should default to KHAC
+  const fallbackOther = categories.find((c) => {
+    const code = String(c.code || "").toUpperCase();
+    const vi = String(c.name_vi || "").toLowerCase();
+    const en = String(c.name || "").toLowerCase();
+    return code === "KHAC" || vi === "khác" || vi === "khac" || en === "other";
+  });
+
   if (looksPersonalTransfer) {
-    const fallbackOther = categories.find((c) => String(c.code || "").toUpperCase() === "KHAC");
     if (fallbackOther) return String(fallbackOther.id);
   }
 
@@ -128,7 +134,6 @@ function suggestCategoryId({ description = "", recipient_name = "", bank_name = 
   if (learnedMap[learnedKey]) return String(learnedMap[learnedKey]);
 
   // Fallback: if content is non-empty but not mappable, classify as KHAC
-  const fallbackOther = categories.find((c) => String(c.code || "").toUpperCase() === "KHAC");
   if (fallbackOther) return String(fallbackOther.id);
   return "";
 }

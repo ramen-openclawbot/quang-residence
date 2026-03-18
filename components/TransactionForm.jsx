@@ -61,7 +61,6 @@ function suggestCategoryId({ description = "", recipient_name = "", bank_name = 
   if (learnedMap[learnedKey]) return String(learnedMap[learnedKey]);
 
   // Fallback: if content is non-empty but not mappable, classify as KHAC
-  const fallbackOther = categories.find((c) => String(c.code || "").toUpperCase() === "KHAC");
   if (fallbackOther) return String(fallbackOther.id);
   return "";
 }
