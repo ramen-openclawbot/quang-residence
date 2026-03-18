@@ -201,7 +201,7 @@ export default function ChatInbox() {
     (async () => {
       const { data } = await supabase
         .from("categories")
-        .select("id, code, name, name_vi, sort_order")
+        .select("id, code, name, name_vi, color, sort_order")
         .order("sort_order", { ascending: true });
       if (!canceled) setExpenseCategories(data || []);
     })();
@@ -928,8 +928,34 @@ function UserBubble({ msg }) {
 
 function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
   const [form, setForm] = useState({ ...data });
+  const [showPicker, setShowPicker] = useState(false);
+  const [q, setQ] = useState("");
+  const [recent, setRecent] = useState([]);
   const upd = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   const categoryMissing = form.type === "expense" && !form.category_id;
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("zenhome_recent_categories");
+      setRecent(raw ? JSON.parse(raw) : []);
+    } catch {
+      setRecent([]);
+    }
+  }, []);
+
+  const selectCategory = (id) => {
+    upd("category_id", String(id));
+    setShowPicker(false);
+    setQ("");
+    const next = [String(id), ...recent.filter((x) => String(x) !== String(id))].slice(0, 6);
+    setRecent(next);
+    try { localStorage.setItem("zenhome_recent_categories", JSON.stringify(next)); } catch {}
+  };
+
+  const selectedCat = categories.find((c) => String(c.id) === String(form.category_id));
+  const suggested = categories.find((c) => String(c.id) === String(data.category_id));
+  const filtered = categories.filter((c) => (c.name_vi || c.name || "").toLowerCase().includes(q.toLowerCase()));
+  const recentCats = recent.map((id) => categories.find((c) => String(c.id) === String(id))).filter(Boolean);
 
   const fld = {
     width: "100%",
@@ -952,37 +978,10 @@ function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
   };
 
   return (
-    <div
-      style={{
-        background: "#fff",
-        borderRadius: 16,
-        padding: 16,
-        border: `1px solid ${T.primary}30`,
-        boxShadow: `0 2px 12px ${T.primary}10`,
-      }}
-    >
-      {/* Type toggle */}
+    <div style={{ background: "#fff", borderRadius: 16, padding: 16, border: `1px solid ${T.primary}30`, boxShadow: `0 2px 12px ${T.primary}10` }}>
       <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
         {["expense", "income"].map((t) => (
-          <button
-            key={t}
-            onClick={() => upd("type", t)}
-            style={{
-              flex: 1,
-              padding: "8px 0",
-              borderRadius: 10,
-              border: "none",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 600,
-              fontFamily: T.font,
-              background:
-                form.type === t ? (t === "expense" ? "#fef2f2" : "#ecfdf3") : "#f1f5f1",
-              color:
-                form.type === t ? (t === "expense" ? "#dc2626" : "#16a34a") : T.textMuted,
-              transition: "all 0.2s",
-            }}
-          >
+          <button key={t} onClick={() => upd("type", t)} style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: T.font, background: form.type === t ? (t === "expense" ? "#fef2f2" : "#ecfdf3") : "#f1f5f1", color: form.type === t ? (t === "expense" ? "#dc2626" : "#16a34a") : T.textMuted }}>
             {t === "expense" ? "Chi" : "Thu"}
           </button>
         ))}
@@ -990,121 +989,77 @@ function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
 
       <div style={{ marginBottom: 10 }}>
         <div style={lbl}>Số tiền *</div>
-        <input
-          type="number"
-          value={form.amount}
-          onChange={(e) => upd("amount", e.target.value)}
-          placeholder="0"
-          style={{ ...fld, fontSize: 18, fontWeight: 700 }}
-        />
+        <input type="number" value={form.amount} onChange={(e) => upd("amount", e.target.value)} placeholder="0" style={{ ...fld, fontSize: 18, fontWeight: 700 }} />
       </div>
 
       {form.type === "expense" && (
         <div style={{ marginBottom: 10 }}>
           <div style={lbl}>Phân loại chi tiêu *</div>
-          <select
-            value={form.category_id || ""}
-            onChange={(e) => upd("category_id", e.target.value)}
-            style={fld}
-          >
-            <option value="">Chọn phân loại</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name_vi || c.name}</option>
-            ))}
-          </select>
+          <button type="button" onClick={() => setShowPicker(true)} style={{ ...fld, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+            <span style={{ color: selectedCat ? T.text : T.textMuted }}>{selectedCat ? (selectedCat.name_vi || selectedCat.name) : "Chọn phân loại"}</span>
+            <MIcon name="expand_more" size={18} color={T.textMuted} />
+          </button>
+          {selectedCat && (
+            <div style={{ marginTop: 8 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, background: `${selectedCat.color || T.primary}22`, color: selectedCat.color || T.primary, fontSize: 11, fontWeight: 700 }}>
+                {selectedCat.name_vi || selectedCat.name}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
-      <div style={{ marginBottom: 10 }}>
-        <div style={lbl}>Mô tả</div>
-        <input
-          value={form.description}
-          onChange={(e) => upd("description", e.target.value)}
-          placeholder="Mục đích?"
-          style={fld}
-        />
-      </div>
-
+      <div style={{ marginBottom: 10 }}><div style={lbl}>Mô tả</div><input value={form.description} onChange={(e) => upd("description", e.target.value)} placeholder="Mục đích?" style={fld} /></div>
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        <div style={{ flex: 1 }}>
-          <div style={lbl}>Người nhận</div>
-          <input
-            value={form.recipient_name}
-            onChange={(e) => upd("recipient_name", e.target.value)}
-            placeholder="Tên"
-            style={fld}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={lbl}>Ngân hàng</div>
-          <input
-            value={form.bank_name}
-            onChange={(e) => upd("bank_name", e.target.value)}
-            placeholder="Ngân hàng"
-            style={fld}
-          />
-        </div>
+        <div style={{ flex: 1 }}><div style={lbl}>Người nhận</div><input value={form.recipient_name} onChange={(e) => upd("recipient_name", e.target.value)} placeholder="Tên" style={fld} /></div>
+        <div style={{ flex: 1 }}><div style={lbl}>Ngân hàng</div><input value={form.bank_name} onChange={(e) => upd("bank_name", e.target.value)} placeholder="Ngân hàng" style={fld} /></div>
       </div>
-
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        <div style={{ flex: 1 }}>
-          <div style={lbl}>Tài khoản</div>
-          <input
-            value={form.bank_account}
-            onChange={(e) => upd("bank_account", e.target.value)}
-            placeholder="Số"
-            style={fld}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={lbl}>Mã GD</div>
-          <input
-            value={form.transaction_code}
-            onChange={(e) => upd("transaction_code", e.target.value)}
-            placeholder="Mã"
-            style={fld}
-          />
-        </div>
+        <div style={{ flex: 1 }}><div style={lbl}>Tài khoản</div><input value={form.bank_account} onChange={(e) => upd("bank_account", e.target.value)} placeholder="Số" style={fld} /></div>
+        <div style={{ flex: 1 }}><div style={lbl}>Mã GD</div><input value={form.transaction_code} onChange={(e) => upd("transaction_code", e.target.value)} placeholder="Mã" style={fld} /></div>
       </div>
-
-      <div style={{ marginBottom: 14 }}>
-        <div style={lbl}>Ngày</div>
-        <input
-          type="date"
-          value={form.transaction_date}
-          onChange={(e) => upd("transaction_date", e.target.value)}
-          style={fld}
-        />
-      </div>
+      <div style={{ marginBottom: 14 }}><div style={lbl}>Ngày</div><input type="date" value={form.transaction_date} onChange={(e) => upd("transaction_date", e.target.value)} style={fld} /></div>
 
       <div style={{ display: "flex", gap: 8 }}>
-        <button
-          onClick={onCancel}
-          disabled={loading}
-          style={{
-            ...actionBtnS,
-            flex: 1,
-            justifyContent: "center",
-            background: "#f1f5f1",
-            color: T.textSec,
-          }}
-        >
-          Hủy
-        </button>
-        <button
-          onClick={() => onConfirm(form)}
-          disabled={loading || categoryMissing}
-          style={{
-            ...actionBtnS,
-            flex: 2,
-            justifyContent: "center",
-            background: (loading || categoryMissing) ? `${T.primary}80` : T.primary,
-            color: "#fff",
-          }}
-        >
-          {loading ? "Đang tạo..." : "Gửi để duyệt"}
-        </button>
+        <button onClick={onCancel} disabled={loading} style={{ ...actionBtnS, flex: 1, justifyContent: "center", background: "#f1f5f1", color: T.textSec }}>Hủy</button>
+        <button onClick={() => onConfirm(form)} disabled={loading || categoryMissing} style={{ ...actionBtnS, flex: 2, justifyContent: "center", background: (loading || categoryMissing) ? `${T.primary}80` : T.primary, color: "#fff" }}>{loading ? "Đang tạo..." : "Gửi để duyệt"}</button>
       </div>
+
+      {showPicker && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 10002, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "flex-end" }} onClick={() => setShowPicker(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxHeight: "72vh", background: "#fff", borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 14, overflowY: "auto" }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 10 }}>Chọn phân loại</div>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm phân loại..." style={{ ...fld, marginBottom: 10 }} />
+
+            {!q && suggested && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>Gợi ý từ OCR</div>
+                <button type="button" onClick={() => selectCategory(suggested.id)} style={{ ...fld, textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span>{suggested.name_vi || suggested.name}</span><span style={{ fontSize: 10, color: T.primary }}>Đề xuất</span>
+                </button>
+              </div>
+            )}
+
+            {!q && recentCats.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>Dùng gần đây</div>
+                <div style={{ display: "grid", gap: 6 }}>
+                  {recentCats.map((c) => <button key={c.id} type="button" onClick={() => selectCategory(c.id)} style={{ ...fld, textAlign: "left" }}>{c.name_vi || c.name}</button>)}
+                </div>
+              </div>
+            )}
+
+            <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>Tất cả phân loại</div>
+            <div style={{ display: "grid", gap: 6 }}>
+              {filtered.map((c) => (
+                <button key={c.id} type="button" onClick={() => selectCategory(c.id)} style={{ ...fld, textAlign: "left", borderColor: String(form.category_id) === String(c.id) ? T.primary : T.border }}>
+                  {c.name_vi || c.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

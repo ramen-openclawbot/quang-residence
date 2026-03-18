@@ -61,6 +61,8 @@ export default function TransactionForm({ onClose, onSuccess }) {
   const [scanResults, setScanResults] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [expenseCategories, setExpenseCategories] = useState([]);
+  const [categoryPicker, setCategoryPicker] = useState({ open: false, resultIdx: null, q: "" });
+  const [recentCategoryIds, setRecentCategoryIds] = useState([]);
 
   // ==================== HELPERS ====================
   const fileToBase64 = (file) =>
@@ -142,10 +144,16 @@ export default function TransactionForm({ onClose, onSuccess }) {
     (async () => {
       const { data } = await supabase
         .from("categories")
-        .select("id, code, name, name_vi, sort_order")
+        .select("id, code, name, name_vi, color, sort_order")
         .order("sort_order", { ascending: true });
       if (!canceled) setExpenseCategories(data || []);
     })();
+    try {
+      const raw = localStorage.getItem("zenhome_recent_categories");
+      setRecentCategoryIds(raw ? JSON.parse(raw) : []);
+    } catch {
+      setRecentCategoryIds([]);
+    }
     return () => { canceled = true; };
   }, []);
 
@@ -316,6 +324,22 @@ export default function TransactionForm({ onClose, onSuccess }) {
       updated[index].form[key] = value;
       return updated;
     });
+  };
+
+  const openCategoryPicker = (resultIdx) => {
+    setCategoryPicker({ open: true, resultIdx, q: "" });
+  };
+
+  const closeCategoryPicker = () => {
+    setCategoryPicker((p) => ({ ...p, open: false, q: "" }));
+  };
+
+  const pickCategoryForResult = (resultIdx, categoryId) => {
+    updateResultForm(resultIdx, "category_id", String(categoryId));
+    const next = [String(categoryId), ...recentCategoryIds.filter((x) => String(x) !== String(categoryId))].slice(0, 6);
+    setRecentCategoryIds(next);
+    try { localStorage.setItem("zenhome_recent_categories", JSON.stringify(next)); } catch {}
+    closeCategoryPicker();
   };
 
   const handleSupportingSelect = async (resultIndex, e) => {
@@ -1016,17 +1040,29 @@ export default function TransactionForm({ onClose, onSuccess }) {
                       {type === "expense" && (
                         <div>
                           <div style={labelStyle}>Phân loại chi tiêu *</div>
-                          <select
-                            value={result.form.category_id || ""}
-                            onChange={(e) => updateResultForm(resultIdx, "category_id", e.target.value)}
-                            style={inputStyle}
-                            required
+                          <button
+                            type="button"
+                            onClick={() => openCategoryPicker(resultIdx)}
+                            style={{ ...inputStyle, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}
                           >
-                            <option value="">Chọn phân loại</option>
-                            {expenseCategories.map((c) => (
-                              <option key={c.id} value={c.id}>{c.name_vi || c.name}</option>
-                            ))}
-                          </select>
+                            <span style={{ color: result.form.category_id ? T.text : T.textMuted }}>
+                              {expenseCategories.find((c) => String(c.id) === String(result.form.category_id))?.name_vi || "Chọn phân loại"}
+                            </span>
+                            <MIcon name="expand_more" size={18} color={T.textMuted} />
+                          </button>
+                          {result.form.category_id && (
+                            <div style={{ marginTop: 8 }}>
+                              {(() => {
+                                const selected = expenseCategories.find((c) => String(c.id) === String(result.form.category_id));
+                                if (!selected) return null;
+                                return (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, background: `${selected.color || T.primary}22`, color: selected.color || T.primary, fontSize: 11, fontWeight: 700 }}>
+                                    {selected.name_vi || selected.name}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1153,6 +1189,68 @@ export default function TransactionForm({ onClose, onSuccess }) {
                     </div>
                   </div>
                 ))
+              )}
+
+              {categoryPicker.open && categoryPicker.resultIdx !== null && (
+                <div
+                  style={{ position: "fixed", inset: 0, zIndex: 10002, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "flex-end" }}
+                  onClick={closeCategoryPicker}
+                >
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ width: "100%", maxHeight: "72vh", background: "#fff", borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 14, overflowY: "auto" }}
+                  >
+                    <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 10 }}>Chọn phân loại</div>
+                    <input
+                      value={categoryPicker.q}
+                      onChange={(e) => setCategoryPicker((p) => ({ ...p, q: e.target.value }))}
+                      placeholder="Tìm phân loại..."
+                      style={{ ...inputStyle, marginBottom: 10 }}
+                    />
+
+                    {(() => {
+                      const result = scanResults[categoryPicker.resultIdx];
+                      const suggested = expenseCategories.find((c) => String(c.id) === String(result?.form?.category_id));
+                      const recentCats = recentCategoryIds.map((id) => expenseCategories.find((c) => String(c.id) === String(id))).filter(Boolean);
+                      const filtered = expenseCategories.filter((c) => (c.name_vi || c.name || "").toLowerCase().includes((categoryPicker.q || "").toLowerCase()));
+
+                      return (
+                        <>
+                          {!categoryPicker.q && suggested && (
+                            <div style={{ marginBottom: 10 }}>
+                              <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>Gợi ý từ OCR</div>
+                              <button type="button" onClick={() => pickCategoryForResult(categoryPicker.resultIdx, suggested.id)} style={{ ...inputStyle, textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                <span>{suggested.name_vi || suggested.name}</span><span style={{ fontSize: 10, color: T.primary }}>Đề xuất</span>
+                              </button>
+                            </div>
+                          )}
+
+                          {!categoryPicker.q && recentCats.length > 0 && (
+                            <div style={{ marginBottom: 10 }}>
+                              <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>Dùng gần đây</div>
+                              <div style={{ display: "grid", gap: 6 }}>
+                                {recentCats.map((c) => (
+                                  <button key={c.id} type="button" onClick={() => pickCategoryForResult(categoryPicker.resultIdx, c.id)} style={{ ...inputStyle, textAlign: "left" }}>
+                                    {c.name_vi || c.name}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>Tất cả phân loại</div>
+                          <div style={{ display: "grid", gap: 6 }}>
+                            {filtered.map((c) => (
+                              <button key={c.id} type="button" onClick={() => pickCategoryForResult(categoryPicker.resultIdx, c.id)} style={{ ...inputStyle, textAlign: "left" }}>
+                                {c.name_vi || c.name}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
               )}
 
               {/* Submit button */}
