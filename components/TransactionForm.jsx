@@ -454,7 +454,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
           type,
           amount: Number(result.form.amount || 0),
           fund_id: null,
-          category_id: result.form.category_id ? Number(result.form.category_id) : null,
+          category_id: (type === "expense" && result.form.category_id) ? Number(result.form.category_id) : null,
           description: result.form.description || null,
           recipient_name: result.form.recipient_name || null,
           bank_name: result.form.bank_name || null,

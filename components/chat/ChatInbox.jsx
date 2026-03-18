@@ -427,7 +427,7 @@ export default function ChatInbox() {
         type: data.type || "expense",
         amount: Number(data.amount),
         fund_id: null,
-        category_id: data.category_id ? Number(data.category_id) : null,
+        category_id: (data.type === "expense" && data.category_id) ? Number(data.category_id) : null,
         description: data.description || null,
         recipient_name: data.recipient_name || null,
         bank_name: data.bank_name || null,

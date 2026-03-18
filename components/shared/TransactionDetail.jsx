@@ -83,11 +83,13 @@ export default function TransactionDetail({ tx, profile, onClose, onAction }) {
 
   const statusColor = tx.status === "approved" ? T.success : tx.status === "rejected" ? T.danger : T.amber;
   const statusLabel = tx.status === "approved" ? "Đã duyệt" : tx.status === "rejected" ? "Đã từ chối" : "Chờ duyệt";
-  const category = tx.categories
-    ? { label: tx.categories.name_vi || tx.categories.name || "Chưa phân loại", code: tx.categories.code || null, color: tx.categories.color || "#94a3b8" }
-    : tx.ocr_raw_data?.category_meta
-      ? { label: tx.ocr_raw_data.category_meta.label_vi || tx.ocr_raw_data.category_meta.code || "Chưa phân loại", code: tx.ocr_raw_data.category_meta.code || null, color: "#94a3b8" }
-      : null;
+  const category = (tx.type === "expense")
+    ? (tx.categories
+        ? { label: tx.categories.name_vi || tx.categories.name || "Chưa phân loại", code: tx.categories.code || null, color: tx.categories.color || "#94a3b8" }
+        : tx.ocr_raw_data?.category_meta
+          ? { label: tx.ocr_raw_data.category_meta.label_vi || tx.ocr_raw_data.category_meta.code || "Chưa phân loại", code: tx.ocr_raw_data.category_meta.code || null, color: "#94a3b8" }
+          : null)
+    : null;
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(8,15,8,0.32)", display: "flex", justifyContent: "center", alignItems: "flex-end" }}>
