@@ -397,6 +397,11 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
       for (const result of scanResults) {
         if (!result.form.amount) continue; // Skip empty ones
+        if (!result.form.transaction_date) {
+          alert("OCR chưa đọc được Ngày giao dịch từ bank slip. Vui lòng chụp/upload lại slip rõ hơn.");
+          setSubmitting(false);
+          return;
+        }
         if (type === "expense" && !result.form.category_id) {
           alert("Vui lòng chọn phân loại chi tiêu cho tất cả giao dịch trước khi gửi.");
           setSubmitting(false);
@@ -1134,11 +1139,11 @@ export default function TransactionForm({ onClose, onSuccess }) {
                         <input
                           type="date"
                           value={result.form.transaction_date}
-                          onChange={(e) => updateResultForm(resultIdx, "transaction_date", e.target.value)}
-                          style={dateInputStyle}
+                          style={{ ...dateInputStyle, background: "#f3f6f3", color: result.form.transaction_date ? T.text : T.textMuted }}
+                          disabled
                         />
                         <div style={{ marginTop: 4, fontSize: 11, color: T.textMuted }}>
-                          Lấy theo ngày chuyển khoản ghi trên bank slip.
+                          Tự động lấy từ ngày chuyển khoản trên bank slip (không cho chỉnh tay).
                         </div>
                       </div>
 
@@ -1262,7 +1267,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
               {/* Submit button */}
               {scanResults.length > 0 && hasMissingTransactionDate && (
                 <div style={{ fontSize: 12, color: T.danger, marginBottom: 8 }}>
-                  Vui lòng chọn Ngày giao dịch cho tất cả giao dịch trước khi gửi.
+                  Có slip chưa đọc được Ngày giao dịch. Vui lòng thay ảnh rõ hơn.
                 </div>
               )}
               {scanResults.length > 0 && hasMissingExpenseCategory && (

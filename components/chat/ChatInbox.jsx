@@ -1020,7 +1020,7 @@ function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
         <div style={{ flex: 1 }}><div style={lbl}>Tài khoản</div><input value={form.bank_account} onChange={(e) => upd("bank_account", e.target.value)} placeholder="Số" style={fld} /></div>
         <div style={{ flex: 1 }}><div style={lbl}>Mã GD</div><input value={form.transaction_code} onChange={(e) => upd("transaction_code", e.target.value)} placeholder="Mã" style={fld} /></div>
       </div>
-      <div style={{ marginBottom: 14 }}><div style={lbl}>Ngày giao dịch *</div><input type="date" value={form.transaction_date} onChange={(e) => upd("transaction_date", e.target.value)} style={fld} /><div style={{ marginTop: 4, fontSize: 10, color: T.textMuted }}>Lấy theo ngày chuyển khoản trên hóa đơn ngân hàng.</div></div>
+      <div style={{ marginBottom: 14 }}><div style={lbl}>Ngày giao dịch *</div><input type="date" value={form.transaction_date} style={{ ...fld, background: "#f3f6f3", color: form.transaction_date ? T.text : T.textMuted }} disabled /><div style={{ marginTop: 4, fontSize: 10, color: T.textMuted }}>Tự động lấy từ ngày chuyển khoản trên bank slip (không cho chỉnh tay).</div></div>
 
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={onCancel} disabled={loading} style={{ ...actionBtnS, flex: 1, justifyContent: "center", background: "#f1f5f1", color: T.textSec }}>Hủy</button>
