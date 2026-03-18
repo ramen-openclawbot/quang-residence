@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
 import { getSignedAmount, getLocalDateKey, getTodayKey } from "../../lib/transaction";
 import TransactionForm from "../../components/TransactionForm";
+import TransactionDetail from "../../components/shared/TransactionDetail";
 
 const T = {
   primary: "#56c91d",
@@ -492,15 +493,13 @@ Hoàn thành
                         const signedAmount = getSignedAmount(tx);
                         const isPositive = signedAmount >= 0;
                         return (
-                        <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("expense-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, boxSizing: "border-box" }}>
-                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                            <div style={{ minWidth: 0, flex: 1, overflow: "hidden" }}>
-                              <div style={{ fontSize: 14, fontWeight: 800, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.description || tx.recipient_name || "Chi phí"}</div>
-                              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{fmtRelative(tx.created_at)}</div>
-                              {tx.bank_name && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.bank_name}</div>}
-                            </div>
-                            <div style={{ fontSize: 14, fontWeight: 800, color: isPositive ? T.success : T.danger, flexShrink: 0, whiteSpace: "nowrap" }}>{isPositive ? "+" : "-"}{fmtVND(Math.abs(signedAmount))}</div>
+                        <button key={tx.id} onClick={() => { setSelectedTransaction(tx); setActivePanel("expense-detail"); }} style={{ ...cardStyle, width: "calc(100% - 4px)", margin: "0 auto", padding: 14, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, boxSizing: "border-box", display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", columnGap: 10, alignItems: "start" }}>
+                          <div style={{ minWidth: 0, overflow: "hidden" }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.description || tx.recipient_name || "Chi phí"}</div>
+                            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{fmtRelative(tx.created_at)}</div>
+                            {tx.bank_name && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.bank_name}</div>}
                           </div>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: isPositive ? T.success : T.danger, whiteSpace: "nowrap", minWidth: 92, textAlign: "right" }}>{isPositive ? "+" : "-"}{fmtVND(Math.abs(signedAmount))}</div>
                         </button>
                       );})}
                     </div>
@@ -554,7 +553,16 @@ Hoàn thành
 
         {showTxForm && <TransactionForm onClose={() => setShowTxForm(false)} onSuccess={() => { setShowTxForm(false); fetchData(); }} />}
 
-        {activePanel && (
+        {activePanel === "expense-detail" && selectedTransaction && (
+          <TransactionDetail
+            tx={selectedTransaction}
+            profile={profile || { role: "driver" }}
+            onClose={() => setActivePanel("")}
+            onAction={() => {}}
+          />
+        )}
+
+        {activePanel && activePanel !== "expense-detail" && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 220, display: "flex", alignItems: "flex-end" }} onClick={() => setActivePanel("")}>
             <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "22px 22px 0 0", padding: 18, maxHeight: "78vh", overflowY: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
