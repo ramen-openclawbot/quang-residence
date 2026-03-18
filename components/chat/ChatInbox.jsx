@@ -98,7 +98,8 @@ function suggestCategoryId({ description = "", recipient_name = "", bank_name = 
   const descKey = normalizeTextKey(description);
   const recKey = normalizeTextKey(recipient_name);
   const learnedKey = `${descKey}|${recKey}`;
-  if (learnedMap[learnedKey]) return String(learnedMap[learnedKey]);
+
+  const personalNameLike = /^[a-z\s]{8,}$/i.test((description || "").trim()) && !/\d/.test(description || "");
 
   const codeByKeyword = [
     { code: "TIEN_CHO", keys: ["cho", "rau", "thit", "ca", "trai cay", "coopmart", "winmart", "bach hoa"] },
@@ -114,6 +115,15 @@ function suggestCategoryId({ description = "", recipient_name = "", bank_name = 
       if (hit) return String(hit.id);
     }
   }
+
+  // Personal-name-like transfer note (e.g. "VU TRAN CHI TAM") should default to KHAC
+  if (personalNameLike) {
+    const fallbackOther = categories.find((c) => String(c.code || "").toUpperCase() === "KHAC");
+    if (fallbackOther) return String(fallbackOther.id);
+  }
+
+  // Learned mapping applies only after keyword + personal-name guard
+  if (learnedMap[learnedKey]) return String(learnedMap[learnedKey]);
 
   // Fallback: if content is non-empty but not mappable, classify as KHAC
   const fallbackOther = categories.find((c) => String(c.code || "").toUpperCase() === "KHAC");
