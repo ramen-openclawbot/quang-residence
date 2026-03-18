@@ -111,6 +111,7 @@ export default function ChatInbox() {
   const [slipUrl, setSlipUrl] = useState(null);
   const [dupeWarning, setDupeWarning] = useState(null);
   const [supportCount, setSupportCount] = useState(0);
+  const [expenseCategories, setExpenseCategories] = useState([]);
   const [fabRight, setFabRight] = useState(20);
   const [boxWidth, setBoxWidth] = useState(380);
   const [boxHeight, setBoxHeight] = useState(540);
@@ -154,6 +155,20 @@ export default function ChatInbox() {
   useEffect(() => {
     if (open) setBadge(false);
   }, [open]);
+
+  // Load expense categories for required classification step
+  useEffect(() => {
+    if (!profile?.id) return;
+    let canceled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("categories")
+        .select("id, name, name_vi, sort_order")
+        .order("sort_order", { ascending: true });
+      if (!canceled) setExpenseCategories(data || []);
+    })();
+    return () => { canceled = true; };
+  }, [profile?.id]);
 
   // ─── NOW safe to do conditional return ────────────────────────
   // Don't render on login page or before auth is ready
@@ -224,6 +239,7 @@ export default function ChatInbox() {
       setPendingOcr({
         amount: ocr.amount ? String(ocr.amount) : "",
         type: "expense",
+        category_id: "",
         description: ocr.description || "",
         recipient_name: ocr.recipient_name || "",
         bank_name: ocr.bank_name || "",
@@ -246,6 +262,10 @@ export default function ChatInbox() {
     if (submittingRef.current) return;
     if (!data.amount || Number(data.amount) <= 0) {
       addAgent("Vui lòng nhập số tiền hợp lệ.");
+      return;
+    }
+    if (data.type === "expense" && !data.category_id) {
+      addAgent("Vui lòng chọn phân loại chi tiêu trước khi tạo giao dịch.");
       return;
     }
 
@@ -295,6 +315,7 @@ export default function ChatInbox() {
         type: data.type || "expense",
         amount: Number(data.amount),
         fund_id: null,
+        category_id: data.category_id ? Number(data.category_id) : null,
         description: data.description || null,
         recipient_name: data.recipient_name || null,
         bank_name: data.bank_name || null,
@@ -582,6 +603,7 @@ export default function ChatInbox() {
               <div style={{ marginBottom: 10, animation: "cFadeIn 0.3s ease-out" }}>
                 <OCRCard
                   data={pendingOcr}
+                  categories={expenseCategories}
                   onConfirm={handleConfirmTx}
                   onCancel={() => {
                     setPendingOcr(null);
@@ -812,9 +834,10 @@ function UserBubble({ msg }) {
   );
 }
 
-function OCRCard({ data, onConfirm, onCancel, loading }) {
+function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
   const [form, setForm] = useState({ ...data });
   const upd = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  const categoryMissing = form.type === "expense" && !form.category_id;
 
   const fld = {
     width: "100%",
@@ -883,6 +906,22 @@ function OCRCard({ data, onConfirm, onCancel, loading }) {
           style={{ ...fld, fontSize: 18, fontWeight: 700 }}
         />
       </div>
+
+      {form.type === "expense" && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={lbl}>Phân loại chi tiêu *</div>
+          <select
+            value={form.category_id || ""}
+            onChange={(e) => upd("category_id", e.target.value)}
+            style={fld}
+          >
+            <option value="">Chọn phân loại</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name_vi || c.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div style={{ marginBottom: 10 }}>
         <div style={lbl}>Mô tả</div>
@@ -962,12 +1001,12 @@ function OCRCard({ data, onConfirm, onCancel, loading }) {
         </button>
         <button
           onClick={() => onConfirm(form)}
-          disabled={loading}
+          disabled={loading || categoryMissing}
           style={{
             ...actionBtnS,
             flex: 2,
             justifyContent: "center",
-            background: loading ? `${T.primary}80` : T.primary,
+            background: (loading || categoryMissing) ? `${T.primary}80` : T.primary,
             color: "#fff",
           }}
         >

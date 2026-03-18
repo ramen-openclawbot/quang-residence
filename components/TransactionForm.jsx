@@ -39,6 +39,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
   // Step 3: Review
   const [scanResults, setScanResults] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [expenseCategories, setExpenseCategories] = useState([]);
 
   // ==================== HELPERS ====================
   const fileToBase64 = (file) =>
@@ -115,6 +116,18 @@ export default function TransactionForm({ onClose, onSuccess }) {
     return data.publicUrl;
   };
 
+  useEffect(() => {
+    let canceled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("categories")
+        .select("id, name, name_vi, sort_order")
+        .order("sort_order", { ascending: true });
+      if (!canceled) setExpenseCategories(data || []);
+    })();
+    return () => { canceled = true; };
+  }, []);
+
   // ==================== STEP 1: FILE SELECTION ====================
   const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -190,6 +203,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
             ocrError: null,
             form: {
               amount: ocrData?.amount ? String(ocrData.amount) : "",
+              category_id: "",
               description: ocrData?.description || "",
               recipient_name: ocrData?.recipient_name || "",
               bank_name: ocrData?.bank_name || "",
@@ -213,6 +227,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
             ocrError: result.reason?.message || "Failed to scan",
             form: {
               amount: "",
+              category_id: "",
               description: "",
               recipient_name: "",
               bank_name: "",
@@ -331,6 +346,11 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
       for (const result of scanResults) {
         if (!result.form.amount) continue; // Skip empty ones
+        if (type === "expense" && !result.form.category_id) {
+          alert("Vui lòng chọn phân loại chi tiêu cho tất cả giao dịch trước khi gửi.");
+          setSubmitting(false);
+          return;
+        }
 
         // Upload supporting images
         const supportingProofUrls = [];
@@ -346,6 +366,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
           type,
           amount: Number(result.form.amount || 0),
           fund_id: null,
+          category_id: result.form.category_id ? Number(result.form.category_id) : null,
           description: result.form.description || null,
           recipient_name: result.form.recipient_name || null,
           bank_name: result.form.bank_name || null,
@@ -409,6 +430,9 @@ export default function TransactionForm({ onClose, onSuccess }) {
   const [adjustDate, setAdjustDate] = useState(new Date().toISOString().slice(0, 10));
   const [adjustLinkedTx, setAdjustLinkedTx] = useState("");
   const [adjustSubmitting, setAdjustSubmitting] = useState(false);
+
+  const hasMissingExpenseCategory =
+    type === "expense" && scanResults.some((r) => r.form.amount && !r.form.category_id);
 
   const handleAdjustSubmit = async () => {
     if (!adjustAmount || Number(adjustAmount) <= 0) {
@@ -952,6 +976,23 @@ export default function TransactionForm({ onClose, onSuccess }) {
                         />
                       </div>
 
+                      {type === "expense" && (
+                        <div>
+                          <div style={labelStyle}>Phân loại chi tiêu *</div>
+                          <select
+                            value={result.form.category_id || ""}
+                            onChange={(e) => updateResultForm(resultIdx, "category_id", e.target.value)}
+                            style={inputStyle}
+                            required
+                          >
+                            <option value="">Chọn phân loại</option>
+                            {expenseCategories.map((c) => (
+                              <option key={c.id} value={c.id}>{c.name_vi || c.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
                       {/* Description */}
                       <div>
                         <div style={labelStyle}>Mô tả</div>
@@ -1078,15 +1119,20 @@ export default function TransactionForm({ onClose, onSuccess }) {
               )}
 
               {/* Submit button */}
+              {scanResults.length > 0 && hasMissingExpenseCategory && (
+                <div style={{ fontSize: 12, color: T.danger, marginBottom: 8 }}>
+                  Vui lòng chọn phân loại chi tiêu cho tất cả giao dịch trước khi gửi.
+                </div>
+              )}
               {scanResults.length > 0 && (
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={submitting || !scanResults.some((r) => r.form.amount)}
+                  disabled={submitting || !scanResults.some((r) => r.form.amount) || hasMissingExpenseCategory}
                   style={{
                     ...submitBtnStyle,
-                    opacity: submitting || !scanResults.some((r) => r.form.amount) ? 0.5 : 1,
-                    cursor: submitting || !scanResults.some((r) => r.form.amount) ? "not-allowed" : "pointer",
+                    opacity: submitting || !scanResults.some((r) => r.form.amount) || hasMissingExpenseCategory ? 0.5 : 1,
+                    cursor: submitting || !scanResults.some((r) => r.form.amount) || hasMissingExpenseCategory ? "not-allowed" : "pointer",
                   }}
                 >
                   {submitting ? "Đang tạo..." : `Tạo ${scanResults.filter((r) => r.form.amount).length} giao dịch${scanResults.filter((r) => r.form.amount).length !== 1 ? "" : ""}`}
