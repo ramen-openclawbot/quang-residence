@@ -6,7 +6,7 @@ import NotificationCenter from "../../components/shared/NotificationCenter";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtVND } from "../../lib/format";
-import { getSignedAmount, getLocalDateKey, getTodayKey } from "../../lib/transaction";
+import { getSignedAmount } from "../../lib/transaction";
 
 const T = {
   primary: "#56c91d",
@@ -110,6 +110,7 @@ export default function OwnerPage() {
   const [tasks, setTasks] = useState([]);
   const [staffProfiles, setStaffProfiles] = useState([]);
   const [settingsData, setSettingsData] = useState([]);
+  const [summaryData, setSummaryData] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -145,18 +146,44 @@ export default function OwnerPage() {
   async function fetchData() {
     try {
       setLoading(true);
-      const [txRes, tasksRes, profilesRes, settingsRes] = await Promise.all([
-        supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(30),
-        supabase.from("tasks").select("*").order("due_date", { ascending: true }).limit(20),
-        supabase.from("profiles").select("id, full_name, role"),
-        supabase.from("home_settings").select("*").order("setting_key"),
-      ]);
-      setTransactions(txRes.data || []);
-      setTasks(tasksRes.data || []);
-      setStaffProfiles(profilesRes.data || []);
-      setSettingsData(settingsRes.data || []);
+      const now = new Date();
+      const month = now.getMonth();
+      const year = now.getFullYear();
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      const res = await fetch(`/api/dashboard/owner?month=${month}&year=${year}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (!res.ok) {
+        throw new Error("Owner dashboard API failed");
+      }
+
+      const json = await res.json();
+      setTransactions(json.recentTx || []);
+      setTasks(json.tasks || []);
+      setStaffProfiles(json.staffProfiles || []);
+      setSettingsData(json.settingsData || []);
+      setSummaryData(json.summary || null);
     } catch (error) {
       console.error("Owner fetchData error:", error);
+      // Fallback to direct Supabase for resilience
+      try {
+        const [txRes, tasksRes, profilesRes, settingsRes] = await Promise.all([
+          supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(30),
+          supabase.from("tasks").select("*").order("due_date", { ascending: true }).limit(20),
+          supabase.from("profiles").select("id, full_name, role"),
+          supabase.from("home_settings").select("*").order("setting_key"),
+        ]);
+        setTransactions(txRes.data || []);
+        setTasks(tasksRes.data || []);
+        setStaffProfiles(profilesRes.data || []);
+        setSettingsData(settingsRes.data || []);
+      } catch (fallbackErr) {
+        console.error("Owner fallback fetchData error:", fallbackErr);
+      }
     } finally {
       setLoading(false);
     }
@@ -279,19 +306,14 @@ export default function OwnerPage() {
     }
   }
 
-  const ledgerBalance = useMemo(() => transactions.reduce((sum, tx) => sum + getSignedAmount(tx), 0), [transactions]);
+  const fallbackLedgerBalance = useMemo(() => transactions.reduce((sum, tx) => sum + getSignedAmount(tx), 0), [transactions]);
   const pendingTransactions = useMemo(() => transactions.filter((tx) => tx.status === "pending"), [transactions]);
   const openTasks = useMemo(() => tasks.filter((task) => task.status !== "done"), [tasks]);
-  const today = useMemo(() => getTodayKey(), []);
-  const thisMonthKey = today.slice(0, 7);
-  const spentThisMonth = useMemo(() => transactions.filter((tx) => [getLocalDateKey(tx.transaction_date), getLocalDateKey(tx.created_at)].some((key) => key.startsWith(thisMonthKey))).reduce((sum, tx) => {
-    const signed = getSignedAmount(tx);
-    return signed < 0 ? sum + Math.abs(signed) : sum;
-  }, 0), [transactions, thisMonthKey]);
-  const incomeThisMonth = useMemo(() => transactions.filter((tx) => [getLocalDateKey(tx.transaction_date), getLocalDateKey(tx.created_at)].some((key) => key.startsWith(thisMonthKey))).reduce((sum, tx) => {
-    const signed = getSignedAmount(tx);
-    return signed > 0 ? sum + signed : sum;
-  }, 0), [transactions, thisMonthKey]);
+
+  const ledgerBalance = summaryData?.all?.net ?? fallbackLedgerBalance;
+  const incomeThisMonth = summaryData?.month?.income ?? 0;
+  const spentThisMonth = summaryData?.month?.expense ?? 0;
+  const pendingCount = summaryData?.all?.pending ?? pendingTransactions.length;
   const recentTasks = useMemo(() => tasks.slice(0, 4), [tasks]);
   const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);
 
@@ -431,7 +453,7 @@ export default function OwnerPage() {
                           Số dư sổ cái
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                          <div><div style={{ fontSize: 11, opacity: 0.7 }}>Chờ duyệt</div><div style={{ fontSize: 18, fontWeight: 800 }}>{pendingTransactions.length}</div></div>
+                          <div><div style={{ fontSize: 11, opacity: 0.7 }}>Chờ duyệt</div><div style={{ fontSize: 18, fontWeight: 800 }}>{pendingCount}</div></div>
                           <div><div style={{ fontSize: 11, opacity: 0.7 }}>Việc đang mở</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
                         </div>
                       </div>
