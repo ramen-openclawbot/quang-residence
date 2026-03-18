@@ -20,6 +20,27 @@ const T = {
   font: "'Be Vietnam Pro', 'Inter', -apple-system, sans-serif",
 };
 
+function suggestCategoryId({ description = "", recipient_name = "", bank_name = "" }, categories = []) {
+  const hay = `${description} ${recipient_name} ${bank_name}`.toLowerCase();
+  if (!hay.trim() || !categories.length) return "";
+
+  const codeByKeyword = [
+    { code: "TIEN_CHO", keys: ["cho", "rau", "thit", "ca", "trai cay", "coopmart", "winmart", "bach hoa"] },
+    { code: "DO_AN_GOI", keys: ["grabfood", "shopeefood", "befood", "do an", "tra sua"] },
+    { code: "DIEN_NUOC_GAS_NET", keys: ["dien", "nuoc", "internet", "wifi", "gas"] },
+    { code: "DI_LAI", keys: ["xang", "taxi", "grab", "be", "xanh sm", "cau duong", "gui xe"] },
+    { code: "CHI_BEP", keys: ["nguyen lieu", "gia vi", "bep"] },
+  ];
+
+  for (const rule of codeByKeyword) {
+    if (rule.keys.some((k) => hay.includes(k))) {
+      const hit = categories.find((c) => String(c.code || "").toUpperCase() === rule.code);
+      if (hit) return String(hit.id);
+    }
+  }
+  return "";
+}
+
 export default function TransactionForm({ onClose, onSuccess }) {
   const { profile, getToken } = useAuth();
   const fileRef = useRef(null);
@@ -196,6 +217,12 @@ export default function TransactionForm({ onClose, onSuccess }) {
       results.forEach((result, idx) => {
         if (result.status === "fulfilled") {
           const { ocrData, templateMatched, bankIdentifier } = result.value;
+          const suggestedCategoryId = suggestCategoryId({
+            description: ocrData?.description || "",
+            recipient_name: ocrData?.recipient_name || "",
+            bank_name: ocrData?.bank_name || "",
+          }, expenseCategories);
+
           collected.push({
             file: compressed[idx],
             preview: slipPreviews[idx],
@@ -203,8 +230,8 @@ export default function TransactionForm({ onClose, onSuccess }) {
             ocrError: null,
             form: {
               amount: ocrData?.amount ? String(ocrData.amount) : "",
-              category_id: "",
-              description: ocrData?.description || "",
+              category_id: suggestedCategoryId || "",
+              description: ocrData?.description || "", 
               recipient_name: ocrData?.recipient_name || "",
               bank_name: ocrData?.bank_name || "",
               bank_account: ocrData?.bank_account || "",

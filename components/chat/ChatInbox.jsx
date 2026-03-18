@@ -87,6 +87,44 @@ function fmtVND(n) {
   return Number(n || 0).toLocaleString("vi-VN") + "d";
 }
 
+function suggestCategoryId({ description = "", recipient_name = "", bank_name = "" }, categories = []) {
+  const hay = `${description} ${recipient_name} ${bank_name}`.toLowerCase();
+  if (!hay.trim() || !categories.length) return "";
+
+  const codeByKeyword = [
+    { code: "TIEN_CHO", keys: ["cho", "rau", "thit", "ca", "trai cay", "coopmart", "winmart", "bach hoa"] },
+    { code: "DO_AN_GOI", keys: ["grabfood", "shopeefood", "befood", "do an", "tra sua"] },
+    { code: "DIEN_NUOC_GAS_NET", keys: ["dien", "nuoc", "internet", "wifi", "gas"] },
+    { code: "DI_LAI", keys: ["xang", "taxi", "grab", "be", "xanh sm", "cau duong", "gui xe"] },
+    { code: "CHI_BEP", keys: ["nguyen lieu", "gia vi", "bep"] },
+  ];
+
+  for (const rule of codeByKeyword) {
+    if (rule.keys.some((k) => hay.includes(k))) {
+      const hit = categories.find((c) => String(c.code || "").toUpperCase() === rule.code);
+      if (hit) return String(hit.id);
+    }
+  }
+  return "";
+}
+
+function parseCategoryQuery(text = "") {
+  const t = text.toLowerCase();
+  const m = t.match(/chi\s+(.+?)\s+(?:het\s+)?bao\s+nhieu/);
+  return m?.[1]?.trim() || "";
+}
+
+function parseMonthKey(text = "") {
+  const now = new Date();
+  const monthMatch = text.match(/th[aá]ng\s*(\d{1,2})/i);
+  const month = monthMatch ? Number(monthMatch[1]) : now.getMonth() + 1;
+  if (!month || month < 1 || month > 12) return null;
+
+  const yearMatch = text.match(/(?:n[aă]m|\/)\s*(20\d{2})/i);
+  const year = yearMatch ? Number(yearMatch[1]) : now.getFullYear();
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
 // ═════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═════════════════════════════════════════════════════════════════
@@ -184,11 +222,48 @@ export default function ChatInbox() {
   }
 
   // ─── SEND TEXT ────────────────────────────────────────────────
-  function handleSend() {
+  async function handleSend() {
     const text = input.trim();
     if (!text) return;
     setInput("");
     addUser(text);
+
+    const askingSpend = /(chi|chi tieu).*(bao nhieu|hết bao nhiêu|bao nhiêu)/i.test(text.toLowerCase()) && /th[aá]ng\s*\d{1,2}/i.test(text);
+    if (askingSpend) {
+      try {
+        const token = await getToken();
+        if (!token) {
+          addAgent("Phiên đã hết hạn. Vui lòng đăng nhập lại.");
+          return;
+        }
+
+        const month = parseMonthKey(text);
+        const q = parseCategoryQuery(text);
+        const params = new URLSearchParams();
+        if (month) params.set("month", month);
+        if (q) params.set("q", q);
+
+        const res = await fetch(`/api/reports/spending-by-category?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          addAgent("Em chưa lấy được báo cáo lúc này. Anh thử lại giúp em nhé.");
+          return;
+        }
+
+        if (json.category) {
+          addAgent(`Tháng ${json.period.month}/${json.period.year}, mục "${json.category.name_vi}" đã chi ${fmtVND(json.total)} (${json.transactionCount} giao dịch).`);
+        } else {
+          const top = (json.byCategory || []).slice(0, 3).map((x) => `${x.name_vi}: ${fmtVND(x.total)}`).join(" • ");
+          addAgent(`Tổng chi tháng ${json.period.month}/${json.period.year}: ${fmtVND(json.total)} (${json.transactionCount} giao dịch). Top: ${top || "chưa có dữ liệu"}.`);
+        }
+        return;
+      } catch {
+        addAgent("Em chưa lấy được báo cáo lúc này. Anh thử lại giúp em nhé.");
+        return;
+      }
+    }
 
     setTimeout(() => {
       if (/bank\s?slip|receipt|ho[aá]\s?[dđ][oơ]n|chuy[eể]n\s?kho[aả]n|upload|ảnh/i.test(text)) {
@@ -236,10 +311,16 @@ export default function ChatInbox() {
       }
 
       const ocr = data.data || {};
+      const suggestedCategoryId = suggestCategoryId({
+        description: ocr.description || "",
+        recipient_name: ocr.recipient_name || "",
+        bank_name: ocr.bank_name || "",
+      }, expenseCategories);
+
       setPendingOcr({
         amount: ocr.amount ? String(ocr.amount) : "",
         type: "expense",
-        category_id: "",
+        category_id: suggestedCategoryId || "",
         description: ocr.description || "",
         recipient_name: ocr.recipient_name || "",
         bank_name: ocr.bank_name || "",
