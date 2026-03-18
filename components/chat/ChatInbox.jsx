@@ -110,6 +110,7 @@ export default function ChatInbox() {
   const [askingSupport, setAskingSupport] = useState(false);
   const [slipUrl, setSlipUrl] = useState(null);
   const [dupeWarning, setDupeWarning] = useState(null);
+  const [supportCount, setSupportCount] = useState(0);
   const [fabRight, setFabRight] = useState(20);
   const [boxWidth, setBoxWidth] = useState(380);
   const [boxHeight, setBoxHeight] = useState(540);
@@ -337,8 +338,9 @@ export default function ChatInbox() {
 
       setCreatedTxId(inserted.id);
       setPendingOcr(null);
+      setSupportCount(0);
       addAgent(
-        `Đã tạo giao dịch (${fmtVND(data.amount)}) và gửi để duyệt! Bạn có muốn đính kèm tài liệu bổ sung?`
+        `Đã tạo giao dịch (${fmtVND(data.amount)}) và gửi để duyệt! Bạn có muốn đính kèm tài liệu bổ sung? (tối đa 10 ảnh)`
       );
       setAskingSupport(true);
     } catch (err) {
@@ -352,28 +354,52 @@ export default function ChatInbox() {
 
   // ─── SUPPORT IMAGE ────────────────────────────────────────────
   async function handleSupportUpload(e) {
-    const file = e.target.files?.[0];
-    if (!file || !createdTxId) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !createdTxId) return;
     if (fileRef.current) fileRef.current.value = "";
 
-    addUser("Supporting document", { imageUrl: URL.createObjectURL(file) });
     try {
-      const compressed = await compressImage(file);
-      const url = await uploadFile(compressed, profile.id, "support");
-
       const { data: tx } = await supabase
         .from("transactions")
         .select("ocr_raw_data")
         .eq("id", createdTxId)
         .single();
+
       const existing = tx?.ocr_raw_data || {};
-      const supportUrls = [...(existing.supporting_proof_urls || []), url];
+      const existingUrls = Array.isArray(existing.supporting_proof_urls) ? existing.supporting_proof_urls : [];
+      const remaining = Math.max(0, 10 - existingUrls.length);
+
+      if (remaining === 0) {
+        setSupportCount(10);
+        addAgent("Bạn đã đạt giới hạn 10 ảnh chứng minh cho giao dịch này.");
+        return;
+      }
+
+      const toUpload = files.slice(0, remaining);
+      if (files.length > remaining) {
+        addAgent(`Chỉ có thể tải thêm ${remaining} ảnh (tối đa 10 ảnh).`);
+      }
+
+      const newUrls = [];
+      for (const file of toUpload) {
+        addUser("Supporting document", { imageUrl: URL.createObjectURL(file) });
+        const compressed = await compressImage(file);
+        const url = await uploadFile(compressed, profile.id, "support");
+        newUrls.push(url);
+      }
+
+      const supportUrls = [...existingUrls, ...newUrls].slice(0, 10);
       await supabase
         .from("transactions")
         .update({ ocr_raw_data: { ...existing, supporting_proof_urls: supportUrls } })
         .eq("id", createdTxId);
 
-      addAgent("Đã đính kèm tài liệu! Tải thêm hoặc nhấn 'Xong' khi hoàn tất.");
+      setSupportCount(supportUrls.length);
+      if (supportUrls.length >= 10) {
+        addAgent("Đã đính kèm đủ 10/10 ảnh chứng minh. Nhấn 'Xong' để hoàn tất.");
+      } else {
+        addAgent(`Đã đính kèm ${supportUrls.length}/10 ảnh. Bạn có thể tải thêm hoặc nhấn 'Xong'.`);
+      }
     } catch {
       addAgent("Tải tài liệu thất bại. Vui lòng thử lại.");
     }
@@ -383,6 +409,7 @@ export default function ChatInbox() {
     setAskingSupport(false);
     setCreatedTxId(null);
     setSlipUrl(null);
+    setSupportCount(0);
     addAgent("Hoàn tất! Gửi hóa đơn ngân hàng khác bất cứ lúc nào.");
   }
 
@@ -584,14 +611,17 @@ export default function ChatInbox() {
                   display: "flex",
                   gap: 8,
                   justifyContent: "flex-start",
+                  alignItems: "center",
+                  flexWrap: "wrap",
                   animation: "cFadeIn 0.3s ease-out",
                 }}
               >
                 <button
                   onClick={() => fileRef.current?.click()}
-                  style={{ ...actionBtnS, background: T.primary, color: "#fff" }}
+                  disabled={supportCount >= 10}
+                  style={{ ...actionBtnS, background: supportCount >= 10 ? `${T.primary}66` : T.primary, color: "#fff", cursor: supportCount >= 10 ? "default" : "pointer" }}
                 >
-                  <MIcon name="add_a_photo" size={16} color="#fff" /> Tải lên
+                  <MIcon name="add_a_photo" size={16} color="#fff" /> Tải lên ({supportCount}/10)
                 </button>
                 <button
                   onClick={handleSkipSupport}
@@ -689,6 +719,7 @@ export default function ChatInbox() {
         ref={fileRef}
         type="file"
         accept="image/*"
+        multiple={askingSupport}
         style={{ display: "none" }}
         onChange={askingSupport ? handleSupportUpload : handleImageSelect}
       />
