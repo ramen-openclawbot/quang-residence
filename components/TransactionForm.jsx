@@ -20,9 +20,18 @@ const T = {
   font: "'Be Vietnam Pro', 'Inter', -apple-system, sans-serif",
 };
 
-function suggestCategoryId({ description = "", recipient_name = "", bank_name = "" }, categories = []) {
+function normalizeTextKey(v = "") {
+  return String(v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function suggestCategoryId({ description = "", recipient_name = "", bank_name = "" }, categories = [], learnedMap = {}) {
   const hay = `${description} ${recipient_name} ${bank_name}`.toLowerCase();
   if (!hay.trim() || !categories.length) return "";
+
+  const descKey = normalizeTextKey(description);
+  const recKey = normalizeTextKey(recipient_name);
+  const learnedKey = `${descKey}|${recKey}`;
+  if (learnedMap[learnedKey]) return String(learnedMap[learnedKey]);
 
   const codeByKeyword = [
     { code: "TIEN_CHO", keys: ["cho", "rau", "thit", "ca", "trai cay", "coopmart", "winmart", "bach hoa"] },
@@ -65,6 +74,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
   const [scanResults, setScanResults] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [expenseCategories, setExpenseCategories] = useState([]);
+  const [learnedCategoryMap, setLearnedCategoryMap] = useState({});
   const [categoryPicker, setCategoryPicker] = useState({ open: false, resultIdx: null, q: "" });
   const [recentCategoryIds, setRecentCategoryIds] = useState([]);
 
@@ -146,11 +156,27 @@ export default function TransactionForm({ onClose, onSuccess }) {
   useEffect(() => {
     let canceled = false;
     (async () => {
-      const { data } = await supabase
-        .from("categories")
-        .select("id, code, name, name_vi, color, sort_order")
-        .order("sort_order", { ascending: true });
-      if (!canceled) setExpenseCategories(data || []);
+      const [{ data: cats }, { data: txs }] = await Promise.all([
+        supabase
+          .from("categories")
+          .select("id, code, name, name_vi, color, sort_order")
+          .order("sort_order", { ascending: true }),
+        supabase
+          .from("transactions")
+          .select("description, recipient_name, category_id, created_at")
+          .not("category_id", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(500),
+      ]);
+      if (!canceled) {
+        setExpenseCategories(cats || []);
+        const m = {};
+        for (const t of txs || []) {
+          const k = `${normalizeTextKey(t.description)}|${normalizeTextKey(t.recipient_name)}`;
+          if (!m[k] && k !== "|") m[k] = t.category_id;
+        }
+        setLearnedCategoryMap(m);
+      }
     })();
     try {
       const raw = localStorage.getItem("zenhome_recent_categories");
@@ -233,7 +259,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
             description: ocrData?.description || "",
             recipient_name: ocrData?.recipient_name || "",
             bank_name: ocrData?.bank_name || "",
-          }, expenseCategories);
+          }, expenseCategories, learnedCategoryMap);
 
           collected.push({
             file: compressed[idx],

@@ -87,9 +87,18 @@ function fmtVND(n) {
   return Number(n || 0).toLocaleString("vi-VN") + "d";
 }
 
-function suggestCategoryId({ description = "", recipient_name = "", bank_name = "" }, categories = []) {
+function normalizeTextKey(v = "") {
+  return String(v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function suggestCategoryId({ description = "", recipient_name = "", bank_name = "" }, categories = [], learnedMap = {}) {
   const hay = `${description} ${recipient_name} ${bank_name}`.toLowerCase();
   if (!hay.trim() || !categories.length) return "";
+
+  const descKey = normalizeTextKey(description);
+  const recKey = normalizeTextKey(recipient_name);
+  const learnedKey = `${descKey}|${recKey}`;
+  if (learnedMap[learnedKey]) return String(learnedMap[learnedKey]);
 
   const codeByKeyword = [
     { code: "TIEN_CHO", keys: ["cho", "rau", "thit", "ca", "trai cay", "coopmart", "winmart", "bach hoa"] },
@@ -154,6 +163,7 @@ export default function ChatInbox() {
   const [dupeWarning, setDupeWarning] = useState(null);
   const [supportCount, setSupportCount] = useState(0);
   const [expenseCategories, setExpenseCategories] = useState([]);
+  const [learnedCategoryMap, setLearnedCategoryMap] = useState({});
   const [fabRight, setFabRight] = useState(20);
   const [boxWidth, setBoxWidth] = useState(380);
   const [boxHeight, setBoxHeight] = useState(540);
@@ -203,11 +213,27 @@ export default function ChatInbox() {
     if (!profile?.id) return;
     let canceled = false;
     (async () => {
-      const { data } = await supabase
-        .from("categories")
-        .select("id, code, name, name_vi, color, sort_order")
-        .order("sort_order", { ascending: true });
-      if (!canceled) setExpenseCategories(data || []);
+      const [{ data: cats }, { data: txs }] = await Promise.all([
+        supabase
+          .from("categories")
+          .select("id, code, name, name_vi, color, sort_order")
+          .order("sort_order", { ascending: true }),
+        supabase
+          .from("transactions")
+          .select("description, recipient_name, category_id, created_at")
+          .not("category_id", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(500),
+      ]);
+      if (!canceled) {
+        setExpenseCategories(cats || []);
+        const m = {};
+        for (const t of txs || []) {
+          const k = `${normalizeTextKey(t.description)}|${normalizeTextKey(t.recipient_name)}`;
+          if (!m[k] && k !== "|") m[k] = t.category_id;
+        }
+        setLearnedCategoryMap(m);
+      }
     })();
     return () => { canceled = true; };
   }, [profile?.id]);
@@ -319,7 +345,7 @@ export default function ChatInbox() {
         description: ocr.description || "",
         recipient_name: ocr.recipient_name || "",
         bank_name: ocr.bank_name || "",
-      }, expenseCategories);
+      }, expenseCategories, learnedCategoryMap);
 
       setPendingOcr({
         amount: ocr.amount ? String(ocr.amount) : "",
