@@ -1056,7 +1056,8 @@ export default function TransactionForm({ onClose, onSuccess }) {
                                 const selected = expenseCategories.find((c) => String(c.id) === String(result.form.category_id));
                                 if (!selected) return null;
                                 return (
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, background: `${selected.color || T.primary}22`, color: selected.color || T.primary, fontSize: 11, fontWeight: 700 }}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 999, background: `${selected.color || T.primary}22`, color: selected.color || T.primary, fontSize: 11, fontWeight: 700, border: `1px solid ${(selected.color || T.primary)}33` }}>
+                                    <span style={{ width: 6, height: 6, borderRadius: 999, background: selected.color || T.primary }} />
                                     {selected.name_vi || selected.name}
                                   </span>
                                 );
@@ -1193,14 +1194,15 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
               {categoryPicker.open && categoryPicker.resultIdx !== null && (
                 <div
-                  style={{ position: "fixed", inset: 0, zIndex: 10002, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "flex-end" }}
+                  style={{ position: "fixed", inset: 0, zIndex: 10002, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "flex-end", backdropFilter: "blur(2px)" }}
                   onClick={closeCategoryPicker}
                 >
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    style={{ width: "100%", maxHeight: "72vh", background: "#fff", borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 14, overflowY: "auto" }}
+                    style={{ width: "100%", maxHeight: "76vh", background: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 14, overflowY: "auto", boxShadow: "0 -12px 40px rgba(0,0,0,0.14)" }}
                   >
-                    <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 10 }}>Chọn phân loại</div>
+                    <div style={{ width: 42, height: 4, borderRadius: 999, background: "#dfe7dd", margin: "2px auto 12px" }} />
+                    <div style={{ fontSize: 15, fontWeight: 800, color: T.text, marginBottom: 10 }}>Chọn phân loại</div>
                     <input
                       value={categoryPicker.q}
                       onChange={(e) => setCategoryPicker((p) => ({ ...p, q: e.target.value }))}

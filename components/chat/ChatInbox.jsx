@@ -1001,7 +1001,8 @@ function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
           </button>
           {selectedCat && (
             <div style={{ marginTop: 8 }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, background: `${selectedCat.color || T.primary}22`, color: selectedCat.color || T.primary, fontSize: 11, fontWeight: 700 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 999, background: `${selectedCat.color || T.primary}22`, color: selectedCat.color || T.primary, fontSize: 11, fontWeight: 700, border: `1px solid ${(selectedCat.color || T.primary)}33` }}>
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: selectedCat.color || T.primary }} />
                 {selectedCat.name_vi || selectedCat.name}
               </span>
             </div>
@@ -1026,10 +1027,11 @@ function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
       </div>
 
       {showPicker && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 10002, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "flex-end" }} onClick={() => setShowPicker(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxHeight: "72vh", background: "#fff", borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 14, overflowY: "auto" }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginBottom: 10 }}>Chọn phân loại</div>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm phân loại..." style={{ ...fld, marginBottom: 10 }} />
+        <div style={{ position: "fixed", inset: 0, zIndex: 10002, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "flex-end", backdropFilter: "blur(2px)" }} onClick={() => setShowPicker(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxHeight: "76vh", background: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 14, overflowY: "auto", boxShadow: "0 -12px 40px rgba(0,0,0,0.14)" }}>
+            <div style={{ width: 42, height: 4, borderRadius: 999, background: "#dfe7dd", margin: "2px auto 12px" }} />
+            <div style={{ fontSize: 15, fontWeight: 800, color: T.text, marginBottom: 10 }}>Chọn phân loại</div>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm phân loại..." style={{ ...fld, marginBottom: 10, height: 40, borderRadius: 12, background: "#f8faf8" }} />
 
             {!q && suggested && (
               <div style={{ marginBottom: 10 }}>
