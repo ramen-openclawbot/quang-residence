@@ -247,25 +247,20 @@ export default function TransactionForm({ onClose, onSuccess }) {
       }
       setCompressedFiles(compressed);
 
-      // Step 2: Scan all in parallel
+      // Step 2: Scan sequentially with retry (more stable for 3-5 slips)
       setScanProgress((p) => ({ ...p, phase: "scanning" }));
       const token = await getToken();
       if (!token) {
         alert("Session expired. Please log in again.");
-        setScanProgress(null);
+        setScanProgress((p) => ({ ...(p || {}), phase: "scanning", current: 0, total: slipFiles.length }));
         return;
       }
-      const scanPromises = compressed.map((file, idx) =>
-        scanImage(file, token, idx)
-      );
 
-      const results = await Promise.allSettled(scanPromises);
-
-      // Step 3: Collect results
       const collected = [];
-      results.forEach((result, idx) => {
-        if (result.status === "fulfilled") {
-          const { ocrData, templateMatched, bankIdentifier } = result.value;
+      for (let idx = 0; idx < compressed.length; idx++) {
+        const file = compressed[idx];
+        try {
+          const { ocrData, templateMatched, bankIdentifier } = await scanImage(file, token, idx);
           const suggestedCategoryId = suggestCategoryId({
             description: ocrData?.description || "",
             recipient_name: ocrData?.recipient_name || "",
@@ -280,7 +275,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
             form: {
               amount: ocrData?.amount ? String(ocrData.amount) : "",
               category_id: suggestedCategoryId || "",
-              description: ocrData?.description || "", 
+              description: ocrData?.description || "",
               recipient_name: ocrData?.recipient_name || "",
               bank_name: ocrData?.bank_name || "",
               bank_account: ocrData?.bank_account || "",
@@ -294,13 +289,12 @@ export default function TransactionForm({ onClose, onSuccess }) {
             templateMatched: templateMatched || false,
             bankIdentifier: bankIdentifier || "",
           });
-        } else {
-          // OCR failed
+        } catch (err) {
           collected.push({
             file: compressed[idx],
             preview: slipPreviews[idx],
             ocrData: null,
-            ocrError: result.reason?.message || "Failed to scan",
+            ocrError: err?.message || "Load failed",
             form: {
               amount: "",
               category_id: "",
@@ -309,7 +303,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
               bank_name: "",
               bank_account: "",
               transaction_code: "",
-              transaction_date: new Date().toISOString().slice(0, 10),
+              transaction_date: "",
               notes: "",
               fund_id: "",
             },
@@ -319,7 +313,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
             bankIdentifier: "",
           });
         }
-      });
+      }
 
       setScanResults(collected);
       setStep("review");
@@ -331,28 +325,47 @@ export default function TransactionForm({ onClose, onSuccess }) {
   };
 
   const scanImage = async (file, token, index) => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    let lastErr = null;
+
     try {
       const imageBase64 = await fileToBase64(file);
-      const res = await fetch("/api/ocr", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ imageBase64, imageMimeType: file.type || "image/jpeg" }),
-      });
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const res = await fetch("/api/ocr", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ imageBase64, imageMimeType: file.type || "image/jpeg" }),
+          });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "OCR failed");
+          const data = await res.json();
+          if (!res.ok) {
+            const msg = data.error || "OCR failed";
+            if ((res.status === 429 || res.status >= 500) && attempt === 0) {
+              await wait(600);
+              continue;
+            }
+            throw new Error(msg);
+          }
 
-      const parsed = data.data || {};
-      return {
-        ocrData: parsed,
-        templateMatched: data.templateMatched || false,
-        bankIdentifier: data.bankIdentifier || "",
-      };
-    } catch (err) {
-      throw err;
+          const parsed = data.data || {};
+          return {
+            ocrData: parsed,
+            templateMatched: data.templateMatched || false,
+            bankIdentifier: data.bankIdentifier || "",
+          };
+        } catch (err) {
+          lastErr = err;
+          if (attempt === 0) {
+            await wait(500);
+            continue;
+          }
+        }
+      }
+      throw lastErr || new Error("Load failed");
     } finally {
       setScanProgress((p) => ({ ...p, current: p.current + 1 }));
     }
