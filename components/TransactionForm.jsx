@@ -51,9 +51,15 @@ function suggestCategoryId({ description = "", recipient_name = "", bank_name = 
     }
   }
 
+  const fallbackOther = categories.find((c) => {
+    const code = String(c.code || "").toUpperCase();
+    const vi = String(c.name_vi || "").toLowerCase();
+    const en = String(c.name || "").toLowerCase();
+    return code === "KHAC" || vi === "khác" || vi === "khac" || en === "other";
+  });
+
   // Personal-name-like transfer note (e.g. "VU TRAN CHI TAM") should default to KHAC
   if (looksPersonalTransfer) {
-    const fallbackOther = categories.find((c) => String(c.code || "").toUpperCase() === "KHAC");
     if (fallbackOther) return String(fallbackOther.id);
   }
 
