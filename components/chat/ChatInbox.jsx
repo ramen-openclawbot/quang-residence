@@ -344,16 +344,37 @@ export default function ChatInbox() {
       }
 
       const base64 = await fileToBase64(compressed);
-      const res = await fetch("/api/ocr", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ imageBase64: base64, imageMimeType: "image/jpeg" }),
-      });
-      const data = await res.json();
 
-      if (!res.ok || !data.success) {
-        addAgent("Không thể đọc ảnh này. Vui lòng thử ảnh rõ hơn.");
-        setProcessing(false);
+      let data = null;
+      let lastMsg = "Không thể đọc ảnh này. Vui lòng thử ảnh rõ hơn.";
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await fetch("/api/ocr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ imageBase64: base64, imageMimeType: "image/jpeg" }),
+        });
+
+        let json = null;
+        try {
+          json = await res.json();
+        } catch {
+          json = null;
+        }
+
+        if (res.ok && json?.success) {
+          data = json;
+          break;
+        }
+
+        lastMsg = json?.error || json?.raw || `OCR failed (${res.status})`;
+        if ((res.status === 429 || res.status >= 500) && attempt === 0) {
+          await new Promise((r) => setTimeout(r, 600));
+          continue;
+        }
+      }
+
+      if (!data) {
+        addAgent(`Không thể đọc ảnh này (${lastMsg}). Vui lòng thử ảnh rõ hơn.`);
         return;
       }
 
