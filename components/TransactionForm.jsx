@@ -94,6 +94,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
   const [learnedCategoryMap, setLearnedCategoryMap] = useState({});
   const [categoryPicker, setCategoryPicker] = useState({ open: false, resultIdx: null, q: "" });
   const [recentCategoryIds, setRecentCategoryIds] = useState([]);
+  const [retryingIdx, setRetryingIdx] = useState(null);
 
   // ==================== HELPERS ====================
   const fileToBase64 = (file) =>
@@ -330,7 +331,8 @@ export default function TransactionForm({ onClose, onSuccess }) {
     }
   };
 
-  const scanImage = async (file, token, index) => {
+  const scanImage = async (file, token, index, opts = {}) => {
+    const { trackProgress = true } = opts;
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     let lastErr = null;
 
@@ -349,7 +351,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
           const data = await res.json();
           if (!res.ok) {
-            const msg = data.error || "OCR failed";
+            const msg = data.error || data.raw || `OCR failed (${res.status})`;
             if ((res.status === 429 || res.status >= 500) && attempt === 0) {
               await wait(600);
               continue;
@@ -373,7 +375,9 @@ export default function TransactionForm({ onClose, onSuccess }) {
       }
       throw lastErr || new Error("Load failed");
     } finally {
-      setScanProgress((p) => ({ ...p, current: p.current + 1 }));
+      if (trackProgress) {
+        setScanProgress((p) => ({ ...p, current: p.current + 1 }));
+      }
     }
   };
 
@@ -400,6 +404,55 @@ export default function TransactionForm({ onClose, onSuccess }) {
     setRecentCategoryIds(next);
     try { localStorage.setItem("zenhome_recent_categories", JSON.stringify(next)); } catch {}
     closeCategoryPicker();
+  };
+
+  const handleRetryScan = async (resultIdx) => {
+    try {
+      setRetryingIdx(resultIdx);
+      const token = await getToken();
+      if (!token) {
+        alert("Session expired. Please log in again.");
+        return;
+      }
+      const target = scanResults[resultIdx];
+      const { ocrData, templateMatched, bankIdentifier } = await scanImage(target.file, token, resultIdx, { trackProgress: false });
+      const suggestedCategoryId = suggestCategoryId({
+        description: ocrData?.description || "",
+        recipient_name: ocrData?.recipient_name || "",
+        bank_name: ocrData?.bank_name || "",
+      }, expenseCategories, learnedCategoryMap);
+
+      setScanResults((prev) => {
+        const updated = [...prev];
+        updated[resultIdx] = {
+          ...updated[resultIdx],
+          ocrData: ocrData || null,
+          ocrError: null,
+          templateMatched: templateMatched || false,
+          bankIdentifier: bankIdentifier || "",
+          form: {
+            ...updated[resultIdx].form,
+            amount: ocrData?.amount ? String(ocrData.amount) : "",
+            category_id: suggestedCategoryId || "",
+            description: ocrData?.description || "",
+            recipient_name: ocrData?.recipient_name || "",
+            bank_name: ocrData?.bank_name || "",
+            bank_account: ocrData?.bank_account || "",
+            transaction_code: ocrData?.transaction_code || "",
+            transaction_date: ocrData?.transaction_date || "",
+          },
+        };
+        return updated;
+      });
+    } catch (err) {
+      setScanResults((prev) => {
+        const updated = [...prev];
+        updated[resultIdx] = { ...updated[resultIdx], ocrError: err?.message || "Load failed" };
+        return updated;
+      });
+    } finally {
+      setRetryingIdx(null);
+    }
   };
 
   const handleSupportingSelect = async (resultIndex, e) => {
@@ -1061,8 +1114,18 @@ export default function TransactionForm({ onClose, onSuccess }) {
                           </div>
                         )}
                         {result.ocrError && (
-                          <div style={{ fontSize: 12, color: T.danger, lineHeight: 1.4 }}>
-                            {result.ocrError}
+                          <div style={{ display: "grid", gap: 8 }}>
+                            <div style={{ fontSize: 12, color: T.danger, lineHeight: 1.4 }}>
+                              {result.ocrError}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRetryScan(resultIdx)}
+                              disabled={retryingIdx === resultIdx}
+                              style={{ height: 30, borderRadius: 8, border: `1px solid ${T.border}`, background: "#fff", color: T.text, fontSize: 12, fontWeight: 700, cursor: retryingIdx === resultIdx ? "default" : "pointer", opacity: retryingIdx === resultIdx ? 0.6 : 1 }}
+                            >
+                              {retryingIdx === resultIdx ? "Đang quét lại..." : "Quét lại slip này"}
+                            </button>
                           </div>
                         )}
                       </div>
