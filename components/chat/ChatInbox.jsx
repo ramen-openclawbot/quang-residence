@@ -333,8 +333,15 @@ export default function ChatInbox() {
 
     try {
       const compressed = await compressImage(file);
-      const url = await uploadFile(compressed, profile.id, "chat-slip");
-      setSlipUrl(url);
+
+      // Storage upload should not block OCR scan; if it fails, keep going and retry upload on submit.
+      try {
+        const url = await uploadFile(compressed, profile.id, "chat-slip");
+        setSlipUrl(url);
+      } catch (uploadErr) {
+        console.warn("Chat slip pre-upload failed, continue OCR:", uploadErr);
+        setSlipUrl(null);
+      }
 
       const token = await getToken();
       if (!token) {
@@ -399,7 +406,8 @@ export default function ChatInbox() {
       addAgent("Quét thành công! Xem chi tiết bên dưới:");
     } catch (err) {
       console.error("Chat OCR error:", err);
-      addAgent("Đã xảy ra lỗi khi quét. Vui lòng thử lại.");
+      const msg = err?.message || "Lỗi không xác định";
+      addAgent(`Đã xảy ra lỗi khi quét (${msg}). Vui lòng thử lại.`);
     } finally {
       setProcessing(false);
     }
