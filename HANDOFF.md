@@ -623,6 +623,20 @@ if (activeFilter === "expense") return signed < 0 || (signed === 0 && type === "
 - Notes:
   - This phase removes major total drift caused by summary limits
 
+## Q1 (Secretary Cash Ledger Program) — Schema Foundation
+- Status: DONE (schema + RLS baseline)
+- Commit range: `(pending in this phase)`
+- DB migration: `supabase/q1_cash_ledger_schema.sql`
+- Changes:
+  - Added new table `public.cash_ledger_entries`
+  - Added transfer-linking fields (`transfer_group_id`, `linked_entry_id`, `entry_kind`)
+  - Added indexes + dedupe unique index for auto transfer-in rows
+  - Added RLS baseline:
+    - owner/secretary full access
+    - users can view/insert/update own rows
+- Notes:
+  - Run this migration first before Q2 API/UI implementation
+
 ## Summary for the next agent
 This app is in a **transaction audit + operations** phase.
 Priority areas: complete the audit pipeline, deepen CRUD flows for tasks/maintenance/schedule, expand self-service to other roles.
