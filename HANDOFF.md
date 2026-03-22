@@ -588,6 +588,20 @@ if (activeFilter === "expense") return signed < 0 || (signed === 0 && type === "
 - Notes:
   - T3 depends on T1/T2 being applied in database for correct visibility
 
+## Phase T4 (Agenda Ownership Program) — UI Role Refactor on Unified Feed
+- Status: DONE
+- Commit range: `(pending in this phase)`
+- DB migration: none
+- Changes:
+  - Refactored housekeeper data loading to consume `/api/agenda/feed` first, with scoped fallback queries
+  - Fixed housekeeper fallback queries to enforce own-row filters:
+    - maintenance: `created_by` or `reported_by` = current user
+    - family schedule: `created_by` = current user
+  - Refactored driver tasks to consume role-scoped `/api/agenda/feed` task entries
+  - Ensured housekeeper family schedule inserts always set `created_by`
+- Notes:
+  - T4 relies on T2 RLS for hard enforcement; fallback now aligns with same visibility rules
+
 ## Summary for the next agent
 This app is in a **transaction audit + operations** phase.
 Priority areas: complete the audit pipeline, deepen CRUD flows for tasks/maintenance/schedule, expand self-service to other roles.

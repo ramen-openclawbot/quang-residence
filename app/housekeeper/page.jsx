@@ -200,15 +200,38 @@ export default function HousekeeperPage() {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const [txData, maintenanceData, scheduleData] = await Promise.all([
-        supabase.from("transactions").select("*, categories!category_id(id, code, name_vi, name, color)").eq("created_by", profile.id).gte("created_at", thirtyDaysAgo.toISOString()).order("created_at", { ascending: false }).limit(30),
-        supabase.from("home_maintenance").select("*").order("created_at", { ascending: false }),
-        supabase.from("family_schedule").select("*").order("event_date", { ascending: true }),
-      ]);
+      const token = await getToken();
+      let agendaLoaded = false;
+      if (token) {
+        const agendaRes = await fetch("/api/agenda/feed?limit=300", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (agendaRes.ok) {
+          const agenda = await agendaRes.json();
+          const items = agenda.items || [];
+          setMaintenanceItems(items.filter((x) => x.source === "maintenance").map((x) => x.payload || x));
+          setFamilySchedule(items.filter((x) => x.source === "schedule").map((x) => x.payload || x));
+          agendaLoaded = true;
+        }
+      }
 
+      const txData = await supabase
+        .from("transactions")
+        .select("*, categories!category_id(id, code, name_vi, name, color)")
+        .eq("created_by", profile.id)
+        .gte("created_at", thirtyDaysAgo.toISOString())
+        .order("created_at", { ascending: false })
+        .limit(30);
       setTransactions(txData.data || []);
-      setMaintenanceItems(maintenanceData.data || []);
-      setFamilySchedule(scheduleData.data || []);
+
+      if (!agendaLoaded) {
+        const [maintenanceData, scheduleData] = await Promise.all([
+          supabase.from("home_maintenance").select("*").or(`created_by.eq.${profile.id},reported_by.eq.${profile.id}`).order("created_at", { ascending: false }),
+          supabase.from("family_schedule").select("*").eq("created_by", profile.id).order("event_date", { ascending: true }),
+        ]);
+        setMaintenanceItems(maintenanceData.data || []);
+        setFamilySchedule(scheduleData.data || []);
+      }
     } catch (error) {
       console.error("Housekeeper fetchData error:", error);
     } finally {

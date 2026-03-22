@@ -161,14 +161,21 @@ export default function DriverPage() {
       const token = await getToken();
       let loaded = false;
       if (token) {
-        const res = await fetch("/api/dashboard/driver", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const [res, agendaRes] = await Promise.all([
+          fetch("/api/dashboard/driver", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("/api/agenda/feed?limit=300", { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
         if (res.ok) {
           const json = await res.json();
           setTrips(json.trips || []);
           setTransactions(json.transactions || []);
-          setTasks(json.tasks || []);
+          if (agendaRes.ok) {
+            const agenda = await agendaRes.json();
+            const taskItems = (agenda.items || []).filter((x) => x.source === "task").map((x) => x.payload || x);
+            setTasks(taskItems);
+          } else {
+            setTasks(json.tasks || []);
+          }
           loaded = true;
         }
       }
