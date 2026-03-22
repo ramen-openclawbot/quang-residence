@@ -316,6 +316,16 @@ export default function OwnerPage() {
   const pendingCount = summaryData?.all?.pending ?? pendingTransactions.length;
   const recentTasks = useMemo(() => tasks.slice(0, 4), [tasks]);
   const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);
+  const ROLE_VI = { secretary: "Thư ký", driver: "Lái xe", housekeeper: "Quản gia" };
+  const ownerAgendaTasks = useMemo(() => {
+    const targetRoles = new Set(["secretary", "driver", "housekeeper"]);
+    const picked = tasks.filter((task) => {
+      const assigneeRole = staffById[task.assigned_to]?.role;
+      const creatorRole = staffById[task.created_by]?.role;
+      return targetRoles.has(assigneeRole) || targetRoles.has(creatorRole);
+    });
+    return picked.length ? picked : tasks;
+  }, [tasks, staffById]);
 
   const securitySetting = settingsData.find((x) => x.setting_key === "security")?.setting_value || {};
   const lightingSetting = settingsData.find((x) => x.setting_key === "lighting")?.setting_value || {};
@@ -697,18 +707,24 @@ export default function OwnerPage() {
             </div>
 
             <div style={{ display: "grid", gap: 12 }}>
-              {tasks.slice(0, 10).map((task) => {
-                const tone = task.status === "done" ? { bg: "#e9fff5", color: T.success } : task.status === "in_progress" ? { bg: "#fff7e6", color: T.amber } : { bg: "#eef4ff", color: T.blue };
-                const assignee = staffById[task.assigned_to]?.full_name || staffById[task.created_by]?.full_name || "Chưa phân công";
+              {ownerAgendaTasks.slice(0, 20).map((task) => {
+                const tone = task.status === "done" ? { bg: "#e9fff5", color: T.success, label: "done" } : task.status === "in_progress" ? { bg: "#fff7e6", color: T.amber, label: "in_progress" } : { bg: "#eef4ff", color: T.blue, label: "pending" };
+                const assigneeProfile = staffById[task.assigned_to] || staffById[task.created_by] || null;
+                const assignee = assigneeProfile?.full_name || "Chưa phân công";
+                const roleVi = ROLE_VI[assigneeProfile?.role] || "Khác";
                 return (
                   <button key={task.id} onClick={() => { setSelectedTask(task); setActivePanel("task-detail"); }} style={{ ...cardStyle, padding: 16, width: "100%", textAlign: "left", cursor: "pointer" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{task.title}</div>
+                        {task.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{task.description}</div>}
                         <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.due_date ? fmtDate(task.due_date) : "Không có hạn"}</div>
-                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>Phụ trách: {assignee}</div>
+                        <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 8px", borderRadius: 999, background: "#eef8e8", color: T.primary, fontSize: 10, fontWeight: 700 }}>
+                          <MIcon name={assigneeProfile?.role === "driver" ? "two_wheeler" : assigneeProfile?.role === "housekeeper" ? "home_repair_service" : "badge"} size={12} color={T.primary} />
+                          {roleVi} · {assignee}
+                        </div>
                       </div>
-                      <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{task.status}</div>
+                      <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{tone.label}</div>
                     </div>
                   </button>
                 );

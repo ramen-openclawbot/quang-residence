@@ -41,7 +41,7 @@ export async function GET(request) {
 
     const [recentTxRes, tasksRes, profilesRes, settingsRes, allSummary, monthSummary] = await Promise.all([
       supabaseAdmin.from("transactions").select("*").order("created_at", { ascending: false }).limit(30),
-      supabaseAdmin.from("tasks").select("*").order("due_date", { ascending: true }).limit(20),
+      supabaseAdmin.from("tasks").select("*").order("due_date", { ascending: true }).limit(120),
       supabaseAdmin.from("profiles").select("id, full_name, role"),
       supabaseAdmin.from("home_settings").select("*").order("setting_key"),
       getCachedSummary("owner:summary:all", async () => {
