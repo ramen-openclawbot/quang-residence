@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import StaffShell, { MIcon } from "../../components/shared/StaffShell";
 import NotificationCenter from "../../components/shared/NotificationCenter";
 import TransactionDetail from "../../components/shared/TransactionDetail";
@@ -158,6 +158,9 @@ export default function SecretaryPage() {
   const [cashLedgerSearch, setCashLedgerSearch] = useState("");
   const [cashLedgerTypeFilter, setCashLedgerTypeFilter] = useState("all");
   const [cashLedgerKindFilter, setCashLedgerKindFilter] = useState("all");
+  const [cashLedgerOcrLoading, setCashLedgerOcrLoading] = useState(false);
+  const [cashLedgerOcrError, setCashLedgerOcrError] = useState("");
+  const cashLedgerSlipFileRef = useRef(null);
   const [cashLedgerForm, setCashLedgerForm] = useState({
     type: "expense",
     entry_kind: "ops",
@@ -430,6 +433,64 @@ export default function SecretaryPage() {
     if (!error) {
       await notifyTaskEvent(task.id, "status_changed", next);
       reloadAll();
+    }
+  }
+
+  const fileToBase64 = useCallback((file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  }), []);
+
+  const uploadSlipToStorage = useCallback(async (file) => {
+    if (!file || !profile?.id) return null;
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `${profile.id}/cash-ledger-slip-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("bank-slips").upload(path, file, { cacheControl: "3600", upsert: false });
+    if (error) throw error;
+    const { data } = supabase.storage.from("bank-slips").getPublicUrl(path);
+    return data?.publicUrl || null;
+  }, [profile?.id]);
+
+  async function handleCashLedgerSlipSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setCashLedgerOcrLoading(true);
+      setCashLedgerOcrError("");
+      const token = await getToken();
+      const imageBase64 = await fileToBase64(file);
+
+      const ocrRes = await fetch("/api/ocr", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ imageBase64, imageMimeType: file.type || "image/jpeg" }),
+      });
+      const ocrJson = await ocrRes.json().catch(() => ({}));
+      if (!ocrRes.ok) throw new Error(ocrJson.error || "OCR thất bại");
+
+      const slipUrl = await uploadSlipToStorage(file);
+      const data = ocrJson?.data || {};
+      setCashLedgerForm((prev) => ({
+        ...prev,
+        amount: data?.amount ? String(data.amount) : prev.amount,
+        recipient_name: data?.recipient_name || prev.recipient_name,
+        bank_name: data?.bank_name || prev.bank_name,
+        bank_account: data?.bank_account || prev.bank_account,
+        transaction_code: data?.transaction_code || prev.transaction_code,
+        description: data?.description || prev.description,
+        transaction_date: data?.transaction_date || prev.transaction_date,
+        slip_image_url: slipUrl || prev.slip_image_url,
+      }));
+    } catch (err) {
+      setCashLedgerOcrError(err.message || "Không đọc được bank slip");
+    } finally {
+      setCashLedgerOcrLoading(false);
+      if (e?.target) e.target.value = "";
     }
   }
 
@@ -1386,6 +1447,18 @@ export default function SecretaryPage() {
                 </button>
               </div>
               <form onSubmit={handleCreateCashLedgerEntry}>
+                <input ref={cashLedgerSlipFileRef} type="file" accept="image/*" onChange={handleCashLedgerSlipSelect} style={{ display: "none" }} />
+                <button
+                  type="button"
+                  onClick={() => cashLedgerSlipFileRef.current?.click()}
+                  disabled={cashLedgerOcrLoading}
+                  style={{ ...inputStyle, marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#f9fff6", border: `1px dashed ${T.primary}`, cursor: cashLedgerOcrLoading ? "default" : "pointer" }}
+                >
+                  <MIcon name="document_scanner" size={18} color={T.primary} />
+                  {cashLedgerOcrLoading ? "Đang OCR bank slip..." : "OCR từ bank slip"}
+                </button>
+                {cashLedgerOcrError && <div style={{ fontSize: 12, color: T.danger, marginBottom: 10 }}>{cashLedgerOcrError}</div>}
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <select value={cashLedgerForm.type} onChange={(e) => setCashLedgerForm((p) => ({ ...p, type: e.target.value }))} style={inputStyle}>
                     <option value="expense">Chi</option>

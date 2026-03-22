@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { resolveUser, supabaseAdmin, notify } from "../../../lib/api-auth";
 
 const MAX_REJECT_REASON_LENGTH = 500;
+const OPS_EXCLUDED_USER_PREFIX = "6487c846";
+
+function isOpsTransaction(tx) {
+  const createdBy = String(tx?.created_by || "");
+  return !createdBy.startsWith(OPS_EXCLUDED_USER_PREFIX);
+}
 
 function getSignedAmount(tx) {
   const amount = Math.abs(Number(tx?.amount || 0));
@@ -57,12 +63,14 @@ export async function GET(request) {
       return NextResponse.json({ error: "Failed to fetch transactions." }, { status: 500 });
     }
 
+    const opsData = (data || []).filter(isOpsTransaction);
+
     // Month-level summary across the full filtered month/year set (not only current page)
     let summary = null;
     if (month !== null && year !== null) {
       let summaryQuery = supabaseAdmin
         .from("transactions")
-        .select("type, amount, adjustment_direction, status")
+        .select("type, amount, adjustment_direction, status, created_by")
         .order("created_at", { ascending: false })
         .limit(3000);
 
@@ -78,7 +86,7 @@ export async function GET(request) {
       if (summaryError) {
         console.warn("Transaction summary query error:", summaryError);
       } else {
-        const rows = summaryRows || [];
+        const rows = (summaryRows || []).filter(isOpsTransaction);
         const income = rows.reduce((sum, tx) => {
           const signed = getSignedAmount(tx);
           return signed > 0 ? sum + signed : sum;
@@ -92,7 +100,14 @@ export async function GET(request) {
       }
     }
 
-    return NextResponse.json({ success: true, data: data || [], total: count, hasMore: (offset + limit) < (count || 0), summary });
+    return NextResponse.json({
+      success: true,
+      data: opsData,
+      total: count,
+      hasMore: (offset + limit) < (count || 0),
+      summary,
+      ops_filtered: true,
+    });
   } catch (err) {
     console.error("Transaction GET error:", err);
     return NextResponse.json({ error: "An error occurred while fetching transactions." }, { status: 500 });
