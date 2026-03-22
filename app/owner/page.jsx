@@ -343,8 +343,8 @@ export default function OwnerPage() {
       description: m.description,
       date: m.created_at,
       status: m.status,
-      assigneeId: m.assigned_to,
-      creatorId: m.created_by,
+      assigneeId: m.assigned_to || m.reported_by || null,
+      creatorId: m.created_by || m.reported_by || null,
       item: m,
     }));
 
