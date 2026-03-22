@@ -565,7 +565,7 @@ Transaction list UX has gone through multiple quick iterations today; current br
 
 ## Phase 2 (OCR Program) — Extraction Hardening + Smart Fallback
 - Status: DONE
-- Commit range: `113ee68..(this phase commit)`
+- Commit range: `113ee68..3909725`
 - DB migration: none
 - Changes:
   - Refactored OCR extraction into reusable runner `runOcrExtraction(...)`
