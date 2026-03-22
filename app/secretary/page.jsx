@@ -135,6 +135,7 @@ export default function SecretaryPage() {
   const [maintenanceItems, setMaintenanceItems] = useState([]);
   const [familySchedule, setFamilySchedule] = useState([]);
   const [drivingTrips, setDrivingTrips] = useState([]);
+  const [staffProfiles, setStaffProfiles] = useState([]);
   const [agendaItems, setAgendaItems] = useState([]);
   const [newTask, setNewTask] = useState({
     title: "",
@@ -183,17 +184,19 @@ export default function SecretaryPage() {
         setMaintenanceItems(json.maintenance || []);
         setFamilySchedule(json.familySchedule || []);
         setDrivingTrips(json.drivingTrips || []);
+        setStaffProfiles(json.staffProfiles || []);
         setAgendaItems(agendaJson.items || []);
         setTransactions(json.recentTx || []);
         setServerSummary({ todaySummary: json.todaySummary, pendingCount: json.pendingCount });
       } else {
         /* Fallback: direct Supabase queries */
-        const [fundsRes, tasksRes, maintenanceRes, scheduleRes, tripsRes, txRes] = await Promise.all([
+        const [fundsRes, tasksRes, maintenanceRes, scheduleRes, tripsRes, profilesRes, txRes] = await Promise.all([
           supabase.from("funds").select("*").order("id"),
           supabase.from("tasks").select("*").order("due_date", { ascending: true }),
           supabase.from("home_maintenance").select("*").order("created_at", { ascending: false }),
           supabase.from("family_schedule").select("*").order("event_date", { ascending: true }),
           supabase.from("driving_trips").select("*").order("scheduled_time", { ascending: true }),
+          supabase.from("profiles").select("id,full_name,role"),
           supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(20),
         ]);
         setFunds(fundsRes.data || []);
@@ -201,6 +204,7 @@ export default function SecretaryPage() {
         setMaintenanceItems(maintenanceRes.data || []);
         setFamilySchedule(scheduleRes.data || []);
         setDrivingTrips(tripsRes.data || []);
+        setStaffProfiles(profilesRes.data || []);
         setTransactions(txRes.data || []);
       }
     } catch (err) {
@@ -518,6 +522,8 @@ export default function SecretaryPage() {
   }, [agendaItems, tasks, maintenanceItems, familySchedule, drivingTrips]);
 
   const upcomingItems = useMemo(() => workItems.filter((t) => t.due_date), [workItems]);
+  const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);
+  const ROLE_VI = { secretary: "Thư ký", driver: "Lái xe", housekeeper: "Quản gia" };
 
   return (
     <StaffShell role="secretary">
@@ -1073,8 +1079,10 @@ export default function SecretaryPage() {
                         const canDelete = task.source === "task" && task.item.created_by === profile?.id;
                         const swipe = task.source === "task" ? getSwipeHandlers(task.item) : {};
                         const status = task.status;
-                        const sourceLabel = task.source === "maintenance" ? "Chăm sóc nhà" : task.source === "schedule" ? "Lịch" : task.source === "trip" ? "Lái xe" : "Task";
+                        const sourceLabel = task.source === "maintenance" ? "Chăm sóc nhà" : task.source === "schedule" ? "Việc gia đình" : task.source === "trip" ? "Việc lái xe" : "Task";
                         const sourceIcon = task.source === "maintenance" ? "home_repair_service" : task.source === "schedule" ? "event" : task.source === "trip" ? "two_wheeler" : "task_alt";
+                        const ownerId = task.item?.assigned_to || task.item?.created_by || task.item?.reported_by || null;
+                        const ownerRole = ROLE_VI[staffById[ownerId]?.role] || "";
                         return (
                           <div key={task.id} style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
                             {canDelete && (
@@ -1092,8 +1100,15 @@ export default function SecretaryPage() {
                                   <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
                                   {task.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description}</div>}
                                   {task.due_date && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>Hạn: {fmtDate(task.due_date)}</div>}
-                                  <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 8px", borderRadius: 999, background: "#eef8e8", color: T.primary, fontSize: 10, fontWeight: 700 }}>
-                                    <MIcon name={sourceIcon} size={12} color={T.primary} />{sourceLabel}
+                                  <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 8px", borderRadius: 999, background: "#eef8e8", color: T.primary, fontSize: 10, fontWeight: 700 }}>
+                                      <MIcon name={sourceIcon} size={12} color={T.primary} />{sourceLabel}
+                                    </span>
+                                    {ownerRole && (
+                                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 8px", borderRadius: 999, background: "#eef4ff", color: T.blue, fontSize: 10, fontWeight: 700 }}>
+                                        <MIcon name={staffById[ownerId]?.role === "driver" ? "two_wheeler" : staffById[ownerId]?.role === "housekeeper" ? "home_repair_service" : "badge"} size={12} color={T.blue} />{ownerRole}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                                 <div style={{

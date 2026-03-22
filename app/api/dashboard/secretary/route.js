@@ -63,6 +63,7 @@ export async function GET(request) {
       maintenance: maintenanceRes.data || [],
       familySchedule: scheduleRes.data || [],
       drivingTrips: tripsRes.data || [],
+      staffProfiles: profilesRes.data || [],
       recentTx: recentTxRes.data || [],
       todaySummary: { income: todayIncome, expense: todayExpense },
       pendingCount: pendingRes.count || 0,
