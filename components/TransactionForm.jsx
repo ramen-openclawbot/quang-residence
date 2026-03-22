@@ -88,6 +88,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
   const [categoryPicker, setCategoryPicker] = useState({ open: false, resultIdx: null, q: "" });
   const [recentCategoryIds, setRecentCategoryIds] = useState([]);
   const [retryingIdx, setRetryingIdx] = useState(null);
+  const [pendingQueue, setPendingQueue] = useState([]);
 
   // ==================== HELPERS ====================
   const fileToBase64 = (file) =>
@@ -206,6 +207,12 @@ export default function TransactionForm({ onClose, onSuccess }) {
       setRecentCategoryIds(raw ? JSON.parse(raw) : []);
     } catch {
       setRecentCategoryIds([]);
+    }
+    try {
+      const q = localStorage.getItem("zenhome_pending_slip_queue");
+      setPendingQueue(q ? JSON.parse(q) : []);
+    } catch {
+      setPendingQueue([]);
     }
     return () => { canceled = true; };
   }, []);
@@ -499,6 +506,12 @@ export default function TransactionForm({ onClose, onSuccess }) {
     setScanResults((prev) => prev.filter((_, i) => i !== index));
   };
 
+  useEffect(() => {
+    try {
+      localStorage.setItem("zenhome_pending_slip_queue", JSON.stringify(pendingQueue));
+    } catch {}
+  }, [pendingQueue]);
+
   const handleSubmit = async () => {
     if (scanResults.length === 0 || !scanResults.some((r) => r.form.amount)) {
       alert("Please fill in at least one amount");
@@ -528,70 +541,83 @@ export default function TransactionForm({ onClose, onSuccess }) {
           return;
         }
 
-        // Upload supporting images
-        const supportingProofUrls = [];
-        for (const img of result.supportingImages) {
-          const url = await uploadFileToStorage(img, "support");
-          if (url) supportingProofUrls.push(url);
-        }
-
-        // Upload main slip image
-        const slipUrl = await uploadFileToStorage(result.file, "slip");
-
-        const selectedCategory = expenseCategories.find((c) => String(c.id) === String(result.form.category_id));
-
-        const payload = {
-          type,
-          amount: Number(result.form.amount || 0),
-          fund_id: null,
-          category_id: (type === "expense" && result.form.category_id) ? Number(result.form.category_id) : null,
-          description: result.form.description || null,
-          recipient_name: result.form.recipient_name || null,
-          bank_name: result.form.bank_name || null,
-          bank_account: result.form.bank_account || null,
-          transaction_code: result.form.transaction_code || null,
-          transaction_date: result.form.transaction_date ? new Date(result.form.transaction_date).toISOString() : null,
-          notes: result.form.notes || null,
-          created_by: profile.id,
-          slip_image_url: slipUrl,
-          status: "pending",
-          source: "app",
-          ocr_raw_data: {
-            ...(result.ocrData || {}),
-            supporting_proof_urls: supportingProofUrls,
-            template_matched: result.templateMatched,
-            bank_identifier: result.bankIdentifier,
-            category_meta: selectedCategory
-              ? {
-                  id: selectedCategory.id,
-                  code: selectedCategory.code || null,
-                  label_vi: selectedCategory.name_vi || selectedCategory.name || null,
-                  source: "user_selected",
-                }
-              : null,
-          },
-        };
-
-        const { data: inserted, error } = await supabase.from("transactions").insert(payload).select("id").single();
-        if (error) throw error;
-        createdTransactions.push(inserted);
-
-        // Notify reviewers
         try {
-          if (token && inserted?.id) {
-            await fetch("/api/transactions/notify-submit", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-              body: JSON.stringify({
-                transaction_id: inserted.id,
-                amount: payload.amount,
-                type: payload.type,
-                description: payload.description,
-              }),
-            });
+          // Upload supporting images
+          const supportingProofUrls = [];
+          for (const img of result.supportingImages) {
+            const url = await uploadFileToStorage(img, "support");
+            if (url) supportingProofUrls.push(url);
           }
-        } catch (notifyError) {
-          console.warn("notify-submit error:", notifyError);
+
+          // Upload main slip image
+          const slipUrl = await uploadFileToStorage(result.file, "slip");
+
+          const selectedCategory = expenseCategories.find((c) => String(c.id) === String(result.form.category_id));
+
+          const payload = {
+            type,
+            amount: Number(result.form.amount || 0),
+            fund_id: null,
+            category_id: (type === "expense" && result.form.category_id) ? Number(result.form.category_id) : null,
+            description: result.form.description || null,
+            recipient_name: result.form.recipient_name || null,
+            bank_name: result.form.bank_name || null,
+            bank_account: result.form.bank_account || null,
+            transaction_code: result.form.transaction_code || null,
+            transaction_date: result.form.transaction_date ? new Date(result.form.transaction_date).toISOString() : null,
+            notes: result.form.notes || null,
+            created_by: profile.id,
+            slip_image_url: slipUrl,
+            status: "pending",
+            source: "app",
+            ocr_raw_data: {
+              ...(result.ocrData || {}),
+              supporting_proof_urls: supportingProofUrls,
+              template_matched: result.templateMatched,
+              bank_identifier: result.bankIdentifier,
+              category_meta: selectedCategory
+                ? {
+                    id: selectedCategory.id,
+                    code: selectedCategory.code || null,
+                    label_vi: selectedCategory.name_vi || selectedCategory.name || null,
+                    source: "user_selected",
+                  }
+                : null,
+            },
+          };
+
+          const { data: inserted, error } = await supabase.from("transactions").insert(payload).select("id").single();
+          if (error) throw error;
+          createdTransactions.push(inserted);
+
+          try {
+            if (token && inserted?.id) {
+              await fetch("/api/transactions/notify-submit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                  transaction_id: inserted.id,
+                  amount: payload.amount,
+                  type: payload.type,
+                  description: payload.description,
+                }),
+              });
+            }
+          } catch (notifyError) {
+            console.warn("notify-submit error:", notifyError);
+          }
+        } catch (itemErr) {
+          console.warn("Queue failed slip for retry:", itemErr);
+          setPendingQueue((prev) => ([
+            ...prev,
+            {
+              id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+              at: new Date().toISOString(),
+              reason: itemErr?.message || "submit_failed",
+              description: result.form.description || result.form.recipient_name || "Slip",
+              amount: Number(result.form.amount || 0),
+            },
+          ]));
         }
       }
 
@@ -1402,6 +1428,14 @@ export default function TransactionForm({ onClose, onSuccess }) {
               )}
 
               {/* Submit button */}
+              {pendingQueue.length > 0 && (
+                <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                  <span>Hàng chờ retry: {pendingQueue.length} slip lỗi upload/submit</span>
+                  <button type="button" onClick={() => setPendingQueue([])} style={{ border: `1px solid ${T.border}`, background: "#fff", borderRadius: 8, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>
+                    Xóa hàng chờ
+                  </button>
+                </div>
+              )}
               {scanResults.length > 0 && hasMissingTransactionDate && (
                 <div style={{ fontSize: 12, color: T.danger, marginBottom: 8 }}>
                   Có slip chưa đọc được Ngày giao dịch. Vui lòng thay ảnh rõ hơn.

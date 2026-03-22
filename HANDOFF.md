@@ -612,3 +612,19 @@ Transaction list UX has gone through multiple quick iterations today; current br
   - revert this phase commit range
 - Next phase entry criteria:
   - observe user correction rate by source type (manual overrides vs suggested)
+
+## Phase 5 (OCR Program) — Reliability UX (Retry + Queue)
+- Status: DONE
+- Commit range: `719f48b..(this phase commit)`
+- DB migration: none
+- Changes:
+  - Added per-slip failure queue in `TransactionForm` for upload/submit failures
+  - Submission no longer aborts full batch when one slip fails storage/insert; failed items are queued
+  - Persisted queue to localStorage (`zenhome_pending_slip_queue`) for session continuity
+  - Added queue summary UI + clear action
+- Test result:
+  - build: pass
+- Rollback:
+  - revert this phase commit range
+- Next phase entry criteria:
+  - verify batch submit behavior with mixed success/failure cases
