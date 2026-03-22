@@ -24,6 +24,19 @@ function normalizeTextKey(v = "") {
   return String(v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function getCategoryIconName(category) {
+  const code = String(category?.code || "").toUpperCase();
+  if (code === "TIEN_CHO" || code === "CHI_BEP") return "shopping_basket";
+  if (code === "DO_AN_GOI") return "ramen_dining";
+  if (code === "DIEN_NUOC_GAS_NET" || code === "DANG_KY_DICH_VU") return "bolt";
+  if (code === "DI_LAI") return "two_wheeler";
+  if (code === "SUA_CHUA_BAO_TRI") return "build";
+  if (code === "GIAI_TRI_QUA_TANG") return "celebration";
+  if (code === "LUONG_NHAN_SU") return "badge";
+  if (code === "DU_LICH") return "flight";
+  return "label";
+}
+
 function suggestCategory({ description = "", recipient_name = "", bank_name = "" }, categories = [], learnedMap = {}) {
   const hay = `${description} ${recipient_name} ${bank_name}`.toLowerCase();
   if (!hay.trim() || !categories.length) return { id: "", source: "none", confidence: 0 };
@@ -1415,8 +1428,11 @@ export default function TransactionForm({ onClose, onSuccess }) {
                           <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>Tất cả phân loại</div>
                           <div style={{ display: "grid", gap: 6 }}>
                             {filtered.map((c) => (
-                              <button key={c.id} type="button" onClick={() => pickCategoryForResult(categoryPicker.resultIdx, c.id)} style={{ ...inputStyle, textAlign: "left" }}>
-                                {c.name_vi || c.name}
+                              <button key={c.id} type="button" onClick={() => pickCategoryForResult(categoryPicker.resultIdx, c.id)} style={{ ...inputStyle, textAlign: "left", padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                                <span style={{ width: 22, height: 22, borderRadius: 999, background: `${c.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                                  <MIcon name={getCategoryIconName(c)} size={13} color={c.color || T.primary} />
+                                </span>
+                                <span>{c.name_vi || c.name}</span>
                               </button>
                             ))}
                           </div>

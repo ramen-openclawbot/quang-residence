@@ -146,6 +146,19 @@ function suggestCategory({ description = "", recipient_name = "", bank_name = ""
   return { id: "", source: "none", confidence: 0 };
 }
 
+function getCategoryIconName(category) {
+  const code = String(category?.code || "").toUpperCase();
+  if (code === "TIEN_CHO" || code === "CHI_BEP") return "shopping_basket";
+  if (code === "DO_AN_GOI") return "ramen_dining";
+  if (code === "DIEN_NUOC_GAS_NET" || code === "DANG_KY_DICH_VU") return "bolt";
+  if (code === "DI_LAI") return "two_wheeler";
+  if (code === "SUA_CHUA_BAO_TRI") return "build";
+  if (code === "GIAI_TRI_QUA_TANG") return "celebration";
+  if (code === "LUONG_NHAN_SU") return "badge";
+  if (code === "DU_LICH") return "flight";
+  return "label";
+}
+
 function parseCategoryQuery(text = "") {
   const t = text.toLowerCase();
   const m = t.match(/chi\s+(.+?)\s+(?:het\s+)?bao\s+nhieu/);
@@ -1128,8 +1141,14 @@ function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
             {!q && suggested && (
               <div style={{ marginBottom: 10 }}>
                 <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>Gợi ý từ OCR</div>
-                <button type="button" onClick={() => selectCategory(suggested.id)} style={{ ...fld, textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span>{suggested.name_vi || suggested.name}</span><span style={{ fontSize: 10, color: T.primary }}>Đề xuất</span>
+                <button type="button" onClick={() => selectCategory(suggested.id)} style={{ ...fld, textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 22, height: 22, borderRadius: 999, background: `${suggested.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                      <MIcon name={getCategoryIconName(suggested)} size={13} color={suggested.color || T.primary} />
+                    </span>
+                    <span>{suggested.name_vi || suggested.name}</span>
+                  </span>
+                  <span style={{ fontSize: 10, color: T.primary }}>Đề xuất</span>
                 </button>
               </div>
             )}
@@ -1138,7 +1157,7 @@ function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
               <div style={{ marginBottom: 10 }}>
                 <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>Dùng gần đây</div>
                 <div style={{ display: "grid", gap: 6 }}>
-                  {recentCats.map((c) => <button key={c.id} type="button" onClick={() => selectCategory(c.id)} style={{ ...fld, textAlign: "left" }}>{c.name_vi || c.name}</button>)}
+                  {recentCats.map((c) => <button key={c.id} type="button" onClick={() => selectCategory(c.id)} style={{ ...fld, textAlign: "left", padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 22, height: 22, borderRadius: 999, background: `${c.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><MIcon name={getCategoryIconName(c)} size={13} color={c.color || T.primary} /></span><span>{c.name_vi || c.name}</span></button>)}
                 </div>
               </div>
             )}
@@ -1146,8 +1165,11 @@ function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
             <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>Tất cả phân loại</div>
             <div style={{ display: "grid", gap: 6 }}>
               {filtered.map((c) => (
-                <button key={c.id} type="button" onClick={() => selectCategory(c.id)} style={{ ...fld, textAlign: "left", borderColor: String(form.category_id) === String(c.id) ? T.primary : T.border }}>
-                  {c.name_vi || c.name}
+                <button key={c.id} type="button" onClick={() => selectCategory(c.id)} style={{ ...fld, textAlign: "left", borderColor: String(form.category_id) === String(c.id) ? T.primary : T.border, padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: 999, background: `${c.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                    <MIcon name={getCategoryIconName(c)} size={13} color={c.color || T.primary} />
+                  </span>
+                  <span>{c.name_vi || c.name}</span>
                 </button>
               ))}
             </div>
