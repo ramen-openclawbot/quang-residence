@@ -132,6 +132,8 @@ export default function SecretaryPage() {
   const [funds, setFunds] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [maintenanceItems, setMaintenanceItems] = useState([]);
+  const [familySchedule, setFamilySchedule] = useState([]);
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
@@ -173,6 +175,8 @@ export default function SecretaryPage() {
         const json = await res.json();
         setFunds(json.funds || []);
         setTasks(json.tasks || []);
+        setMaintenanceItems(json.maintenance || []);
+        setFamilySchedule(json.familySchedule || []);
         setTransactions(json.recentTx || []);
         setServerSummary({ todaySummary: json.todaySummary, pendingCount: json.pendingCount });
       } else {
@@ -478,7 +482,15 @@ export default function SecretaryPage() {
   };
   const incomeToday = useMemo(() => serverSummary?.todaySummary?.income ?? transactions.filter((t) => t.type === "income" && isTodayTransaction(t)).reduce((s, t) => s + Number(t.amount || 0), 0), [serverSummary, transactions, today]);
   const expenseToday = useMemo(() => serverSummary?.todaySummary?.expense ?? transactions.filter((t) => t.type === "expense" && isTodayTransaction(t)).reduce((s, t) => s + Number(t.amount || 0), 0), [serverSummary, transactions, today]);
-  const upcomingItems = useMemo(() => tasks.filter((t) => t.due_date).slice().sort((a, b) => (a.due_date || "").localeCompare(b.due_date || "")), [tasks]);
+  const workItems = useMemo(() => {
+    const taskRows = (tasks || []).map((t) => ({ source: "task", id: `task_${t.id}`, rawId: t.id, title: t.title, description: t.description, due_date: t.due_date, status: t.status, priority: t.priority, item: t }));
+    const maintenanceRows = (maintenanceItems || []).map((m) => ({ source: "maintenance", id: `maintenance_${m.id}`, rawId: m.id, title: m.title || "Chăm sóc nhà", description: m.description, due_date: m.created_at, status: m.status, priority: "medium", item: m }));
+    const scheduleRows = (familySchedule || []).map((s) => ({ source: "schedule", id: `schedule_${s.id}`, rawId: s.id, title: s.title || "Lịch gia đình", description: s.notes || s.description, due_date: s.event_date, status: "scheduled", priority: "medium", item: s }));
+    return [...taskRows, ...maintenanceRows, ...scheduleRows]
+      .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")));
+  }, [tasks, maintenanceItems, familySchedule]);
+
+  const upcomingItems = useMemo(() => workItems.filter((t) => t.due_date), [workItems]);
 
   return (
     <StaffShell role="secretary">
@@ -1023,20 +1035,23 @@ export default function SecretaryPage() {
                       + Tạo
                     </button>
                   </div>
-                  {tasks.length === 0 ? (
+                  {workItems.length === 0 ? (
                     <div style={{ ...cardStyle, padding: 24, textAlign: "center" }}>
                       <MIcon name="task_alt" size={32} color={T.textMuted} />
                       <div style={{ fontSize: 13, color: T.textMuted, marginTop: 8 }}>Chưa có công việc nào.</div>
                     </div>
                   ) : (
                     <div style={{ display: "grid", gap: 12 }}>
-                      {tasks.map((task) => {
-                        const canDelete = task.created_by === profile?.id;
-                        const swipe = getSwipeHandlers(task);
+                      {workItems.map((task) => {
+                        const canDelete = task.source === "task" && task.item.created_by === profile?.id;
+                        const swipe = task.source === "task" ? getSwipeHandlers(task.item) : {};
+                        const status = task.status;
+                        const sourceLabel = task.source === "maintenance" ? "Chăm sóc nhà" : task.source === "schedule" ? "Lịch" : "Task";
+                        const sourceIcon = task.source === "maintenance" ? "home_repair_service" : task.source === "schedule" ? "event" : "task_alt";
                         return (
                           <div key={task.id} style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
                             {canDelete && (
-                              <button onClick={(e) => { e.stopPropagation(); handleDeleteTask(task); }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", borderRadius: 18 }}>
+                              <button onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.item); }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 88, border: "none", background: T.danger, color: "white", fontWeight: 800, fontSize: 12, cursor: "pointer", borderRadius: 18 }}>
                                 Xóa
                               </button>
                             )}
@@ -1044,22 +1059,25 @@ export default function SecretaryPage() {
                               {...swipe}
                               key={task.id}
                               onClick={() => { setSelectedTask(task); setActivePanel("task-detail"); }}
-                              style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, position: "relative", transform: canDelete && revealedTaskId === task.id ? "translateX(-88px)" : "translateX(0)", transition: "transform 180ms ease" }}>
+                              style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}`, position: "relative", transform: canDelete && revealedTaskId === task.item.id ? "translateX(-88px)" : "translateX(0)", transition: "transform 180ms ease" }}>
                               <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 12 }}>
                                 <div>
                                   <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{task.title}</div>
                                   {task.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.description}</div>}
                                   {task.due_date && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>Hạn: {fmtDate(task.due_date)}</div>}
+                                  <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 8px", borderRadius: 999, background: "#eef8e8", color: T.primary, fontSize: 10, fontWeight: 700 }}>
+                                    <MIcon name={sourceIcon} size={12} color={T.primary} />{sourceLabel}
+                                  </div>
                                 </div>
                                 <div style={{
                                   fontSize: 11,
                                   fontWeight: 800,
-                                  color: task.status === "done" ? T.success : task.status === "in_progress" ? T.amber : T.textMuted,
-                                  background: task.status === "done" ? "#e9fff5" : task.status === "in_progress" ? "#fff7e6" : "#f2f4f1",
+                                  color: status === "done" || status === "completed" ? T.success : status === "in_progress" ? T.amber : T.textMuted,
+                                  background: status === "done" || status === "completed" ? "#e9fff5" : status === "in_progress" ? "#fff7e6" : "#f2f4f1",
                                   padding: "6px 10px",
                                   borderRadius: 999,
                                   whiteSpace: "nowrap",
-                                }}>{task.status}</div>
+                                }}>{status}</div>
                               </div>
                             </button>
                           </div>
@@ -1134,7 +1152,7 @@ export default function SecretaryPage() {
                 <div style={{ display: "grid", gap: 12 }}>
                   <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{selectedTask.title}</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{selectedTask.due_date ? fmtDate(selectedTask.due_date) : "Không có hạn"}</div></div>
                   <div style={{ ...subtleCard, padding: 14, fontSize: 13, color: T.text }}>Trạng thái: <strong>{selectedTask.status}</strong><br/>Ưu tiên: {selectedTask.priority || "trung bình"}<br/>{selectedTask.description || "Không có ghi chú"}</div>
-                  <button onClick={() => { toggleTaskStatus(selectedTask); setActivePanel(""); }} style={panelBtn}>Cập nhật trạng thái</button>
+                  {(!selectedTask.source || selectedTask.source === "task") && <button onClick={() => { toggleTaskStatus(selectedTask.item || selectedTask); setActivePanel(""); }} style={panelBtn}>Cập nhật trạng thái</button>}
                   {notifReturnTab && <button onClick={() => { setActivePanel(""); setTab(notifReturnTab); setNotifReturnTab(null); }} style={{ ...panelBtn, background: "white", border: `1px solid ${T.border}`, color: T.text }}>Quay lại tab trước</button>}
                 </div>
               )}
