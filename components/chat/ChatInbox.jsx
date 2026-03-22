@@ -104,9 +104,9 @@ function normalizeTextKey(v = "") {
   return String(v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function suggestCategoryId({ description = "", recipient_name = "", bank_name = "" }, categories = [], learnedMap = {}) {
+function suggestCategory({ description = "", recipient_name = "", bank_name = "" }, categories = [], learnedMap = {}) {
   const hay = `${description} ${recipient_name} ${bank_name}`.toLowerCase();
-  if (!hay.trim() || !categories.length) return "";
+  if (!hay.trim() || !categories.length) return { id: "", source: "none", confidence: 0 };
 
   const descKey = normalizeTextKey(description);
   const recKey = normalizeTextKey(recipient_name);
@@ -127,11 +127,10 @@ function suggestCategoryId({ description = "", recipient_name = "", bank_name = 
   for (const rule of codeByKeyword) {
     if (rule.keys.some((k) => hay.includes(k))) {
       const hit = categories.find((c) => String(c.code || "").toUpperCase() === rule.code);
-      if (hit) return String(hit.id);
+      if (hit) return { id: String(hit.id), source: "keyword", confidence: 0.9 };
     }
   }
 
-  // Personal-name-like transfer note (e.g. "VU TRAN CHI TAM") should default to KHAC
   const fallbackOther = categories.find((c) => {
     const code = String(c.code || "").toUpperCase();
     const vi = String(c.name_vi || "").toLowerCase();
@@ -139,16 +138,12 @@ function suggestCategoryId({ description = "", recipient_name = "", bank_name = 
     return code === "KHAC" || vi === "khác" || vi === "khac" || en === "other";
   });
 
-  if (looksPersonalTransfer) {
-    if (fallbackOther) return String(fallbackOther.id);
-  }
+  if (looksPersonalTransfer && fallbackOther) return { id: String(fallbackOther.id), source: "personal_guard", confidence: 0.88 };
 
-  // Learned mapping applies only after keyword + personal-transfer guard
-  if (learnedMap[learnedKey]) return String(learnedMap[learnedKey]);
+  if (learnedMap[learnedKey]) return { id: String(learnedMap[learnedKey]), source: "learned", confidence: 0.78 };
 
-  // Fallback: if content is non-empty but not mappable, classify as KHAC
-  if (fallbackOther) return String(fallbackOther.id);
-  return "";
+  if (fallbackOther) return { id: String(fallbackOther.id), source: "fallback_other", confidence: 0.6 };
+  return { id: "", source: "none", confidence: 0 };
 }
 
 function parseCategoryQuery(text = "") {
@@ -399,7 +394,7 @@ export default function ChatInbox() {
       }
 
       const ocr = data.data || {};
-      const suggestedCategoryId = suggestCategoryId({
+      const suggestion = suggestCategory({
         description: ocr.description || "",
         recipient_name: ocr.recipient_name || "",
         bank_name: ocr.bank_name || "",
@@ -408,13 +403,15 @@ export default function ChatInbox() {
       setPendingOcr({
         amount: ocr.amount ? String(ocr.amount) : "",
         type: "expense",
-        category_id: suggestedCategoryId || "",
+        category_id: suggestion.id || "",
         description: ocr.description || "",
         recipient_name: ocr.recipient_name || "",
         bank_name: ocr.bank_name || "",
         bank_account: ocr.bank_account || "",
         transaction_code: ocr.transaction_code || "",
         transaction_date: ocr.transaction_date || "",
+        suggestion_source: suggestion.source,
+        suggestion_confidence: suggestion.confidence,
       });
       addAgent("Quét thành công! Xem chi tiết bên dưới:");
     } catch (err) {
@@ -1095,6 +1092,11 @@ function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
                 <span style={{ width: 6, height: 6, borderRadius: 999, background: selectedCat.color || T.primary }} />
                 {selectedCat.name_vi || selectedCat.name}
               </span>
+              {form.suggestion_source && (
+                <div style={{ marginTop: 4, fontSize: 10, color: T.textMuted }}>
+                  Gợi ý: {form.suggestion_source} · tin cậy {Math.round(Number(form.suggestion_confidence || 0) * 100)}%
+                </div>
+              )}
             </div>
           )}
         </div>

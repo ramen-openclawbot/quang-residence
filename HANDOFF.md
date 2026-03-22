@@ -596,3 +596,19 @@ Transaction list UX has gone through multiple quick iterations today; current br
   - revert this phase commit
 - Next phase entry criteria:
   - verify OCR fail-rate drops on dim/low-contrast slips in `ocr_runs`
+
+## Phase 4 (OCR Program) — Suggestion Intelligence v2 + Explainability
+- Status: DONE
+- Commit range: `274aaf2..(this phase commit)`
+- DB migration: none
+- Changes:
+  - Upgraded category suggestion engine to return structured output: `{ id, source, confidence }`
+  - Source taxonomy: `keyword`, `learned`, `personal_guard`, `fallback_other`, `none`
+  - Added source/confidence UI hint in chat OCR card and transaction review cards
+  - Preserved existing safeguards (personal transfer => KHAC)
+- Test result:
+  - build: pass
+- Rollback:
+  - revert this phase commit range
+- Next phase entry criteria:
+  - observe user correction rate by source type (manual overrides vs suggested)

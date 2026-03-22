@@ -24,9 +24,9 @@ function normalizeTextKey(v = "") {
   return String(v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function suggestCategoryId({ description = "", recipient_name = "", bank_name = "" }, categories = [], learnedMap = {}) {
+function suggestCategory({ description = "", recipient_name = "", bank_name = "" }, categories = [], learnedMap = {}) {
   const hay = `${description} ${recipient_name} ${bank_name}`.toLowerCase();
-  if (!hay.trim() || !categories.length) return "";
+  if (!hay.trim() || !categories.length) return { id: "", source: "none", confidence: 0 };
 
   const descKey = normalizeTextKey(description);
   const recKey = normalizeTextKey(recipient_name);
@@ -47,7 +47,7 @@ function suggestCategoryId({ description = "", recipient_name = "", bank_name = 
   for (const rule of codeByKeyword) {
     if (rule.keys.some((k) => hay.includes(k))) {
       const hit = categories.find((c) => String(c.code || "").toUpperCase() === rule.code);
-      if (hit) return String(hit.id);
+      if (hit) return { id: String(hit.id), source: "keyword", confidence: 0.9 };
     }
   }
 
@@ -58,17 +58,10 @@ function suggestCategoryId({ description = "", recipient_name = "", bank_name = 
     return code === "KHAC" || vi === "khác" || vi === "khac" || en === "other";
   });
 
-  // Personal-name-like transfer note (e.g. "VU TRAN CHI TAM") should default to KHAC
-  if (looksPersonalTransfer) {
-    if (fallbackOther) return String(fallbackOther.id);
-  }
-
-  // Learned mapping applies only after keyword + personal-transfer guard
-  if (learnedMap[learnedKey]) return String(learnedMap[learnedKey]);
-
-  // Fallback: if content is non-empty but not mappable, classify as KHAC
-  if (fallbackOther) return String(fallbackOther.id);
-  return "";
+  if (looksPersonalTransfer && fallbackOther) return { id: String(fallbackOther.id), source: "personal_guard", confidence: 0.88 };
+  if (learnedMap[learnedKey]) return { id: String(learnedMap[learnedKey]), source: "learned", confidence: 0.78 };
+  if (fallbackOther) return { id: String(fallbackOther.id), source: "fallback_other", confidence: 0.6 };
+  return { id: "", source: "none", confidence: 0 };
 }
 
 export default function TransactionForm({ onClose, onSuccess }) {
@@ -280,7 +273,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
         const file = compressed[idx];
         try {
           const { ocrData, templateMatched, bankIdentifier } = await scanImage(file, token, idx);
-          const suggestedCategoryId = suggestCategoryId({
+          const suggestion = suggestCategory({
             description: ocrData?.description || "",
             recipient_name: ocrData?.recipient_name || "",
             bank_name: ocrData?.bank_name || "",
@@ -293,7 +286,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
             ocrError: null,
             form: {
               amount: ocrData?.amount ? String(ocrData.amount) : "",
-              category_id: suggestedCategoryId || "",
+              category_id: suggestion.id || "",
               description: ocrData?.description || "",
               recipient_name: ocrData?.recipient_name || "",
               bank_name: ocrData?.bank_name || "",
@@ -428,7 +421,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
       }
       const target = scanResults[resultIdx];
       const { ocrData, templateMatched, bankIdentifier } = await scanImage(target.file, token, resultIdx, { trackProgress: false });
-      const suggestedCategoryId = suggestCategoryId({
+      const suggestion = suggestCategory({
         description: ocrData?.description || "",
         recipient_name: ocrData?.recipient_name || "",
         bank_name: ocrData?.bank_name || "",
@@ -445,7 +438,9 @@ export default function TransactionForm({ onClose, onSuccess }) {
           form: {
             ...updated[resultIdx].form,
             amount: ocrData?.amount ? String(ocrData.amount) : "",
-            category_id: suggestedCategoryId || "",
+            category_id: suggestion.id || "",
+            suggestion_source: suggestion.source,
+            suggestion_confidence: suggestion.confidence,
             description: ocrData?.description || "",
             recipient_name: ocrData?.recipient_name || "",
             bank_name: ocrData?.bank_name || "",
@@ -1197,10 +1192,17 @@ export default function TransactionForm({ onClose, onSuccess }) {
                                 const selected = expenseCategories.find((c) => String(c.id) === String(result.form.category_id));
                                 if (!selected) return null;
                                 return (
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 999, background: `${selected.color || T.primary}22`, color: selected.color || T.primary, fontSize: 11, fontWeight: 700, border: `1px solid ${(selected.color || T.primary)}33` }}>
-                                    <span style={{ width: 6, height: 6, borderRadius: 999, background: selected.color || T.primary }} />
-                                    {selected.name_vi || selected.name}
-                                  </span>
+                                  <>
+                                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 999, background: `${selected.color || T.primary}22`, color: selected.color || T.primary, fontSize: 11, fontWeight: 700, border: `1px solid ${(selected.color || T.primary)}33` }}>
+                                      <span style={{ width: 6, height: 6, borderRadius: 999, background: selected.color || T.primary }} />
+                                      {selected.name_vi || selected.name}
+                                    </span>
+                                    {result.form.suggestion_source && result.form.suggestion_source !== "none" && (
+                                      <div style={{ marginTop: 4, fontSize: 10, color: T.textMuted }}>
+                                        Gợi ý: {result.form.suggestion_source} · tin cậy {Math.round(Number(result.form.suggestion_confidence || 0) * 100)}%
+                                      </div>
+                                    )}
+                                  </>
                                 );
                               })()}
                             </div>
