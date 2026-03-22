@@ -549,7 +549,7 @@ Transaction list UX has gone through multiple quick iterations today; current br
 
 ## Phase 1 (OCR Program) — Observability Foundation
 - Status: DONE
-- Commit range: `874b54a..(this phase commit)`
+- Commit range: `874b54a..d21488d`
 - DB migration file: `supabase/ocr_runs_phase1.sql` (run manually in Supabase SQL Editor)
 - Changes:
   - Added OCR run telemetry logging in `app/api/ocr/route.js` to `public.ocr_runs`
