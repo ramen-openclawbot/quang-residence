@@ -628,3 +628,22 @@ Transaction list UX has gone through multiple quick iterations today; current br
   - revert this phase commit range
 - Next phase entry criteria:
   - verify batch submit behavior with mixed success/failure cases
+
+## Phase 6 (OCR Program) — Rollout Controls (Feature Flags + Canary)
+- Status: DONE
+- Commit range: `927d313..(this phase commit)`
+- DB migration: `supabase/ocr_runs_phase6.sql`
+- Changes:
+  - Added rollout flags in `app/api/ocr/route.js`:
+    - `OCR_PHASE2_FALLBACK_ENABLED` (default: true)
+    - `OCR_CANARY_PERCENT` (default: 100)
+  - Added deterministic user canary bucketing (hash-based)
+  - Phase 2 fallback now gated by feature flag + canary
+  - OCR telemetry now records rollout context (`phase2_fallback_enabled`, `canary_percent`)
+- Test result:
+  - build: pass
+- Rollback:
+  - set `OCR_PHASE2_FALLBACK_ENABLED=false` and redeploy (instant behavior rollback)
+  - or set `OCR_CANARY_PERCENT=0`
+- Next phase entry criteria:
+  - monitor 24h canary metrics before raising canary to 100%

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { resolveUser, supabaseAdmin } from "../../../lib/api-auth";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OCR_PHASE2_FALLBACK_ENABLED = String(process.env.OCR_PHASE2_FALLBACK_ENABLED || "true") === "true";
+const OCR_CANARY_PERCENT = Math.max(0, Math.min(100, Number(process.env.OCR_CANARY_PERCENT || 100)));
 
 const SYSTEM_PROMPT = `You are a Vietnamese bank transfer slip OCR system.
 Analyze the image of a bank transfer confirmation/receipt and extract structured data.
@@ -110,6 +112,19 @@ function normalizeTransactionCode(value) {
 
 function hasCoreFields(parsed) {
   return !!(parsed?.amount && parsed?.transaction_date && parsed?.transaction_code);
+}
+
+function hashPercent(input = "") {
+  const s = String(input || "");
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h % 100;
+}
+
+function isUserInCanary(userId) {
+  if (OCR_CANARY_PERCENT >= 100) return true;
+  if (OCR_CANARY_PERCENT <= 0) return false;
+  return hashPercent(userId || "anonymous") < OCR_CANARY_PERCENT;
 }
 
 async function runOcrExtraction({ imageBase64, imageMimeType, systemPrompt, shortPromptMode = false }) {
@@ -279,6 +294,8 @@ export async function POST(request) {
     const auth = await resolveUser(request, { requireProfile: false });
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
     const { user } = auth;
+    const userInCanary = isUserInCanary(user?.id);
+    const phase2FallbackEnabled = OCR_PHASE2_FALLBACK_ENABLED && userInCanary;
 
     const { imageBase64, imageMimeType, templateHint } = await request.json();
 
@@ -316,6 +333,8 @@ export async function POST(request) {
         success: false,
         bank_identifier: templateHint ? normalizeBankIdentifier(templateHint) : null,
         template_used: !!templateHint,
+        phase2_fallback_enabled: phase2FallbackEnabled,
+        canary_percent: OCR_CANARY_PERCENT,
         error_type: firstPass.status === 422 ? "parse_error" : "upstream_ocr_error",
         error_message: String(firstPass.error || "OCR processing failed").slice(0, 500),
         latency_ms: Date.now() - startedAt,
@@ -333,7 +352,7 @@ export async function POST(request) {
 
     // Phase 2: fallback from template mode to full mode when core fields are missing
     let fallbackUsed = false;
-    if (!!templateHint && !hasCoreFields(parsed)) {
+    if (phase2FallbackEnabled && !!templateHint && !hasCoreFields(parsed)) {
       const secondPass = await runOcrExtraction({
         imageBase64,
         imageMimeType,
@@ -365,7 +384,9 @@ export async function POST(request) {
       role: auth?.profile?.role || null,
       success: true,
       bank_identifier: bankIdentifier,
-      template_used: templateMatched,
+      template_used: templateMatched && !fallbackUsed,
+      phase2_fallback_enabled: phase2FallbackEnabled,
+      canary_percent: OCR_CANARY_PERCENT,
       amount_found: !!parsed?.amount,
       date_found: !!parsed?.transaction_date,
       code_found: !!parsed?.transaction_code,
@@ -384,6 +405,8 @@ export async function POST(request) {
     console.error("OCR route error:", err);
     await logOcrRun({
       success: false,
+      phase2_fallback_enabled: OCR_PHASE2_FALLBACK_ENABLED,
+      canary_percent: OCR_CANARY_PERCENT,
       error_type: "route_error",
       error_message: String(err?.message || err).slice(0, 500),
       latency_ms: Date.now() - startedAt,
