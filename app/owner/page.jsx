@@ -108,6 +108,8 @@ export default function OwnerPage() {
   const [inviteForm, setInviteForm] = useState({ email: "", full_name: "", role: "driver" });
   const [transactions, setTransactions] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [maintenanceItems, setMaintenanceItems] = useState([]);
+  const [familySchedule, setFamilySchedule] = useState([]);
   const [staffProfiles, setStaffProfiles] = useState([]);
   const [settingsData, setSettingsData] = useState([]);
   const [summaryData, setSummaryData] = useState(null);
@@ -164,6 +166,8 @@ export default function OwnerPage() {
       const json = await res.json();
       setTransactions(json.recentTx || []);
       setTasks(json.tasks || []);
+      setMaintenanceItems(json.maintenance || []);
+      setFamilySchedule(json.familySchedule || []);
       setStaffProfiles(json.staffProfiles || []);
       setSettingsData(json.settingsData || []);
       setSummaryData(json.summary || null);
@@ -317,7 +321,49 @@ export default function OwnerPage() {
   const recentTasks = useMemo(() => tasks.slice(0, 4), [tasks]);
   const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);
   const ROLE_VI = { secretary: "Thư ký", driver: "Lái xe", housekeeper: "Quản gia" };
-  const ownerAgendaTasks = useMemo(() => tasks, [tasks]);
+  const ownerAgendaTasks = useMemo(() => {
+    const taskRows = (tasks || []).map((t) => ({
+      source: "task",
+      id: `task_${t.id}`,
+      rawId: t.id,
+      title: t.title,
+      description: t.description,
+      date: t.due_date || t.created_at,
+      status: t.status,
+      assigneeId: t.assigned_to,
+      creatorId: t.created_by,
+      item: t,
+    }));
+
+    const maintenanceRows = (maintenanceItems || []).map((m) => ({
+      source: "maintenance",
+      id: `maintenance_${m.id}`,
+      rawId: m.id,
+      title: m.title || "Chăm sóc nhà",
+      description: m.description,
+      date: m.created_at,
+      status: m.status,
+      assigneeId: m.assigned_to,
+      creatorId: m.created_by,
+      item: m,
+    }));
+
+    const scheduleRows = (familySchedule || []).map((s) => ({
+      source: "schedule",
+      id: `schedule_${s.id}`,
+      rawId: s.id,
+      title: s.title || "Lịch gia đình",
+      description: s.description,
+      date: s.event_date,
+      status: "scheduled",
+      assigneeId: s.assigned_to,
+      creatorId: s.created_by,
+      item: s,
+    }));
+
+    return [...taskRows, ...maintenanceRows, ...scheduleRows]
+      .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+  }, [tasks, maintenanceItems, familySchedule]);
 
   const securitySetting = settingsData.find((x) => x.setting_key === "security")?.setting_value || {};
   const lightingSetting = settingsData.find((x) => x.setting_key === "lighting")?.setting_value || {};
@@ -699,21 +745,27 @@ export default function OwnerPage() {
             </div>
 
             <div style={{ display: "grid", gap: 12 }}>
-              {ownerAgendaTasks.slice(0, 20).map((task) => {
-                const tone = task.status === "done" ? { bg: "#e9fff5", color: T.success, label: "done" } : task.status === "in_progress" ? { bg: "#fff7e6", color: T.amber, label: "in_progress" } : { bg: "#eef4ff", color: T.blue, label: "pending" };
-                const assigneeProfile = staffById[task.assigned_to] || staffById[task.created_by] || null;
+              {ownerAgendaTasks.slice(0, 30).map((row) => {
+                const tone = row.status === "done" || row.status === "completed"
+                  ? { bg: "#e9fff5", color: T.success, label: "done" }
+                  : row.status === "in_progress"
+                    ? { bg: "#fff7e6", color: T.amber, label: "in_progress" }
+                    : { bg: "#eef4ff", color: T.blue, label: "pending" };
+                const assigneeProfile = staffById[row.assigneeId] || staffById[row.creatorId] || null;
                 const assignee = assigneeProfile?.full_name || "Chưa phân công";
                 const roleVi = ROLE_VI[assigneeProfile?.role] || "Khác";
+                const sourceLabel = row.source === "maintenance" ? "Chăm sóc nhà" : row.source === "schedule" ? "Lịch nhà" : "Công việc";
+                const sourceIcon = row.source === "maintenance" ? "home_repair_service" : row.source === "schedule" ? "event" : "task_alt";
                 return (
-                  <button key={task.id} onClick={() => { setSelectedTask(task); setActivePanel("task-detail"); }} style={{ ...cardStyle, padding: 16, width: "100%", textAlign: "left", cursor: "pointer" }}>
+                  <button key={row.id} onClick={() => { if (row.source === "task") { setSelectedTask(row.item); setActivePanel("task-detail"); } }} style={{ ...cardStyle, padding: 16, width: "100%", textAlign: "left", cursor: row.source === "task" ? "pointer" : "default" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                       <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{task.title}</div>
-                        {task.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{task.description}</div>}
-                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{task.due_date ? fmtDate(task.due_date) : "Không có hạn"}</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{row.title}</div>
+                        {row.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{row.description}</div>}
+                        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{row.date ? fmtDate(row.date) : "Không có hạn"}</div>
                         <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 8px", borderRadius: 999, background: "#eef8e8", color: T.primary, fontSize: 10, fontWeight: 700 }}>
-                          <MIcon name={assigneeProfile?.role === "driver" ? "two_wheeler" : assigneeProfile?.role === "housekeeper" ? "home_repair_service" : "badge"} size={12} color={T.primary} />
-                          {roleVi} · {assignee}
+                          <MIcon name={sourceIcon} size={12} color={T.primary} />
+                          {sourceLabel} · {roleVi} · {assignee}
                         </div>
                       </div>
                       <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{tone.label}</div>
