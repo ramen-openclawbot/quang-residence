@@ -631,7 +631,7 @@ Transaction list UX has gone through multiple quick iterations today; current br
 
 ## Phase 6 (OCR Program) — Rollout Controls (Feature Flags + Canary)
 - Status: DONE
-- Commit range: `927d313..(this phase commit)`
+- Commit range: `927d313..ce31cc0`
 - DB migration: `supabase/ocr_runs_phase6.sql`
 - Changes:
   - Added rollout flags in `app/api/ocr/route.js`:
