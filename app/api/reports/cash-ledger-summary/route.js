@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireRole, supabaseAdmin } from "../../../../lib/api-auth";
-import { getSignedAmount } from "../../../../lib/transaction";
 
 function parseMonth(searchParams) {
   const month = searchParams.get("month"); // YYYY-MM
@@ -19,7 +18,7 @@ function shouldIncludeStatus(status, includePending, includeRejected) {
   return true;
 }
 
-async function fetchAllTransactionsInRange(startDateIso, endDateIso) {
+async function fetchAllEntriesInRange(startDateIso, endDateIso) {
   const pageSize = 1000;
   let from = 0;
   const all = [];
@@ -27,8 +26,8 @@ async function fetchAllTransactionsInRange(startDateIso, endDateIso) {
   while (true) {
     const to = from + pageSize - 1;
     const { data, error } = await supabaseAdmin
-      .from("transactions")
-      .select("type,amount,adjustment_direction,status,transaction_date")
+      .from("cash_ledger_entries")
+      .select("type,amount,status,entry_kind,transaction_date")
       .gte("transaction_date", startDateIso)
       .lte("transaction_date", endDateIso)
       .order("created_at", { ascending: false })
@@ -39,7 +38,7 @@ async function fetchAllTransactionsInRange(startDateIso, endDateIso) {
     all.push(...rows);
     if (rows.length < pageSize) break;
     from += pageSize;
-    if (from > 100000) break; // hard safety
+    if (from > 100000) break;
   }
 
   return all;
@@ -71,25 +70,39 @@ export async function GET(request) {
       endDate = new Date(year, monthIndex + 1, 0, 23, 59, 59).toISOString();
     }
 
-    const rows = await fetchAllTransactionsInRange(startDate, endDate);
+    const rows = await fetchAllEntriesInRange(startDate, endDate);
 
     let income = 0;
     let expense = 0;
     let pending = 0;
 
-    for (const tx of rows) {
-      const status = String(tx?.status || "").trim().toLowerCase();
+    const byKind = {
+      ops: { income: 0, expense: 0 },
+      fund_transfer_out: { income: 0, expense: 0 },
+      fund_transfer_in_auto: { income: 0, expense: 0 },
+    };
+
+    for (const entry of rows) {
+      const status = String(entry?.status || "").trim().toLowerCase();
       if (status === "pending") pending += 1;
       if (!shouldIncludeStatus(status, includePending, includeRejected)) continue;
 
-      const signed = getSignedAmount(tx);
-      if (signed > 0) income += signed;
-      if (signed < 0) expense += Math.abs(signed);
+      const amount = Math.abs(Number(entry?.amount || 0));
+      const kind = String(entry?.entry_kind || "ops");
+      const isIncome = String(entry?.type || "").trim().toLowerCase() === "income";
+
+      if (isIncome) {
+        income += amount;
+        if (byKind[kind]) byKind[kind].income += amount;
+      } else {
+        expense += amount;
+        if (byKind[kind]) byKind[kind].expense += amount;
+      }
     }
 
     return NextResponse.json({
       success: true,
-      source: "transactions",
+      source: "cash_ledger_entries",
       scope,
       period: scope === "all" ? null : { year, month: monthIndex + 1, monthKey: `${year}-${String(monthIndex + 1).padStart(2, "0")}` },
       income,
@@ -99,9 +112,10 @@ export async function GET(request) {
       row_count: rows.length,
       include_pending: includePending,
       include_rejected: includeRejected,
+      by_kind: byKind,
     });
   } catch (err) {
-    console.error("finance-summary API error:", err);
-    return NextResponse.json({ error: "Failed to compute finance summary" }, { status: 500 });
+    console.error("cash-ledger-summary API error:", err);
+    return NextResponse.json({ error: "Failed to compute cash ledger summary" }, { status: 500 });
   }
 }
