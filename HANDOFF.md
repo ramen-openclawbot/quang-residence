@@ -612,6 +612,17 @@ if (activeFilter === "expense") return signed < 0 || (signed === 0 && type === "
 - Notes:
   - Run migration after T2 to align DB enforcement with UI behavior
 
+## Finance F1 — Single Source Summary API (no capped totals)
+- Status: DONE
+- Commit range: `(pending in this phase)`
+- New API: `GET /api/reports/finance-summary`
+- Changes:
+  - Added uncapped paginated aggregation (no fixed limit 3000/5000 total truncation)
+  - Supports `scope=month|all`, `include_pending`, `include_rejected`
+  - Wired owner dashboard summary and transactions page month summary to this API
+- Notes:
+  - This phase removes major total drift caused by summary limits
+
 ## Summary for the next agent
 This app is in a **transaction audit + operations** phase.
 Priority areas: complete the audit pipeline, deepen CRUD flows for tasks/maintenance/schedule, expand self-service to other roles.

@@ -93,7 +93,26 @@ export default function TransactionsPage() {
           setTransactions(json.data || []);
         }
         setHasMore(isServerFilteredMode ? false : (json.hasMore || false));
-        if (!append) setMonthSummary(json.summary || null);
+        if (!append) {
+          const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}`;
+          try {
+            const sumRes = await fetch(`/api/reports/finance-summary?scope=month&month=${monthKey}&include_pending=true&include_rejected=false`, {
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+            const sumJson = await sumRes.json();
+            if (sumRes.ok && sumJson?.success) {
+              setMonthSummary({
+                income: sumJson.income,
+                expense: sumJson.expense,
+                pending: sumJson.pending_count,
+              });
+            } else {
+              setMonthSummary(json.summary || null);
+            }
+          } catch {
+            setMonthSummary(json.summary || null);
+          }
+        }
       } else {
         /* Fallback: direct Supabase query */
         const startDate = new Date(selectedYear, selectedMonth, 1).toISOString();

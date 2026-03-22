@@ -157,9 +157,12 @@ export default function OwnerPage() {
       const token = sessionData.session?.access_token;
 
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const [res, agendaRes] = await Promise.all([
+      const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+      const [res, agendaRes, monthSummaryRes, allSummaryRes] = await Promise.all([
         fetch(`/api/dashboard/owner?month=${month}&year=${year}`, { headers }),
         fetch(`/api/agenda/feed?limit=300`, { headers }),
+        fetch(`/api/reports/finance-summary?scope=month&month=${monthKey}&include_pending=true&include_rejected=false`, { headers }),
+        fetch(`/api/reports/finance-summary?scope=all&include_pending=true&include_rejected=false`, { headers }),
       ]);
 
       if (!res.ok) {
@@ -168,13 +171,18 @@ export default function OwnerPage() {
 
       const json = await res.json();
       const agendaJson = agendaRes.ok ? await agendaRes.json() : { items: [] };
+      const monthSummaryJson = monthSummaryRes.ok ? await monthSummaryRes.json() : null;
+      const allSummaryJson = allSummaryRes.ok ? await allSummaryRes.json() : null;
       setTransactions(json.recentTx || []);
       setTasks(json.tasks || []);
       setMaintenanceItems(json.maintenance || []);
       setFamilySchedule(json.familySchedule || []);
       setStaffProfiles(json.staffProfiles || []);
       setSettingsData(json.settingsData || []);
-      setSummaryData(json.summary || null);
+      setSummaryData({
+        all: allSummaryJson ? { income: allSummaryJson.income, expense: allSummaryJson.expense, net: allSummaryJson.net, pending: allSummaryJson.pending_count } : (json.summary?.all || null),
+        month: monthSummaryJson ? { income: monthSummaryJson.income, expense: monthSummaryJson.expense, net: monthSummaryJson.net, pending: monthSummaryJson.pending_count } : (json.summary?.month || null),
+      });
       setAgendaItems(agendaJson.items || []);
     } catch (error) {
       console.error("Owner fetchData error:", error);
