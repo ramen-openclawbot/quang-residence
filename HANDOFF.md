@@ -745,3 +745,80 @@ Transaction list UX has gone through multiple quick iterations today; current br
   - or set `OCR_CANARY_PERCENT=0`
 - Next phase entry criteria:
   - monitor 24h canary metrics before raising canary to 100%
+
+---
+
+## Cash Ledger Split Program (Q1 → Q5) + Post-fixes
+
+### Current status
+- Q1: DONE (schema + RLS)
+- Q2: DONE (Secretary tab replacement: Lịch -> Sổ quỹ)
+- Q3: DONE (auto transfer-in + duplicate guard)
+- Q4: DONE (reporting stream separation)
+- Q5: DONE (migration script with backup/verify/delete steps)
+- Post-fixes: DONE (home balance source, ops filtering, OCR in cash-ledger form)
+
+### Commit timeline (latest relevant)
+- `0266512` feat: Q1 cash ledger schema foundation with RLS and transfer-linking fields
+- `4c676a1` feat: replace secretary calendar tab with cash ledger flow
+- `4ee4bd4` feat: implement Q3 auto transfer-in and duplicate guard
+- `e4fc3a2` feat: implement Q4 separate cash-ledger reporting stream
+- `5817c59` feat: add Q5 migration script for secretary ledger split
+- `53f8a4f` fix: show home balance from cash ledger and exclude 6487c846 ops totals
+- `f7c0e54` feat: add cash-ledger OCR upload and backend ops filter
+- `a060f52` fix: reuse robust OCR pipeline for cash ledger with scan animation
+
+### DB / SQL artifacts
+- `supabase/q1_cash_ledger_schema.sql`
+  - table `public.cash_ledger_entries`
+  - `entry_kind`: `ops | fund_transfer_out | fund_transfer_in_auto`
+  - transfer-link fields: `transfer_group_id`, `linked_entry_id`
+  - RLS + indexes + dedupe unique index for transfer-in auto
+- `supabase/q5_migrate_secretary_transactions_to_cash_ledger.sql`
+  - backup: `transactions_backup_q5_6487c846`
+  - migrate + idempotent marker in `notes`
+  - verify audit table: `q5_migration_audit_6487c846`
+  - optional delete + rollback helper (manual run)
+
+### API changes
+- New: `app/api/cash-ledger/route.js`
+  - GET list cash ledger entries
+  - POST create entry
+  - `fund_transfer_out` auto-creates recipient `fund_transfer_in_auto` with shared `transfer_group_id`
+  - duplicate guard for manual income vs existing auto transfer-in
+- New: `app/api/reports/cash-ledger-summary/route.js`
+  - source = `cash_ledger_entries`
+  - month/all scopes + by_kind breakdown
+- Updated: `app/api/reports/finance-summary/route.js`
+  - explicit `source: "transactions"`
+- Updated: `app/api/transactions/route.js`
+  - ops filter applied server-side for user prefix `6487c846` exclusion in list + summary
+
+### UI changes (Secretary)
+- `app/secretary/page.jsx`
+  - Bottom nav: replace `calendar` tab with `cash-ledger`
+  - New cash-ledger list + filters + quick summary
+  - New cash-ledger entry form
+  - Home balance now computed from `cash_ledger_entries` (exclude rejected)
+  - Transactions tab totals/list filter out `created_by LIKE '6487c846%'` (ops-only view)
+  - OCR in cash-ledger form:
+    - bank slip upload
+    - robust OCR pipeline reused from existing flow (compress + preprocess + retry + templateHint)
+    - animated phase progress (`compressing`, `scanning`, `uploading`)
+
+### Important operational notes
+- Transactions flow remains operational ledger only.
+- Cash ledger flow is separated and should not be cross-summed with transactions.
+- Q5 delete step is intentionally manual (only after verify count+amount match).
+- If OCR fails in cash-ledger form, use new phase/error indicator and re-upload a clearer slip.
+
+### Suggested next checks
+1. Run Q5 migration on target DB and confirm `is_match=true` in `q5_migration_audit_6487c846`.
+2. Smoke test transfer flow:
+   - create `fund_transfer_out` as secretary
+   - verify recipient gets `fund_transfer_in_auto`
+   - verify duplicate guard blocks manual duplicate income.
+3. Verify owner reporting:
+   - `/api/reports/finance-summary` (transactions only)
+   - `/api/reports/cash-ledger-summary` (cash ledger only)
+4. Optional hardening: expose ops-filtered `total` in `/api/transactions` response (currently `data/summary` filtered; DB count may differ).
