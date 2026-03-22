@@ -103,6 +103,79 @@ function normalizeTransactionDate(value) {
   return null;
 }
 
+function normalizeTransactionCode(value) {
+  if (!value) return null;
+  return String(value).trim().replace(/\s+/g, "");
+}
+
+function hasCoreFields(parsed) {
+  return !!(parsed?.amount && parsed?.transaction_date && parsed?.transaction_code);
+}
+
+async function runOcrExtraction({ imageBase64, imageMimeType, systemPrompt, shortPromptMode = false }) {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: shortPromptMode
+                ? "Extract data from this bank slip:"
+                : "Extract all information from this Vietnamese bank transfer slip:",
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${imageMimeType || "image/jpeg"};base64,${imageBase64}`,
+                detail: "high",
+              },
+            },
+          ],
+        },
+      ],
+      max_tokens: shortPromptMode ? 300 : 500,
+      temperature: 0,
+    }),
+  });
+
+  const raw = await response.text();
+  let parsedJson = null;
+  try {
+    parsedJson = JSON.parse(raw);
+  } catch {
+    // keep raw text in upstream handling
+  }
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status,
+      error: parsedJson?.error?.message || raw || "OCR processing failed",
+      raw,
+    };
+  }
+
+  const content = parsedJson?.choices?.[0]?.message?.content || "";
+  let extracted = null;
+  try {
+    const clean = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    extracted = JSON.parse(clean);
+  } catch {
+    return { ok: false, status: 422, error: "Could not parse OCR result", raw: content };
+  }
+
+  return { ok: true, extracted, raw: content };
+}
+
 /**
  * Fetch or create an OCR template for a given bank
  */
@@ -228,81 +301,55 @@ export async function POST(request) {
       }
     }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt,
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: templateHint
-                  ? "Extract data from this bank slip:"
-                  : "Extract all information from this Vietnamese bank transfer slip:",
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${imageMimeType || "image/jpeg"};base64,${imageBase64}`,
-                  detail: "high",
-                },
-              },
-            ],
-          },
-        ],
-        max_tokens: templateHint ? 300 : 500,
-        temperature: 0,
-      }),
+    const firstPass = await runOcrExtraction({
+      imageBase64,
+      imageMimeType,
+      systemPrompt,
+      shortPromptMode: !!templateHint,
     });
 
-    if (!response.ok) {
-      const err = await response.text();
-      console.error("OpenAI error:", err);
-      return NextResponse.json(
-        { error: "OCR processing failed" },
-        { status: 500 }
-      );
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "";
-
-    // Parse the JSON response, handling possible markdown wrapping
-    let parsed;
-    try {
-      const clean = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      parsed = JSON.parse(clean);
-    } catch {
-      console.error("Failed to parse OCR result:", content);
+    if (!firstPass.ok) {
+      console.error("OpenAI error:", firstPass.error);
       await logOcrRun({
         user_id: user?.id || null,
         role: auth?.profile?.role || null,
         success: false,
         bank_identifier: templateHint ? normalizeBankIdentifier(templateHint) : null,
         template_used: !!templateHint,
-        error_type: "parse_error",
-        error_message: "Could not parse OCR result",
+        error_type: firstPass.status === 422 ? "parse_error" : "upstream_ocr_error",
+        error_message: String(firstPass.error || "OCR processing failed").slice(0, 500),
         latency_ms: Date.now() - startedAt,
         created_at: new Date().toISOString(),
       });
       return NextResponse.json(
-        { error: "Could not parse OCR result", raw: content },
-        { status: 422 }
+        { error: firstPass.status === 422 ? "Could not parse OCR result" : "OCR processing failed", raw: firstPass.raw },
+        { status: firstPass.status >= 400 ? firstPass.status : 500 }
       );
     }
 
-    // Normalize transaction date aggressively (critical for downstream logic)
+    let parsed = firstPass.extracted || {};
     parsed.transaction_date = normalizeTransactionDate(parsed.transaction_date);
+    parsed.transaction_code = normalizeTransactionCode(parsed.transaction_code);
+
+    // Phase 2: fallback from template mode to full mode when core fields are missing
+    let fallbackUsed = false;
+    if (!!templateHint && !hasCoreFields(parsed)) {
+      const secondPass = await runOcrExtraction({
+        imageBase64,
+        imageMimeType,
+        systemPrompt: SYSTEM_PROMPT,
+        shortPromptMode: false,
+      });
+      if (secondPass.ok) {
+        const merged = secondPass.extracted || {};
+        merged.transaction_date = normalizeTransactionDate(merged.transaction_date);
+        merged.transaction_code = normalizeTransactionCode(merged.transaction_code);
+        if (hasCoreFields(merged)) {
+          parsed = merged;
+          fallbackUsed = true;
+        }
+      }
+    }
 
     // After successful extraction, save or update template if bank was identified
     const bankName = parsed.bank_name;
@@ -331,6 +378,7 @@ export async function POST(request) {
       data: parsed,
       templateMatched,
       bankIdentifier,
+      fallbackUsed,
     });
   } catch (err) {
     console.error("OCR route error:", err);

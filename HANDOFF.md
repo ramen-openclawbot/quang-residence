@@ -562,3 +562,20 @@ Transaction list UX has gone through multiple quick iterations today; current br
 - Next phase entry criteria:
   - migration applied successfully
   - telemetry rows visible after 3-5 OCR scans
+
+## Phase 2 (OCR Program) — Extraction Hardening + Smart Fallback
+- Status: DONE
+- Commit range: `113ee68..(this phase commit)`
+- DB migration: none
+- Changes:
+  - Refactored OCR extraction into reusable runner `runOcrExtraction(...)`
+  - Added deterministic normalization for `transaction_code`
+  - Added core-field validator (`amount + transaction_date + transaction_code`)
+  - Added smart fallback: when template mode misses core fields, rerun full prompt and use second pass if complete
+  - Logging now distinguishes whether final successful path actually used template (`template_used: false` when fallback path won)
+- Test result:
+  - build: pass
+- Rollback:
+  - revert this phase commit range
+- Next phase entry criteria:
+  - observe reduction in missing core fields for template-hint requests (from `ocr_runs`)
