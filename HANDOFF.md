@@ -549,6 +549,17 @@ if (activeFilter === "expense") return signed < 0 || (signed === 0 && type === "
   - `OCR_CANARY_PERCENT=100`
 - Keep fallback path in code as safety airbag; do not remove until sustained metrics window (2-4 weeks).
 
+## Phase T1 (Agenda Ownership Program) — Ownership Normalization
+- Status: DONE (code + migration file)
+- Commit range: `(pending in this phase)`
+- DB migration: `supabase/t1_ownership_normalization.sql`
+- Changes:
+  - `home_maintenance` write path now sets `created_by` alongside `reported_by`
+  - `family_schedule` write path now always sets `created_by`
+  - Added T1 SQL to backfill historical rows for both tables
+- Notes:
+  - Run migration before validating T2/T3 visibility rules
+
 ## Summary for the next agent
 This app is in a **transaction audit + operations** phase.
 Priority areas: complete the audit pipeline, deepen CRUD flows for tasks/maintenance/schedule, expand self-service to other roles.

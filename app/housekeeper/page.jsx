@@ -225,6 +225,7 @@ export default function HousekeeperPage() {
       description: maintenanceFormData.description || null,
       location_in_house: maintenanceFormData.location_in_house,
       reported_by: profile.id,
+      created_by: profile.id,
       status: "reported",
       created_at: new Date().toISOString(),
     }]);
