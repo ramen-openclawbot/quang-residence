@@ -599,7 +599,7 @@ Transaction list UX has gone through multiple quick iterations today; current br
 
 ## Phase 4 (OCR Program) — Suggestion Intelligence v2 + Explainability
 - Status: DONE
-- Commit range: `274aaf2..(this phase commit)`
+- Commit range: `274aaf2..1fd376f`
 - DB migration: none
 - Changes:
   - Upgraded category suggestion engine to return structured output: `{ id, source, confidence }`
