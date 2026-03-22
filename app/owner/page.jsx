@@ -759,11 +759,18 @@ export default function OwnerPage() {
                     ? { bg: "#fff7e6", color: T.amber, label: "in_progress" }
                     : { bg: "#eef4ff", color: T.blue, label: "pending" };
                 const assigneeProfile = staffById[row.assigneeId] || staffById[row.creatorId] || null;
-                const assignee = assigneeProfile?.full_name || "Chưa phân công";
-                const roleVi = ROLE_VI[assigneeProfile?.role] || "Khác";
+                const assignee = assigneeProfile?.full_name || null;
+                const roleVi = ROLE_VI[assigneeProfile?.role] || null;
                 const roleIcon = assigneeProfile?.role === "driver" ? "two_wheeler" : assigneeProfile?.role === "housekeeper" ? "home_repair_service" : "badge";
                 const sourceLabel = row.source === "maintenance" ? "Việc chăm sóc nhà" : row.source === "schedule" ? "Việc gia đình" : row.source === "trip" ? "Việc lái xe" : "Task";
                 const sourceIcon = row.source === "maintenance" ? "home_repair_service" : row.source === "schedule" ? "event" : row.source === "trip" ? "two_wheeler" : "task_alt";
+                const sourceTone = row.source === "maintenance"
+                  ? { bg: "#eef8e8", color: T.primary }
+                  : row.source === "schedule"
+                    ? { bg: "#fff7e6", color: T.amber }
+                    : row.source === "trip"
+                      ? { bg: "#eef4ff", color: T.blue }
+                      : { bg: "#f2f4f1", color: T.textMuted };
                 return (
                   <button key={row.id} onClick={() => { if (row.source === "task") { setSelectedTask(row.item); setActivePanel("task-detail"); } }} style={{ ...cardStyle, padding: 16, width: "100%", textAlign: "left", cursor: row.source === "task" ? "pointer" : "default" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
@@ -772,14 +779,16 @@ export default function OwnerPage() {
                         {row.description && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{row.description}</div>}
                         <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{row.date ? fmtDate(row.date) : "Không có hạn"}</div>
                         <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 8px", borderRadius: 999, background: "#eef8e8", color: T.primary, fontSize: 10, fontWeight: 700 }}>
-                            <MIcon name={sourceIcon} size={12} color={T.primary} />
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 8px", borderRadius: 999, background: sourceTone.bg, color: sourceTone.color, fontSize: 10, fontWeight: 700 }}>
+                            <MIcon name={sourceIcon} size={12} color={sourceTone.color} />
                             {sourceLabel}
                           </span>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 8px", borderRadius: 999, background: "#eef4ff", color: T.blue, fontSize: 10, fontWeight: 700 }}>
-                            <MIcon name={roleIcon} size={12} color={T.blue} />
-                            {roleVi} · {assignee}
-                          </span>
+                          {assignee && roleVi && (
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 8px", borderRadius: 999, background: "#eef4ff", color: T.blue, fontSize: 10, fontWeight: 700 }}>
+                              <MIcon name={roleIcon} size={12} color={T.blue} />
+                              {roleVi} · {assignee}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div style={{ padding: "6px 10px", borderRadius: 999, background: tone.bg, color: tone.color, fontSize: 11, fontWeight: 800 }}>{tone.label}</div>
