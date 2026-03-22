@@ -142,6 +142,18 @@ export default function TransactionForm({ onClose, onSuccess }) {
       if (!ctx) return file;
       ctx.drawImage(img, 0, 0, width, height);
 
+      // Phase 3: on-device OCR pre-enhancement (light contrast + sharpen)
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const d = imageData.data;
+      const contrast = 1.12;
+      const bias = -8;
+      for (let i = 0; i < d.length; i += 4) {
+        d[i] = Math.max(0, Math.min(255, contrast * d[i] + bias));
+        d[i + 1] = Math.max(0, Math.min(255, contrast * d[i + 1] + bias));
+        d[i + 2] = Math.max(0, Math.min(255, contrast * d[i + 2] + bias));
+      }
+      ctx.putImageData(imageData, 0, 0);
+
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
       if (!blob) return file;
 

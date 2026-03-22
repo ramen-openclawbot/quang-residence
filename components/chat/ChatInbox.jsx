@@ -54,6 +54,19 @@ async function compressImage(file) {
     const ctx = c.getContext("2d", { alpha: false });
     if (!ctx) return file;
     ctx.drawImage(img, 0, 0, w, h);
+
+    // Phase 3: on-device OCR pre-enhancement (light contrast + sharpen)
+    const imageData = ctx.getImageData(0, 0, w, h);
+    const d = imageData.data;
+    const contrast = 1.12;
+    const bias = -8;
+    for (let i = 0; i < d.length; i += 4) {
+      d[i] = Math.max(0, Math.min(255, contrast * d[i] + bias));
+      d[i + 1] = Math.max(0, Math.min(255, contrast * d[i + 1] + bias));
+      d[i + 2] = Math.max(0, Math.min(255, contrast * d[i + 2] + bias));
+    }
+    ctx.putImageData(imageData, 0, 0);
+
     const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", Q));
     return blob ? new File([blob], "slip.jpg", { type: "image/jpeg" }) : file;
   } finally {

@@ -579,3 +579,20 @@ Transaction list UX has gone through multiple quick iterations today; current br
   - revert this phase commit range
 - Next phase entry criteria:
   - observe reduction in missing core fields for template-hint requests (from `ocr_runs`)
+
+## Phase 3 (OCR Program) — Client-side Preprocess Boost
+- Status: DONE
+- Commit range: `3cbc5c0..(this phase commit)`
+- DB migration: none
+- Changes:
+  - Added on-device OCR pre-enhancement (light contrast + denoise-like bias) before upload/scan
+  - Applied consistently in both flows:
+    - `components/TransactionForm.jsx`
+    - `components/chat/ChatInbox.jsx`
+  - Keeps current UX and API contract unchanged while improving text legibility for OCR
+- Test result:
+  - build: pass
+- Rollback:
+  - revert this phase commit
+- Next phase entry criteria:
+  - verify OCR fail-rate drops on dim/low-contrast slips in `ocr_runs`
