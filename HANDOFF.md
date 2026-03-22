@@ -539,6 +539,16 @@ if (activeFilter === "expense") return signed < 0 || (signed === 0 && type === "
 
 ---
 
+## Stable Baseline Declaration (2026-03-22)
+- OCR pipeline baseline is now considered **stable** after phase rollout validation:
+  - Faster scan experience confirmed by user
+  - No observed scan blocking errors in chat/form paths
+  - Core extracted fields (amount/date/code) reported accurate in real use
+- Active rollout config target:
+  - `OCR_PHASE2_FALLBACK_ENABLED=true`
+  - `OCR_CANARY_PERCENT=100`
+- Keep fallback path in code as safety airbag; do not remove until sustained metrics window (2-4 weeks).
+
 ## Summary for the next agent
 This app is in a **transaction audit + operations** phase.
 Priority areas: complete the audit pipeline, deepen CRUD flows for tasks/maintenance/schedule, expand self-service to other roles.
