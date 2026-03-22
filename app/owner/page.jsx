@@ -327,7 +327,10 @@ export default function OwnerPage() {
     }
   }
 
-  const fallbackLedgerBalance = useMemo(() => transactions.reduce((sum, tx) => sum + getSignedAmount(tx), 0), [transactions]);
+  const fallbackLedgerBalance = useMemo(() => transactions.reduce((sum, tx) => {
+    if (String(tx?.status || "").toLowerCase() === "rejected") return sum;
+    return sum + getSignedAmount(tx);
+  }, 0), [transactions]);
   const pendingTransactions = useMemo(() => transactions.filter((tx) => tx.status === "pending"), [transactions]);
   const openTasks = useMemo(() => tasks.filter((task) => task.status !== "done"), [tasks]);
 
