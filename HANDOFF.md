@@ -602,6 +602,16 @@ if (activeFilter === "expense") return signed < 0 || (signed === 0 && type === "
 - Notes:
   - T4 relies on T2 RLS for hard enforcement; fallback now aligns with same visibility rules
 
+## Permission patch — Own-only modify/delete (except owner)
+- Status: DONE (migration file + API parity)
+- DB migration: `supabase/t4_own_task_permissions.sql`
+- Changes:
+  - Added own-only update/delete policies across tasks/maintenance/schedule/trips
+  - Owner keeps full control
+  - Updated `/api/tasks/delete` to allow owner delete while preserving own-only for non-owner
+- Notes:
+  - Run migration after T2 to align DB enforcement with UI behavior
+
 ## Summary for the next agent
 This app is in a **transaction audit + operations** phase.
 Priority areas: complete the audit pipeline, deepen CRUD flows for tasks/maintenance/schedule, expand self-service to other roles.
