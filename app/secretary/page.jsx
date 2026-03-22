@@ -134,6 +134,7 @@ export default function SecretaryPage() {
   const [tasks, setTasks] = useState([]);
   const [maintenanceItems, setMaintenanceItems] = useState([]);
   const [familySchedule, setFamilySchedule] = useState([]);
+  const [drivingTrips, setDrivingTrips] = useState([]);
   const [agendaItems, setAgendaItems] = useState([]);
   const [newTask, setNewTask] = useState({
     title: "",
@@ -181,18 +182,25 @@ export default function SecretaryPage() {
         setTasks(json.tasks || []);
         setMaintenanceItems(json.maintenance || []);
         setFamilySchedule(json.familySchedule || []);
+        setDrivingTrips(json.drivingTrips || []);
         setAgendaItems(agendaJson.items || []);
         setTransactions(json.recentTx || []);
         setServerSummary({ todaySummary: json.todaySummary, pendingCount: json.pendingCount });
       } else {
         /* Fallback: direct Supabase queries */
-        const [fundsRes, tasksRes, txRes] = await Promise.all([
+        const [fundsRes, tasksRes, maintenanceRes, scheduleRes, tripsRes, txRes] = await Promise.all([
           supabase.from("funds").select("*").order("id"),
           supabase.from("tasks").select("*").order("due_date", { ascending: true }),
+          supabase.from("home_maintenance").select("*").order("created_at", { ascending: false }),
+          supabase.from("family_schedule").select("*").order("event_date", { ascending: true }),
+          supabase.from("driving_trips").select("*").order("scheduled_time", { ascending: true }),
           supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(20),
         ]);
         setFunds(fundsRes.data || []);
         setTasks(tasksRes.data || []);
+        setMaintenanceItems(maintenanceRes.data || []);
+        setFamilySchedule(scheduleRes.data || []);
+        setDrivingTrips(tripsRes.data || []);
         setTransactions(txRes.data || []);
       }
     } catch (err) {
@@ -504,9 +512,10 @@ export default function SecretaryPage() {
     const taskRows = (tasks || []).map((t) => ({ source: "task", id: `task_${t.id}`, rawId: t.id, title: t.title, description: t.description, due_date: t.due_date, status: t.status, priority: t.priority, item: t }));
     const maintenanceRows = (maintenanceItems || []).map((m) => ({ source: "maintenance", id: `maintenance_${m.id}`, rawId: m.id, title: m.title || "Chăm sóc nhà", description: m.description, due_date: m.created_at, status: m.status, priority: "medium", item: m }));
     const scheduleRows = (familySchedule || []).map((s) => ({ source: "schedule", id: `schedule_${s.id}`, rawId: s.id, title: s.title || "Lịch gia đình", description: s.notes || s.description, due_date: s.event_date, status: "scheduled", priority: "medium", item: s }));
-    return [...taskRows, ...maintenanceRows, ...scheduleRows]
+    const tripRows = (drivingTrips || []).map((t) => ({ source: "trip", id: `trip_${t.id}`, rawId: t.id, title: t.title || "Lịch trình lái xe", description: [t.pickup_location, t.dropoff_location].filter(Boolean).join(" → ") || t.notes, due_date: t.scheduled_time, status: t.status || "scheduled", priority: "medium", item: t }));
+    return [...taskRows, ...maintenanceRows, ...scheduleRows, ...tripRows]
       .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")));
-  }, [agendaItems, tasks, maintenanceItems, familySchedule]);
+  }, [agendaItems, tasks, maintenanceItems, familySchedule, drivingTrips]);
 
   const upcomingItems = useMemo(() => workItems.filter((t) => t.due_date), [workItems]);
 

@@ -25,9 +25,12 @@ export async function GET(request) {
     const todayStart = `${todayStr}T00:00:00`;
     const todayEnd = `${todayStr}T23:59:59`;
 
-    const [fundsRes, tasksRes, recentTxRes, todayTxRes, pendingRes] = await Promise.all([
+    const [fundsRes, tasksRes, maintenanceRes, scheduleRes, tripsRes, recentTxRes, todayTxRes, pendingRes] = await Promise.all([
       supabaseAdmin.from("funds").select("*").order("id"),
       supabaseAdmin.from("tasks").select("*").order("due_date", { ascending: true }),
+      supabaseAdmin.from("home_maintenance").select("*").order("created_at", { ascending: false }),
+      supabaseAdmin.from("family_schedule").select("*").order("event_date", { ascending: true }),
+      supabaseAdmin.from("driving_trips").select("*").order("scheduled_time", { ascending: true }),
       supabaseAdmin
         .from("transactions")
         .select("*, profiles!created_by(id, full_name, role)")
@@ -59,6 +62,7 @@ export async function GET(request) {
       tasks: tasksRes.data || [],
       maintenance: maintenanceRes.data || [],
       familySchedule: scheduleRes.data || [],
+      drivingTrips: tripsRes.data || [],
       recentTx: recentTxRes.data || [],
       todaySummary: { income: todayIncome, expense: todayExpense },
       pendingCount: pendingRes.count || 0,
