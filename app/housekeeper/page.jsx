@@ -209,8 +209,16 @@ export default function HousekeeperPage() {
         if (agendaRes.ok) {
           const agenda = await agendaRes.json();
           const items = agenda.items || [];
-          setMaintenanceItems(items.filter((x) => x.source === "maintenance").map((x) => x.payload || x));
-          setFamilySchedule(items.filter((x) => x.source === "schedule").map((x) => x.payload || x));
+          const maintenance = items
+            .filter((x) => x.source === "maintenance")
+            .map((x) => x.payload || x)
+            .filter((m) => m.created_by === profile.id || m.reported_by === profile.id);
+          const schedule = items
+            .filter((x) => x.source === "schedule")
+            .map((x) => x.payload || x)
+            .filter((s) => s.created_by === profile.id);
+          setMaintenanceItems(maintenance);
+          setFamilySchedule(schedule);
           agendaLoaded = true;
         }
       }

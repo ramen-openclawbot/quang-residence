@@ -1064,8 +1064,8 @@ export default function SecretaryPage() {
                         const canDelete = task.source === "task" && task.item.created_by === profile?.id;
                         const swipe = task.source === "task" ? getSwipeHandlers(task.item) : {};
                         const status = task.status;
-                        const sourceLabel = task.source === "maintenance" ? "Chăm sóc nhà" : task.source === "schedule" ? "Lịch" : "Task";
-                        const sourceIcon = task.source === "maintenance" ? "home_repair_service" : task.source === "schedule" ? "event" : "task_alt";
+                        const sourceLabel = task.source === "maintenance" ? "Chăm sóc nhà" : task.source === "schedule" ? "Lịch" : task.source === "trip" ? "Lái xe" : "Task";
+                        const sourceIcon = task.source === "maintenance" ? "home_repair_service" : task.source === "schedule" ? "event" : task.source === "trip" ? "two_wheeler" : "task_alt";
                         return (
                           <div key={task.id} style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
                             {canDelete && (

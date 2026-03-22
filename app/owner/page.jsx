@@ -761,8 +761,8 @@ export default function OwnerPage() {
                 const assigneeProfile = staffById[row.assigneeId] || staffById[row.creatorId] || null;
                 const assignee = assigneeProfile?.full_name || "Chưa phân công";
                 const roleVi = ROLE_VI[assigneeProfile?.role] || "Khác";
-                const sourceLabel = row.source === "maintenance" ? "Chăm sóc nhà" : row.source === "schedule" ? "Lịch nhà" : "Công việc";
-                const sourceIcon = row.source === "maintenance" ? "home_repair_service" : row.source === "schedule" ? "event" : "task_alt";
+                const sourceLabel = row.source === "maintenance" ? "Chăm sóc nhà" : row.source === "schedule" ? "Lịch nhà" : row.source === "trip" ? "Lái xe" : "Công việc";
+                const sourceIcon = row.source === "maintenance" ? "home_repair_service" : row.source === "schedule" ? "event" : row.source === "trip" ? "two_wheeler" : "task_alt";
                 return (
                   <button key={row.id} onClick={() => { if (row.source === "task") { setSelectedTask(row.item); setActivePanel("task-detail"); } }} style={{ ...cardStyle, padding: 16, width: "100%", textAlign: "left", cursor: row.source === "task" ? "pointer" : "default" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>

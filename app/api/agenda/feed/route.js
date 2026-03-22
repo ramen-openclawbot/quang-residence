@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole, supabaseAdmin } from "../../../../lib/api-auth";
 
-function normalizeAgendaRows({ tasks = [], maintenance = [], schedule = [] }) {
+function normalizeAgendaRows({ tasks = [], maintenance = [], schedule = [], trips = [] }) {
   const taskRows = (tasks || []).map((t) => ({
     id: `task_${t.id}`,
     raw_id: t.id,
@@ -44,7 +44,21 @@ function normalizeAgendaRows({ tasks = [], maintenance = [], schedule = [] }) {
     payload: s,
   }));
 
-  return [...taskRows, ...maintenanceRows, ...scheduleRows]
+  const tripRows = (trips || []).map((t) => ({
+    id: `trip_${t.id}`,
+    raw_id: t.id,
+    source: "trip",
+    title: t.title || "Lịch trình lái xe",
+    description: [t.pickup_location, t.dropoff_location].filter(Boolean).join(" → ") || t.notes || null,
+    date: t.scheduled_time || t.created_at,
+    status: t.status || "scheduled",
+    priority: "medium",
+    assigned_to: t.assigned_to || null,
+    created_by: t.created_by || null,
+    payload: t,
+  }));
+
+  return [...taskRows, ...maintenanceRows, ...scheduleRows, ...tripRows]
     .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
 }
 
@@ -61,6 +75,7 @@ export async function GET(request) {
     let tasksQ = supabaseAdmin.from("tasks").select("*").order("due_date", { ascending: true }).limit(limit);
     let maintenanceQ = supabaseAdmin.from("home_maintenance").select("*").order("created_at", { ascending: false }).limit(limit);
     let scheduleQ = supabaseAdmin.from("family_schedule").select("*").order("event_date", { ascending: true }).limit(limit);
+    let tripsQ = supabaseAdmin.from("driving_trips").select("*").order("scheduled_time", { ascending: true }).limit(limit);
 
     if (role === "driver") {
       tasksQ = supabaseAdmin
@@ -71,6 +86,12 @@ export async function GET(request) {
         .limit(limit);
       maintenanceQ = supabaseAdmin.from("home_maintenance").select("id").limit(0);
       scheduleQ = supabaseAdmin.from("family_schedule").select("id").limit(0);
+      tripsQ = supabaseAdmin
+        .from("driving_trips")
+        .select("*")
+        .or(`assigned_to.eq.${userId},created_by.eq.${userId}`)
+        .order("scheduled_time", { ascending: true })
+        .limit(limit);
     }
 
     if (role === "housekeeper") {
@@ -92,13 +113,15 @@ export async function GET(request) {
         .eq("created_by", userId)
         .order("event_date", { ascending: true })
         .limit(limit);
+      tripsQ = supabaseAdmin.from("driving_trips").select("id").limit(0);
     }
 
-    const [tasksRes, maintenanceRes, scheduleRes] = await Promise.all([tasksQ, maintenanceQ, scheduleQ]);
+    const [tasksRes, maintenanceRes, scheduleRes, tripsRes] = await Promise.all([tasksQ, maintenanceQ, scheduleQ, tripsQ]);
     const items = normalizeAgendaRows({
       tasks: tasksRes.data || [],
       maintenance: maintenanceRes.data || [],
       schedule: scheduleRes.data || [],
+      trips: tripsRes.data || [],
     });
 
     return NextResponse.json({
@@ -109,6 +132,7 @@ export async function GET(request) {
         task: (tasksRes.data || []).length,
         maintenance: (maintenanceRes.data || []).length,
         schedule: (scheduleRes.data || []).length,
+        trip: (tripsRes.data || []).length,
       },
     });
   } catch (err) {
