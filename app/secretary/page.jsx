@@ -161,6 +161,7 @@ export default function SecretaryPage() {
     entry_kind: "ops",
     amount: "",
     transaction_date: new Date().toISOString().slice(0, 10),
+    recipient_user_id: "",
     recipient_name: "",
     bank_name: "",
     bank_account: "",
@@ -437,6 +438,10 @@ export default function SecretaryPage() {
       alert("Số tiền phải lớn hơn 0");
       return;
     }
+    if (cashLedgerForm.entry_kind === "fund_transfer_out" && !cashLedgerForm.recipient_user_id) {
+      alert("Vui lòng chọn người nhận quỹ");
+      return;
+    }
     try {
       setCashLedgerSubmitting(true);
       const token = await getToken();
@@ -457,6 +462,7 @@ export default function SecretaryPage() {
         entry_kind: "ops",
         amount: "",
         transaction_date: new Date().toISOString().slice(0, 10),
+        recipient_user_id: "",
         recipient_name: "",
         bank_name: "",
         bank_account: "",
@@ -630,6 +636,7 @@ export default function SecretaryPage() {
 
   const upcomingItems = useMemo(() => workItems.filter((t) => t.due_date), [workItems]);
   const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);
+  const transferRecipients = useMemo(() => (staffProfiles || []).filter((p) => ["driver", "housekeeper"].includes(p.role)), [staffProfiles]);
   const ROLE_VI = { secretary: "Thư ký", driver: "Lái xe", housekeeper: "Quản gia" };
 
   return (
@@ -1370,16 +1377,38 @@ export default function SecretaryPage() {
                     <option value="expense">Chi</option>
                     <option value="income">Thu</option>
                   </select>
-                  <select value={cashLedgerForm.entry_kind} onChange={(e) => setCashLedgerForm((p) => ({ ...p, entry_kind: e.target.value }))} style={inputStyle}>
+                  <select value={cashLedgerForm.entry_kind} onChange={(e) => {
+                    const kind = e.target.value;
+                    setCashLedgerForm((p) => ({ ...p, entry_kind: kind, type: kind === "fund_transfer_out" ? "expense" : p.type }));
+                  }} style={inputStyle}>
                     <option value="ops">Vận hành</option>
                     <option value="fund_transfer_out">Chuyển quỹ đi</option>
-                    <option value="fund_transfer_in_auto">Thu tự động</option>
                   </select>
                 </div>
                 <input type="number" min="0" step="0.01" placeholder="Số tiền" value={cashLedgerForm.amount} onChange={(e) => setCashLedgerForm((p) => ({ ...p, amount: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} required />
                 <input type="date" value={cashLedgerForm.transaction_date} onChange={(e) => setCashLedgerForm((p) => ({ ...p, transaction_date: e.target.value }))} style={{ ...dateInputStyle, marginTop: 10 }} required />
                 <input placeholder="Nội dung" value={cashLedgerForm.description} onChange={(e) => setCashLedgerForm((p) => ({ ...p, description: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} />
-                <input placeholder="Người nhận (nếu có)" value={cashLedgerForm.recipient_name} onChange={(e) => setCashLedgerForm((p) => ({ ...p, recipient_name: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} />
+                {cashLedgerForm.entry_kind === "fund_transfer_out" ? (
+                  <select
+                    value={cashLedgerForm.recipient_user_id}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      const selected = transferRecipients.find((x) => String(x.id) === String(id));
+                      setCashLedgerForm((p) => ({ ...p, recipient_user_id: id, recipient_name: selected?.full_name || "" }));
+                    }}
+                    style={{ ...inputStyle, marginTop: 10 }}
+                    required
+                  >
+                    <option value="">Chọn người nhận quỹ</option>
+                    {transferRecipients.map((p) => (
+                      <option key={p.id} value={p.id}>{p.full_name} ({ROLE_VI[p.role] || p.role})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input placeholder="Người nhận (nếu có)" value={cashLedgerForm.recipient_name} onChange={(e) => setCashLedgerForm((p) => ({ ...p, recipient_name: e.target.value, recipient_user_id: "" }))} style={{ ...inputStyle, marginTop: 10 }} />
+                )}
+                <input placeholder="Mã giao dịch (nếu có)" value={cashLedgerForm.transaction_code} onChange={(e) => setCashLedgerForm((p) => ({ ...p, transaction_code: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} />
+                <input placeholder="Link ảnh biên lai (nếu có)" value={cashLedgerForm.slip_image_url} onChange={(e) => setCashLedgerForm((p) => ({ ...p, slip_image_url: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} />
                 <textarea placeholder="Ghi chú" value={cashLedgerForm.notes} onChange={(e) => setCashLedgerForm((p) => ({ ...p, notes: e.target.value }))} style={{ ...inputStyle, minHeight: 88, resize: "none", paddingTop: 12, marginTop: 10 }} />
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
