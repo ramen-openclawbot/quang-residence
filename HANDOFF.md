@@ -590,7 +590,7 @@ if (activeFilter === "expense") return signed < 0 || (signed === 0 && type === "
 
 ## Phase T4 (Agenda Ownership Program) — UI Role Refactor on Unified Feed
 - Status: DONE
-- Commit range: `(pending in this phase)`
+- Commit range: `39e3fe6..6de126b`
 - DB migration: none
 - Changes:
   - Refactored housekeeper data loading to consume `/api/agenda/feed` first, with scoped fallback queries
