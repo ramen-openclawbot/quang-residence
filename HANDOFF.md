@@ -575,7 +575,7 @@ if (activeFilter === "expense") return signed < 0 || (signed === 0 && type === "
 
 ## Phase T3 (Agenda Ownership Program) — Unified Agenda Feed API
 - Status: DONE
-- Commit range: `(pending in this phase)`
+- Commit range: `47f0234..7d307b7`
 - DB migration: none
 - Changes:
   - Added `GET /api/agenda/feed` unified endpoint for role-scoped agenda merging:
