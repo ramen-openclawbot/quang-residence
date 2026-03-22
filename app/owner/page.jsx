@@ -317,15 +317,7 @@ export default function OwnerPage() {
   const recentTasks = useMemo(() => tasks.slice(0, 4), [tasks]);
   const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);
   const ROLE_VI = { secretary: "Thư ký", driver: "Lái xe", housekeeper: "Quản gia" };
-  const ownerAgendaTasks = useMemo(() => {
-    const targetRoles = new Set(["secretary", "driver", "housekeeper"]);
-    const picked = tasks.filter((task) => {
-      const assigneeRole = staffById[task.assigned_to]?.role;
-      const creatorRole = staffById[task.created_by]?.role;
-      return targetRoles.has(assigneeRole) || targetRoles.has(creatorRole);
-    });
-    return picked.length ? picked : tasks;
-  }, [tasks, staffById]);
+  const ownerAgendaTasks = useMemo(() => tasks, [tasks]);
 
   const securitySetting = settingsData.find((x) => x.setting_key === "security")?.setting_value || {};
   const lightingSetting = settingsData.find((x) => x.setting_key === "lighting")?.setting_value || {};
