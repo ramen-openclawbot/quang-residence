@@ -177,8 +177,24 @@ async function saveTemplate(bankName, userId, extractedData) {
   }
 }
 
+async function logOcrRun(payload) {
+  try {
+    await supabaseAdmin.from("ocr_runs").insert(payload);
+  } catch (err) {
+    console.warn("ocr_runs insert failed:", err?.message || err);
+  }
+}
+
 export async function POST(request) {
+  const startedAt = Date.now();
   if (!OPENAI_API_KEY) {
+    await logOcrRun({
+      success: false,
+      error_type: "config_missing",
+      error_message: "OpenAI API key not configured",
+      latency_ms: Date.now() - startedAt,
+      created_at: new Date().toISOString(),
+    });
     return NextResponse.json(
       { error: "OpenAI API key not configured" },
       { status: 500 }
@@ -268,6 +284,17 @@ export async function POST(request) {
       parsed = JSON.parse(clean);
     } catch {
       console.error("Failed to parse OCR result:", content);
+      await logOcrRun({
+        user_id: user?.id || null,
+        role: auth?.profile?.role || null,
+        success: false,
+        bank_identifier: templateHint ? normalizeBankIdentifier(templateHint) : null,
+        template_used: !!templateHint,
+        error_type: "parse_error",
+        error_message: "Could not parse OCR result",
+        latency_ms: Date.now() - startedAt,
+        created_at: new Date().toISOString(),
+      });
       return NextResponse.json(
         { error: "Could not parse OCR result", raw: content },
         { status: 422 }
@@ -286,6 +313,19 @@ export async function POST(request) {
     const bankIdentifier = bankName ? normalizeBankIdentifier(bankName) : null;
     const templateMatched = !!template;
 
+    await logOcrRun({
+      user_id: user?.id || null,
+      role: auth?.profile?.role || null,
+      success: true,
+      bank_identifier: bankIdentifier,
+      template_used: templateMatched,
+      amount_found: !!parsed?.amount,
+      date_found: !!parsed?.transaction_date,
+      code_found: !!parsed?.transaction_code,
+      latency_ms: Date.now() - startedAt,
+      created_at: new Date().toISOString(),
+    });
+
     return NextResponse.json({
       success: true,
       data: parsed,
@@ -294,6 +334,13 @@ export async function POST(request) {
     });
   } catch (err) {
     console.error("OCR route error:", err);
+    await logOcrRun({
+      success: false,
+      error_type: "route_error",
+      error_message: String(err?.message || err).slice(0, 500),
+      latency_ms: Date.now() - startedAt,
+      created_at: new Date().toISOString(),
+    });
     return NextResponse.json(
       { error: "An error occurred while processing your request." },
       { status: 500 }

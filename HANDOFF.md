@@ -544,3 +544,21 @@ This app is in a **transaction audit + operations** phase.
 Priority areas: complete the audit pipeline, deepen CRUD flows for tasks/maintenance/schedule, expand self-service to other roles.
 
 Transaction list UX has gone through multiple quick iterations today; current branch includes strict filter guards, native mobile date picker, mobile-safe amount column, and stabilized date grouping.
+
+---
+
+## Phase 1 (OCR Program) — Observability Foundation
+- Status: DONE
+- Commit range: `874b54a..(this phase commit)`
+- DB migration file: `supabase/ocr_runs_phase1.sql` (run manually in Supabase SQL Editor)
+- Changes:
+  - Added OCR run telemetry logging in `app/api/ocr/route.js` to `public.ocr_runs`
+  - Captures success/failure, latency, bank identifier, template usage, and field completeness (amount/date/code)
+  - Captures error types: `config_missing`, `input_missing`, `upstream_ocr_error`, `parse_error`, `route_error`
+- Test result:
+  - build: pass
+- Rollback:
+  - revert commit for this phase and stop using `ocr_runs`
+- Next phase entry criteria:
+  - migration applied successfully
+  - telemetry rows visible after 3-5 OCR scans
