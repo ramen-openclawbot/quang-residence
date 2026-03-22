@@ -551,7 +551,7 @@ if (activeFilter === "expense") return signed < 0 || (signed === 0 && type === "
 
 ## Phase T1 (Agenda Ownership Program) — Ownership Normalization
 - Status: DONE (code + migration file)
-- Commit range: `(pending in this phase)`
+- Commit range: `7c40e15..4b9d4b8`
 - DB migration: `supabase/t1_ownership_normalization.sql`
 - Changes:
   - `home_maintenance` write path now sets `created_by` alongside `reported_by`
@@ -559,6 +559,19 @@ if (activeFilter === "expense") return signed < 0 || (signed === 0 && type === "
   - Added T1 SQL to backfill historical rows for both tables
 - Notes:
   - Run migration before validating T2/T3 visibility rules
+
+## Phase T2 (Agenda Ownership Program) — Role RLS Hardening
+- Status: DONE (migration file)
+- Commit range: `(pending in this phase)`
+- DB migration: `supabase/t2_role_rls_policies.sql`
+- Changes:
+  - Tightened RLS for `home_maintenance` and `family_schedule`
+  - owner + secretary: full read/write
+  - housekeeper: only own rows (`created_by` / `reported_by`)
+  - driver: no access to housekeeper maintenance/schedule domain
+- Notes:
+  - Run T1 migration first, then T2 policy migration
+  - Verify with two housekeeper accounts to confirm no cross-visibility
 
 ## Summary for the next agent
 This app is in a **transaction audit + operations** phase.
