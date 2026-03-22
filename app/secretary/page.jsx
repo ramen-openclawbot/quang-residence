@@ -31,6 +31,8 @@ const TABS = [
   { id: "cash-ledger", label: "Sổ quỹ", icon: "account_balance_wallet" },
 ];
 
+const OPS_EXCLUDED_USER_PREFIX = "6487c846";
+
 function getCategoryMeta(tx) {
   if (tx?.type !== "expense") return null;
   const c = tx?.categories;
@@ -286,7 +288,8 @@ export default function SecretaryPage() {
   useEffect(() => {
     if (!profile?.id) return;
     loadSummary();
-  }, [profile?.id, loadSummary]);
+    loadCashLedger(true);
+  }, [profile?.id, loadSummary, loadCashLedger]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -479,12 +482,22 @@ export default function SecretaryPage() {
     }
   }
 
-  const fundsBalance = useMemo(() => funds.reduce((s, f) => s + Number(f.current_balance || 0), 0), [funds]);
-  const fundedEntries = useMemo(() => funds.filter((f) => Number(f.current_balance || 0) !== 0).length, [funds]);
-  const ledgerBalance = useMemo(() => transactions.reduce((sum, tx) => sum + getSignedAmount(tx), 0), [transactions]);
-  const usingLedgerFallback = useMemo(() => fundedEntries === 0 && transactions.length > 0, [fundedEntries, transactions.length]);
-  const totalBalance = useMemo(() => (usingLedgerFallback ? ledgerBalance : fundsBalance), [usingLedgerFallback, fundsBalance, ledgerBalance]);
-  const pendingTx = useMemo(() => transactions.filter((t) => t.status === "pending"), [transactions]);
+  const isOpsTransaction = useCallback((tx) => {
+    const createdBy = String(tx?.created_by || "");
+    return !createdBy.startsWith(OPS_EXCLUDED_USER_PREFIX);
+  }, []);
+
+  const totalBalance = useMemo(() => {
+    return (cashLedgerEntries || []).reduce((sum, entry) => {
+      const status = String(entry?.status || "").toLowerCase();
+      if (status === "rejected") return sum;
+      const amount = Math.abs(Number(entry?.amount || 0));
+      const type = String(entry?.type || "").toLowerCase();
+      return type === "income" ? sum + amount : sum - amount;
+    }, 0);
+  }, [cashLedgerEntries]);
+
+  const pendingTx = useMemo(() => transactions.filter((t) => t.status === "pending" && isOpsTransaction(t)), [transactions, isOpsTransaction]);
   const yearOptions = useMemo(() => {
     const current = new Date().getFullYear();
     const years = [];
@@ -494,7 +507,7 @@ export default function SecretaryPage() {
   const today = useMemo(() => getTodayKey(), []);
   const todayTasks = useMemo(() => tasks.filter((t) => (t.due_date || "").startsWith(today)), [tasks, today]);
   const overdueTasks = useMemo(() => tasks.filter((t) => t.status !== "done" && t.due_date && t.due_date.slice(0, 10) < today), [tasks, today]);
-  const recentTransactions = useMemo(() => transactions.slice(0, 8), [transactions]);
+  const recentTransactions = useMemo(() => transactions.filter((tx) => isOpsTransaction(tx)).slice(0, 8), [transactions, isOpsTransaction]);
   const getTxDateParts = (tx) => {
     const key = getTransactionDateKey(tx);
     if (!key) return null;
@@ -505,10 +518,11 @@ export default function SecretaryPage() {
 
   // Step 1: Month filter
   const txMonthFiltered = useMemo(() => transactions.filter((tx) => {
+    if (!isOpsTransaction(tx)) return false;
     const parts = getTxDateParts(tx);
     if (!parts) return false;
     return parts.month === selectedMonth && parts.year === selectedYear;
-  }), [transactions, selectedMonth, selectedYear]);
+  }), [transactions, selectedMonth, selectedYear, isOpsTransaction]);
 
   // Step 2: Day filter
   const txDayFiltered = useMemo(() => {
@@ -795,8 +809,8 @@ export default function SecretaryPage() {
                         <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Số dư theo dõi</div>
                         <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 10 }}>{fmtVND(totalBalance)}</div>
                         <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,0.12)", fontSize: 11, fontWeight: 700, marginBottom: 16 }}>
-                          <div style={{ width: 6, height: 6, borderRadius: 999, background: usingLedgerFallback ? "#fbbf24" : "#86efac" }} />
-                          {usingLedgerFallback ? "Số dư sổ cái" : "Đồng bộ từ quỹ"}
+                          <div style={{ width: 6, height: 6, borderRadius: 999, background: "#86efac" }} />
+                          Số dư sổ quỹ
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                           <div>

@@ -25,12 +25,13 @@ export async function GET(request) {
     const todayStart = `${todayStr}T00:00:00`;
     const todayEnd = `${todayStr}T23:59:59`;
 
-    const [fundsRes, tasksRes, maintenanceRes, scheduleRes, tripsRes, recentTxRes, todayTxRes, pendingRes] = await Promise.all([
+    const [fundsRes, tasksRes, maintenanceRes, scheduleRes, tripsRes, profilesRes, recentTxRes, todayTxRes, pendingRes] = await Promise.all([
       supabaseAdmin.from("funds").select("*").order("id"),
       supabaseAdmin.from("tasks").select("*").order("due_date", { ascending: true }),
       supabaseAdmin.from("home_maintenance").select("*").order("created_at", { ascending: false }),
       supabaseAdmin.from("family_schedule").select("*").order("event_date", { ascending: true }),
       supabaseAdmin.from("driving_trips").select("*").order("scheduled_time", { ascending: true }),
+      supabaseAdmin.from("profiles").select("id, full_name, role"),
       supabaseAdmin
         .from("transactions")
         .select("*, profiles!created_by(id, full_name, role)")
