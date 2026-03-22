@@ -299,6 +299,8 @@ export default function HousekeeperPage() {
 
     setFamilyFormData({ title: "", schedule_type: "school", family_member: "Member", event_date: "", event_time: "", notes: "" });
     setShowFamilyForm(false);
+    setTab("home");
+    alert("Đã lưu sự kiện gia đình thành công.");
     fetchData();
   }
 
@@ -666,8 +668,14 @@ export default function HousekeeperPage() {
                 </select>
                 <input value={familyFormData.family_member} onChange={(e) => setFamilyFormData({ ...familyFormData, family_member: e.target.value })} placeholder="Thành viên gia đình" style={{ ...inputStyle, marginTop: 10 }} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
-                  <input type="date" value={familyFormData.event_date} onChange={(e) => setFamilyFormData({ ...familyFormData, event_date: e.target.value })} required style={dateInputStyle} />
-                  <input type="time" value={familyFormData.event_time} onChange={(e) => setFamilyFormData({ ...familyFormData, event_time: e.target.value })} style={inputStyle} />
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Ngày</div>
+                    <input type="date" value={familyFormData.event_date} onChange={(e) => setFamilyFormData({ ...familyFormData, event_date: e.target.value })} required style={dateInputStyle} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Giờ</div>
+                    <input type="time" value={familyFormData.event_time} onChange={(e) => setFamilyFormData({ ...familyFormData, event_time: e.target.value })} style={timeInputStyle} />
+                  </div>
                 </div>
                 <textarea value={familyFormData.notes} onChange={(e) => setFamilyFormData({ ...familyFormData, notes: e.target.value })} placeholder="Ghi chú" style={{ ...inputStyle, minHeight: 90, resize: "none", marginTop: 10 }} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
@@ -727,6 +735,12 @@ const dateInputStyle = {
   WebkitAppearance: "none",
   appearance: "none",
   paddingRight: 14,
+};
+
+const timeInputStyle = {
+  ...inputStyle,
+  lineHeight: "normal",
+  paddingRight: 10,
 };
 
 const panelBtn = {
