@@ -160,6 +160,7 @@ export default function SecretaryPage() {
   const [cashLedgerKindFilter, setCashLedgerKindFilter] = useState("all");
   const [cashLedgerOcrLoading, setCashLedgerOcrLoading] = useState(false);
   const [cashLedgerOcrError, setCashLedgerOcrError] = useState("");
+  const [cashLedgerOcrPhase, setCashLedgerOcrPhase] = useState("idle");
   const cashLedgerSlipFileRef = useRef(null);
   const [cashLedgerForm, setCashLedgerForm] = useState({
     type: "expense",
@@ -443,6 +444,66 @@ export default function SecretaryPage() {
     reader.readAsDataURL(file);
   }), []);
 
+  const compressImageIfNeeded = useCallback(async (file, { forceJpeg = true } = {}) => {
+    const MAX_BYTES = 1024 * 1024;
+    const MAX_DIMENSION = 1600;
+    const JPEG_QUALITY = 0.82;
+    if (!file || !file.type.startsWith("image/")) return file;
+
+    const mime = (file.type || "").toLowerCase();
+    const shouldConvertForOCR = forceJpeg || !["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(mime);
+    const shouldProcess = shouldConvertForOCR || file.size > MAX_BYTES;
+    if (!shouldProcess) return file;
+
+    const imageUrl = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = reject;
+        el.src = imageUrl;
+      });
+
+      let { width, height } = img;
+      const largest = Math.max(width, height);
+      if (largest > MAX_DIMENSION) {
+        const scale = MAX_DIMENSION / largest;
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d", { alpha: false });
+      if (!ctx) return file;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const d = imageData.data;
+      const contrast = 1.12;
+      const bias = -8;
+      for (let i = 0; i < d.length; i += 4) {
+        d[i] = Math.max(0, Math.min(255, contrast * d[i] + bias));
+        d[i + 1] = Math.max(0, Math.min(255, contrast * d[i + 1] + bias));
+        d[i + 2] = Math.max(0, Math.min(255, contrast * d[i + 2] + bias));
+      }
+      ctx.putImageData(imageData, 0, 0);
+
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
+      if (!blob) return file;
+      const baseName = file.name.replace(/\.[^.]+$/, "");
+      const normalized = new File([blob], `${baseName}.jpg`, {
+        type: "image/jpeg",
+        lastModified: Date.now(),
+      });
+
+      return normalized.size < file.size || shouldConvertForOCR ? normalized : file;
+    } finally {
+      URL.revokeObjectURL(imageUrl);
+    }
+  }, []);
+
   const uploadSlipToStorage = useCallback(async (file) => {
     if (!file || !profile?.id) return null;
     const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
@@ -453,27 +514,50 @@ export default function SecretaryPage() {
     return data?.publicUrl || null;
   }, [profile?.id]);
 
-  async function handleCashLedgerSlipSelect(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      setCashLedgerOcrLoading(true);
-      setCashLedgerOcrError("");
-      const token = await getToken();
-      const imageBase64 = await fileToBase64(file);
+  const runCashLedgerOcr = useCallback(async (file, token, templateHint = null) => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const imageBase64 = await fileToBase64(file);
 
-      const ocrRes = await fetch("/api/ocr", {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const res = await fetch("/api/ocr", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ imageBase64, imageMimeType: file.type || "image/jpeg" }),
+        body: JSON.stringify({ imageBase64, imageMimeType: file.type || "image/jpeg", ...(templateHint ? { templateHint } : {}) }),
       });
-      const ocrJson = await ocrRes.json().catch(() => ({}));
-      if (!ocrRes.ok) throw new Error(ocrJson.error || "OCR thất bại");
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) return json;
+      const msg = json?.error || json?.raw || "OCR thất bại";
+      if ((res.status === 429 || res.status >= 500) && attempt === 0) {
+        await wait(600);
+        continue;
+      }
+      throw new Error(msg);
+    }
+    throw new Error("OCR thất bại");
+  }, [fileToBase64]);
 
+  async function handleCashLedgerSlipSelect(e) {
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
+    try {
+      setCashLedgerOcrLoading(true);
+      setCashLedgerOcrError("");
+      setCashLedgerOcrPhase("compressing");
+
+      const token = await getToken();
+      if (!token) throw new Error("Phiên đăng nhập hết hạn");
+
+      const file = await compressImageIfNeeded(rawFile, { forceJpeg: true });
+
+      setCashLedgerOcrPhase("scanning");
+      const ocrJson = await runCashLedgerOcr(file, token, cashLedgerForm.bank_name || null);
+
+      setCashLedgerOcrPhase("uploading");
       const slipUrl = await uploadSlipToStorage(file);
+
       const data = ocrJson?.data || {};
       setCashLedgerForm((prev) => ({
         ...prev,
@@ -486,8 +570,10 @@ export default function SecretaryPage() {
         transaction_date: data?.transaction_date || prev.transaction_date,
         slip_image_url: slipUrl || prev.slip_image_url,
       }));
+      setCashLedgerOcrPhase("done");
     } catch (err) {
       setCashLedgerOcrError(err.message || "Không đọc được bank slip");
+      setCashLedgerOcrPhase("error");
     } finally {
       setCashLedgerOcrLoading(false);
       if (e?.target) e.target.value = "";
@@ -521,6 +607,8 @@ export default function SecretaryPage() {
       if (!res.ok) throw new Error(json.error || "Không tạo được bút toán sổ quỹ");
 
       setShowCashLedgerForm(false);
+      setCashLedgerOcrError("");
+      setCashLedgerOcrPhase("idle");
       setCashLedgerForm({
         type: "expense",
         entry_kind: "ops",
@@ -1442,7 +1530,7 @@ export default function SecretaryPage() {
             <div style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "24px 24px 0 0", padding: 18 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Bút toán sổ quỹ</div>
-                <button onClick={() => setShowCashLedgerForm(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
+                <button onClick={() => { setShowCashLedgerForm(false); setCashLedgerOcrError(""); setCashLedgerOcrPhase("idle"); }} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
                   <MIcon name="close" size={22} color={T.textMuted} />
                 </button>
               </div>
@@ -1457,6 +1545,19 @@ export default function SecretaryPage() {
                   <MIcon name="document_scanner" size={18} color={T.primary} />
                   {cashLedgerOcrLoading ? "Đang OCR bank slip..." : "OCR từ bank slip"}
                 </button>
+                {cashLedgerOcrLoading && (
+                  <div style={{ ...subtleCard, padding: 10, marginBottom: 10 }}>
+                    <style>{`@keyframes cashScanPulse{0%,100%{opacity:.35;transform:scaleX(1)}50%{opacity:1;transform:scaleX(1.03)}}`}</style>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: T.text, marginBottom: 6 }}>
+                      {cashLedgerOcrPhase === "compressing" && "Đang tối ưu ảnh..."}
+                      {cashLedgerOcrPhase === "scanning" && "Đang quét OCR bank slip..."}
+                      {cashLedgerOcrPhase === "uploading" && "Đang tải slip lên hệ thống..."}
+                    </div>
+                    <div style={{ height: 6, borderRadius: 999, background: "#e8efe5", overflow: "hidden" }}>
+                      <div style={{ width: cashLedgerOcrPhase === "compressing" ? "35%" : cashLedgerOcrPhase === "scanning" ? "72%" : "96%", height: "100%", background: T.primary, animation: "cashScanPulse 1.2s ease-in-out infinite" }} />
+                    </div>
+                  </div>
+                )}
                 {cashLedgerOcrError && <div style={{ fontSize: 12, color: T.danger, marginBottom: 10 }}>{cashLedgerOcrError}</div>}
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -1499,7 +1600,7 @@ export default function SecretaryPage() {
                 <textarea placeholder="Ghi chú" value={cashLedgerForm.notes} onChange={(e) => setCashLedgerForm((p) => ({ ...p, notes: e.target.value }))} style={{ ...inputStyle, minHeight: 88, resize: "none", paddingTop: 12, marginTop: 10 }} />
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
-                  <button type="button" onClick={() => setShowCashLedgerForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Hủy</button>
+                  <button type="button" onClick={() => { setShowCashLedgerForm(false); setCashLedgerOcrError(""); setCashLedgerOcrPhase("idle"); }} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Hủy</button>
                   <button type="submit" disabled={cashLedgerSubmitting} style={{ height: 46, borderRadius: 12, border: "none", background: cashLedgerSubmitting ? "#93e06e" : T.primary, color: "white", cursor: cashLedgerSubmitting ? "default" : "pointer", fontWeight: 800 }}>{cashLedgerSubmitting ? "Đang lưu..." : "Lưu"}</button>
                 </div>
               </form>
