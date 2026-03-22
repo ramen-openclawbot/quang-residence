@@ -615,7 +615,7 @@ Transaction list UX has gone through multiple quick iterations today; current br
 
 ## Phase 5 (OCR Program) — Reliability UX (Retry + Queue)
 - Status: DONE
-- Commit range: `719f48b..(this phase commit)`
+- Commit range: `719f48b..5970e6b`
 - DB migration: none
 - Changes:
   - Added per-slip failure queue in `TransactionForm` for upload/submit failures
