@@ -28,7 +28,7 @@ const TABS = [
   { id: "home", label: "Tổng quan", icon: "home" },
   { id: "transactions", label: "Giao dịch", icon: "receipt_long" },
   { id: "tasks", label: "Công việc", icon: "task_alt" },
-  { id: "calendar", label: "Lịch", icon: "calendar_month" },
+  { id: "cash-ledger", label: "Sổ quỹ", icon: "account_balance_wallet" },
 ];
 
 function getCategoryMeta(tx) {
@@ -148,6 +148,28 @@ export default function SecretaryPage() {
   const [txPage, setTxPage] = useState(0);
   const TX_PER_PAGE = 10;
 
+  const [cashLedgerEntries, setCashLedgerEntries] = useState([]);
+  const [cashLedgerLoaded, setCashLedgerLoaded] = useState(false);
+  const [cashLedgerLoading, setCashLedgerLoading] = useState(false);
+  const [showCashLedgerForm, setShowCashLedgerForm] = useState(false);
+  const [cashLedgerSubmitting, setCashLedgerSubmitting] = useState(false);
+  const [cashLedgerSearch, setCashLedgerSearch] = useState("");
+  const [cashLedgerTypeFilter, setCashLedgerTypeFilter] = useState("all");
+  const [cashLedgerKindFilter, setCashLedgerKindFilter] = useState("all");
+  const [cashLedgerForm, setCashLedgerForm] = useState({
+    type: "expense",
+    entry_kind: "ops",
+    amount: "",
+    transaction_date: new Date().toISOString().slice(0, 10),
+    recipient_name: "",
+    bank_name: "",
+    bank_account: "",
+    transaction_code: "",
+    slip_image_url: "",
+    notes: "",
+    description: "",
+  });
+
   const [serverSummary, setServerSummary] = useState(null);
   const [taskSubmitting, setTaskSubmitting] = useState(false);
   const [revealedTaskId, setRevealedTaskId] = useState(null);
@@ -234,14 +256,31 @@ export default function SecretaryPage() {
     }
   }, [getToken]);
 
+  const loadCashLedger = useCallback(async (silent = false) => {
+    try {
+      if (!silent) setCashLedgerLoading(true);
+      const token = await getToken();
+      const res = await fetch("/api/cash-ledger?limit=200", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Không tải được sổ quỹ");
+      const json = await res.json();
+      setCashLedgerEntries(json.data || []);
+      setCashLedgerLoaded(true);
+    } catch (err) {
+      console.error("Thư ký loadCashLedger error:", err);
+    } finally {
+      setCashLedgerLoading(false);
+    }
+  }, [getToken]);
+
   /* Convenience reload used after mutations (task create, audit action, tx submit) */
   const reloadAll = useCallback(async (silent = false) => {
-    if (txFullLoaded) {
-      await Promise.all([loadSummary(silent), loadFullTransactions()]);
-    } else {
-      await loadSummary(silent);
-    }
-  }, [txFullLoaded, loadSummary, loadFullTransactions]);
+    const jobs = [loadSummary(silent)];
+    if (txFullLoaded) jobs.push(loadFullTransactions());
+    if (cashLedgerLoaded) jobs.push(loadCashLedger(true));
+    await Promise.all(jobs);
+  }, [txFullLoaded, cashLedgerLoaded, loadSummary, loadFullTransactions, loadCashLedger]);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -270,6 +309,11 @@ export default function SecretaryPage() {
     if (tab !== "transactions" || txFullLoaded) return;
     loadFullTransactions();
   }, [tab, txFullLoaded, loadFullTransactions]);
+
+  useEffect(() => {
+    if (tab !== "cash-ledger" || cashLedgerLoaded) return;
+    loadCashLedger();
+  }, [tab, cashLedgerLoaded, loadCashLedger]);
 
   useEffect(() => {
     if (!pendingNotifTxId || !transactions.length) return;
@@ -385,6 +429,50 @@ export default function SecretaryPage() {
     }
   }
 
+  async function handleCreateCashLedgerEntry(e) {
+    e.preventDefault();
+    if (cashLedgerSubmitting) return;
+    const amount = Number(cashLedgerForm.amount || 0);
+    if (!amount || amount <= 0) {
+      alert("Số tiền phải lớn hơn 0");
+      return;
+    }
+    try {
+      setCashLedgerSubmitting(true);
+      const token = await getToken();
+      const res = await fetch("/api/cash-ledger", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(cashLedgerForm),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Không tạo được bút toán sổ quỹ");
+
+      setShowCashLedgerForm(false);
+      setCashLedgerForm({
+        type: "expense",
+        entry_kind: "ops",
+        amount: "",
+        transaction_date: new Date().toISOString().slice(0, 10),
+        recipient_name: "",
+        bank_name: "",
+        bank_account: "",
+        transaction_code: "",
+        slip_image_url: "",
+        notes: "",
+        description: "",
+      });
+      await loadCashLedger(true);
+    } catch (err) {
+      alert(err.message || "Không tạo được bút toán sổ quỹ");
+    } finally {
+      setCashLedgerSubmitting(false);
+    }
+  }
+
   const fundsBalance = useMemo(() => funds.reduce((s, f) => s + Number(f.current_balance || 0), 0), [funds]);
   const fundedEntries = useMemo(() => funds.filter((f) => Number(f.current_balance || 0) !== 0).length, [funds]);
   const ledgerBalance = useMemo(() => transactions.reduce((sum, tx) => sum + getSignedAmount(tx), 0), [transactions]);
@@ -478,6 +566,25 @@ export default function SecretaryPage() {
     return signed < 0 ? sum + Math.abs(signed) : sum;
   }, 0), [txFiltered]);
   const txPendingCount = useMemo(() => txFiltered.filter((tx) => tx.status === "pending").length, [txFiltered]);
+
+  const cashLedgerFiltered = useMemo(() => {
+    const q = cashLedgerSearch.trim().toLowerCase();
+    return cashLedgerEntries.filter((entry) => {
+      if (cashLedgerTypeFilter !== "all" && entry.type !== cashLedgerTypeFilter) return false;
+      if (cashLedgerKindFilter !== "all" && entry.entry_kind !== cashLedgerKindFilter) return false;
+      if (!q) return true;
+      return [
+        entry.description,
+        entry.notes,
+        entry.recipient_name,
+        entry.transaction_code,
+        entry.bank_name,
+      ].filter(Boolean).some((v) => String(v).toLowerCase().includes(q));
+    });
+  }, [cashLedgerEntries, cashLedgerSearch, cashLedgerTypeFilter, cashLedgerKindFilter]);
+
+  const cashLedgerIncome = useMemo(() => cashLedgerFiltered.reduce((sum, x) => x.type === "income" ? sum + Number(x.amount || 0) : sum, 0), [cashLedgerFiltered]);
+  const cashLedgerExpense = useMemo(() => cashLedgerFiltered.reduce((sum, x) => x.type === "expense" ? sum + Number(x.amount || 0) : sum, 0), [cashLedgerFiltered]);
 
   useEffect(() => {
     if (!transactions.length) return;
@@ -1130,22 +1237,68 @@ export default function SecretaryPage() {
                 </div>
               )}
 
-              {tab === "calendar" && (
+              {tab === "cash-ledger" && (
                 <div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 14 }}>Sắp tới</div>
-                  {upcomingItems.length === 0 ? (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Sổ quỹ</div>
+                    <button onClick={() => setShowCashLedgerForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                      + Bút toán
+                    </button>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                    <div style={{ ...subtleCard, padding: 12 }}>
+                      <div style={{ fontSize: 11, color: T.textMuted }}>Tổng thu</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: T.success }}>{fmtVND(cashLedgerIncome)}</div>
+                    </div>
+                    <div style={{ ...subtleCard, padding: 12 }}>
+                      <div style={{ fontSize: 11, color: T.textMuted }}>Tổng chi</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: T.danger }}>{fmtVND(cashLedgerExpense)}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    <input value={cashLedgerSearch} onChange={(e) => setCashLedgerSearch(e.target.value)} placeholder="Tìm trong sổ quỹ..." style={{ ...inputStyle, height: 42 }} />
+                    <select value={cashLedgerTypeFilter} onChange={(e) => setCashLedgerTypeFilter(e.target.value)} style={{ ...inputStyle, height: 42, width: 120 }}>
+                      <option value="all">Tất cả</option>
+                      <option value="income">Thu</option>
+                      <option value="expense">Chi</option>
+                    </select>
+                    <select value={cashLedgerKindFilter} onChange={(e) => setCashLedgerKindFilter(e.target.value)} style={{ ...inputStyle, height: 42, width: 170 }}>
+                      <option value="all">Mọi loại</option>
+                      <option value="ops">Vận hành</option>
+                      <option value="fund_transfer_out">Chuyển quỹ đi</option>
+                      <option value="fund_transfer_in_auto">Thu tự động</option>
+                    </select>
+                  </div>
+
+                  {cashLedgerLoading ? (
+                    <div style={{ fontSize: 13, color: T.textMuted }}>Đang tải sổ quỹ...</div>
+                  ) : cashLedgerFiltered.length === 0 ? (
                     <div style={{ ...cardStyle, padding: 24, textAlign: "center" }}>
-                      <MIcon name="calendar_month" size={32} color={T.textMuted} />
-                      <div style={{ fontSize: 13, color: T.textMuted, marginTop: 8 }}>Chưa có công việc nào sắp tới.</div>
+                      <MIcon name="account_balance_wallet" size={32} color={T.textMuted} />
+                      <div style={{ fontSize: 13, color: T.textMuted, marginTop: 8 }}>Chưa có bút toán sổ quỹ.</div>
                     </div>
                   ) : (
-                    <div style={{ display: "grid", gap: 12 }}>
-                      {upcomingItems.map((item) => (
-                        <button key={item.id} onClick={() => { setSelectedTask(item); setActivePanel("task-detail"); }} style={{ ...cardStyle, width: "100%", padding: 16, textAlign: "left", cursor: "pointer", border: `1px solid ${T.border}` }}>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{item.title}</div>
-                          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>{fmtDate(item.due_date)}</div>
-                        </button>
-                      ))}
+                    <div style={{ display: "grid", gap: 10 }}>
+                      {cashLedgerFiltered.map((entry) => {
+                        const isIncome = entry.type === "income";
+                        const kindLabel = entry.entry_kind === "fund_transfer_out" ? "Chuyển quỹ đi" : entry.entry_kind === "fund_transfer_in_auto" ? "Thu tự động" : "Vận hành";
+                        return (
+                          <div key={entry.id} style={{ ...cardStyle, padding: 12 }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{entry.description || entry.notes || "Bút toán sổ quỹ"}</div>
+                                <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>{fmtDate(entry.transaction_date)} • {kindLabel}</div>
+                                {entry.recipient_name && <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>Người nhận: {entry.recipient_name}</div>}
+                              </div>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: isIncome ? T.success : T.danger, whiteSpace: "nowrap" }}>
+                                {isIncome ? "+" : "−"}{fmtVND(Math.abs(Number(entry.amount || 0)))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1198,6 +1351,42 @@ export default function SecretaryPage() {
                   {notifReturnTab && <button onClick={() => { setActivePanel(""); setTab(notifReturnTab); setNotifReturnTab(null); }} style={{ ...panelBtn, background: "white", border: `1px solid ${T.border}`, color: T.text }}>Quay lại tab trước</button>}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {showCashLedgerForm && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 205, display: "flex", alignItems: "flex-end" }}>
+            <div style={{ width: "100%", maxWidth: 430, margin: "0 auto", background: T.card, borderRadius: "24px 24px 0 0", padding: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Bút toán sổ quỹ</div>
+                <button onClick={() => setShowCashLedgerForm(false)} style={{ border: "none", background: "transparent", cursor: "pointer" }}>
+                  <MIcon name="close" size={22} color={T.textMuted} />
+                </button>
+              </div>
+              <form onSubmit={handleCreateCashLedgerEntry}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <select value={cashLedgerForm.type} onChange={(e) => setCashLedgerForm((p) => ({ ...p, type: e.target.value }))} style={inputStyle}>
+                    <option value="expense">Chi</option>
+                    <option value="income">Thu</option>
+                  </select>
+                  <select value={cashLedgerForm.entry_kind} onChange={(e) => setCashLedgerForm((p) => ({ ...p, entry_kind: e.target.value }))} style={inputStyle}>
+                    <option value="ops">Vận hành</option>
+                    <option value="fund_transfer_out">Chuyển quỹ đi</option>
+                    <option value="fund_transfer_in_auto">Thu tự động</option>
+                  </select>
+                </div>
+                <input type="number" min="0" step="0.01" placeholder="Số tiền" value={cashLedgerForm.amount} onChange={(e) => setCashLedgerForm((p) => ({ ...p, amount: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} required />
+                <input type="date" value={cashLedgerForm.transaction_date} onChange={(e) => setCashLedgerForm((p) => ({ ...p, transaction_date: e.target.value }))} style={{ ...dateInputStyle, marginTop: 10 }} required />
+                <input placeholder="Nội dung" value={cashLedgerForm.description} onChange={(e) => setCashLedgerForm((p) => ({ ...p, description: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} />
+                <input placeholder="Người nhận (nếu có)" value={cashLedgerForm.recipient_name} onChange={(e) => setCashLedgerForm((p) => ({ ...p, recipient_name: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} />
+                <textarea placeholder="Ghi chú" value={cashLedgerForm.notes} onChange={(e) => setCashLedgerForm((p) => ({ ...p, notes: e.target.value }))} style={{ ...inputStyle, minHeight: 88, resize: "none", paddingTop: 12, marginTop: 10 }} />
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
+                  <button type="button" onClick={() => setShowCashLedgerForm(false)} style={{ height: 46, borderRadius: 12, border: `1px solid ${T.border}`, background: "white", cursor: "pointer", fontWeight: 700 }}>Hủy</button>
+                  <button type="submit" disabled={cashLedgerSubmitting} style={{ height: 46, borderRadius: 12, border: "none", background: cashLedgerSubmitting ? "#93e06e" : T.primary, color: "white", cursor: cashLedgerSubmitting ? "default" : "pointer", fontWeight: 800 }}>{cashLedgerSubmitting ? "Đang lưu..." : "Lưu"}</button>
+                </div>
+              </form>
             </div>
           </div>
         )}
