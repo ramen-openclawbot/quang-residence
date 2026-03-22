@@ -582,7 +582,7 @@ Transaction list UX has gone through multiple quick iterations today; current br
 
 ## Phase 3 (OCR Program) — Client-side Preprocess Boost
 - Status: DONE
-- Commit range: `3cbc5c0..(this phase commit)`
+- Commit range: `3cbc5c0..f911f76`
 - DB migration: none
 - Changes:
   - Added on-device OCR pre-enhancement (light contrast + denoise-like bias) before upload/scan
