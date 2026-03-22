@@ -113,6 +113,7 @@ export default function OwnerPage() {
   const [staffProfiles, setStaffProfiles] = useState([]);
   const [settingsData, setSettingsData] = useState([]);
   const [summaryData, setSummaryData] = useState(null);
+  const [agendaItems, setAgendaItems] = useState([]);
 
   useEffect(() => {
     fetchData();
@@ -155,15 +156,18 @@ export default function OwnerPage() {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
 
-      const res = await fetch(`/api/dashboard/owner?month=${month}&year=${year}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const [res, agendaRes] = await Promise.all([
+        fetch(`/api/dashboard/owner?month=${month}&year=${year}`, { headers }),
+        fetch(`/api/agenda/feed?limit=300`, { headers }),
+      ]);
 
       if (!res.ok) {
         throw new Error("Owner dashboard API failed");
       }
 
       const json = await res.json();
+      const agendaJson = agendaRes.ok ? await agendaRes.json() : { items: [] };
       setTransactions(json.recentTx || []);
       setTasks(json.tasks || []);
       setMaintenanceItems(json.maintenance || []);
@@ -171,6 +175,7 @@ export default function OwnerPage() {
       setStaffProfiles(json.staffProfiles || []);
       setSettingsData(json.settingsData || []);
       setSummaryData(json.summary || null);
+      setAgendaItems(agendaJson.items || []);
     } catch (error) {
       console.error("Owner fetchData error:", error);
       // Fallback to direct Supabase for resilience
@@ -326,6 +331,7 @@ export default function OwnerPage() {
   const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);
   const ROLE_VI = { secretary: "Thư ký", driver: "Lái xe", housekeeper: "Quản gia" };
   const ownerAgendaTasks = useMemo(() => {
+    if (agendaItems.length) return agendaItems;
     const taskRows = (tasks || []).map((t) => ({
       source: "task",
       id: `task_${t.id}`,
@@ -338,7 +344,6 @@ export default function OwnerPage() {
       creatorId: t.created_by,
       item: t,
     }));
-
     const maintenanceRows = (maintenanceItems || []).map((m) => ({
       source: "maintenance",
       id: `maintenance_${m.id}`,
@@ -351,7 +356,6 @@ export default function OwnerPage() {
       creatorId: m.created_by || m.reported_by || null,
       item: m,
     }));
-
     const scheduleRows = (familySchedule || []).map((s) => ({
       source: "schedule",
       id: `schedule_${s.id}`,
@@ -364,10 +368,9 @@ export default function OwnerPage() {
       creatorId: s.created_by,
       item: s,
     }));
-
     return [...taskRows, ...maintenanceRows, ...scheduleRows]
       .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
-  }, [tasks, maintenanceItems, familySchedule]);
+  }, [agendaItems, tasks, maintenanceItems, familySchedule]);
 
   const securitySetting = settingsData.find((x) => x.setting_key === "security")?.setting_value || {};
   const lightingSetting = settingsData.find((x) => x.setting_key === "lighting")?.setting_value || {};

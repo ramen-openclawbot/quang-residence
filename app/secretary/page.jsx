@@ -134,6 +134,7 @@ export default function SecretaryPage() {
   const [tasks, setTasks] = useState([]);
   const [maintenanceItems, setMaintenanceItems] = useState([]);
   const [familySchedule, setFamilySchedule] = useState([]);
+  const [agendaItems, setAgendaItems] = useState([]);
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
@@ -168,15 +169,19 @@ export default function SecretaryPage() {
     try {
       if (!silent) setLoading(true);
       const token = await getToken();
-      const res = await fetch("/api/dashboard/secretary", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const [res, agendaRes] = await Promise.all([
+        fetch("/api/dashboard/secretary", { headers }),
+        fetch("/api/agenda/feed?limit=300", { headers }),
+      ]);
       if (res.ok) {
         const json = await res.json();
+        const agendaJson = agendaRes.ok ? await agendaRes.json() : { items: [] };
         setFunds(json.funds || []);
         setTasks(json.tasks || []);
         setMaintenanceItems(json.maintenance || []);
         setFamilySchedule(json.familySchedule || []);
+        setAgendaItems(agendaJson.items || []);
         setTransactions(json.recentTx || []);
         setServerSummary({ todaySummary: json.todaySummary, pendingCount: json.pendingCount });
       } else {
@@ -483,12 +488,25 @@ export default function SecretaryPage() {
   const incomeToday = useMemo(() => serverSummary?.todaySummary?.income ?? transactions.filter((t) => t.type === "income" && isTodayTransaction(t)).reduce((s, t) => s + Number(t.amount || 0), 0), [serverSummary, transactions, today]);
   const expenseToday = useMemo(() => serverSummary?.todaySummary?.expense ?? transactions.filter((t) => t.type === "expense" && isTodayTransaction(t)).reduce((s, t) => s + Number(t.amount || 0), 0), [serverSummary, transactions, today]);
   const workItems = useMemo(() => {
+    if (agendaItems.length) {
+      return agendaItems.map((x) => ({
+        source: x.source,
+        id: x.id,
+        rawId: x.raw_id,
+        title: x.title,
+        description: x.description,
+        due_date: x.date,
+        status: x.status,
+        priority: x.priority,
+        item: x.payload || x,
+      }));
+    }
     const taskRows = (tasks || []).map((t) => ({ source: "task", id: `task_${t.id}`, rawId: t.id, title: t.title, description: t.description, due_date: t.due_date, status: t.status, priority: t.priority, item: t }));
     const maintenanceRows = (maintenanceItems || []).map((m) => ({ source: "maintenance", id: `maintenance_${m.id}`, rawId: m.id, title: m.title || "Chăm sóc nhà", description: m.description, due_date: m.created_at, status: m.status, priority: "medium", item: m }));
     const scheduleRows = (familySchedule || []).map((s) => ({ source: "schedule", id: `schedule_${s.id}`, rawId: s.id, title: s.title || "Lịch gia đình", description: s.notes || s.description, due_date: s.event_date, status: "scheduled", priority: "medium", item: s }));
     return [...taskRows, ...maintenanceRows, ...scheduleRows]
       .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")));
-  }, [tasks, maintenanceItems, familySchedule]);
+  }, [agendaItems, tasks, maintenanceItems, familySchedule]);
 
   const upcomingItems = useMemo(() => workItems.filter((t) => t.due_date), [workItems]);
 

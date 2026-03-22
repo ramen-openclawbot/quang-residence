@@ -562,7 +562,7 @@ if (activeFilter === "expense") return signed < 0 || (signed === 0 && type === "
 
 ## Phase T2 (Agenda Ownership Program) — Role RLS Hardening
 - Status: DONE (migration file)
-- Commit range: `(pending in this phase)`
+- Commit range: `4b9d4b8..47f0234`
 - DB migration: `supabase/t2_role_rls_policies.sql`
 - Changes:
   - Tightened RLS for `home_maintenance` and `family_schedule`
@@ -572,6 +572,21 @@ if (activeFilter === "expense") return signed < 0 || (signed === 0 && type === "
 - Notes:
   - Run T1 migration first, then T2 policy migration
   - Verify with two housekeeper accounts to confirm no cross-visibility
+
+## Phase T3 (Agenda Ownership Program) — Unified Agenda Feed API
+- Status: DONE
+- Commit range: `(pending in this phase)`
+- DB migration: none
+- Changes:
+  - Added `GET /api/agenda/feed` unified endpoint for role-scoped agenda merging:
+    - `tasks` + `home_maintenance` + `family_schedule`
+  - Role scopes:
+    - owner/secretary: full agenda feed
+    - housekeeper: own task/maintenance/schedule
+    - driver: own task only (no maintenance/schedule)
+  - Wired owner + secretary pages to consume `/api/agenda/feed`
+- Notes:
+  - T3 depends on T1/T2 being applied in database for correct visibility
 
 ## Summary for the next agent
 This app is in a **transaction audit + operations** phase.
