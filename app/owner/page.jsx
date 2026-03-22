@@ -175,14 +175,18 @@ export default function OwnerPage() {
       console.error("Owner fetchData error:", error);
       // Fallback to direct Supabase for resilience
       try {
-        const [txRes, tasksRes, profilesRes, settingsRes] = await Promise.all([
+        const [txRes, tasksRes, maintenanceRes, scheduleRes, profilesRes, settingsRes] = await Promise.all([
           supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(30),
-          supabase.from("tasks").select("*").order("due_date", { ascending: true }).limit(20),
+          supabase.from("tasks").select("*").order("due_date", { ascending: true }).limit(120),
+          supabase.from("home_maintenance").select("*").order("created_at", { ascending: false }).limit(120),
+          supabase.from("family_schedule").select("*").order("event_date", { ascending: true }).limit(120),
           supabase.from("profiles").select("id, full_name, role"),
           supabase.from("home_settings").select("*").order("setting_key"),
         ]);
         setTransactions(txRes.data || []);
         setTasks(tasksRes.data || []);
+        setMaintenanceItems(maintenanceRes.data || []);
+        setFamilySchedule(scheduleRes.data || []);
         setStaffProfiles(profilesRes.data || []);
         setSettingsData(settingsRes.data || []);
       } catch (fallbackErr) {
