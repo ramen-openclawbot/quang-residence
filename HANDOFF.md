@@ -762,6 +762,7 @@ Transaction list UX has gone through multiple quick iterations today; current br
 - `0266512` feat: Q1 cash ledger schema foundation with RLS and transfer-linking fields
 - `4c676a1` feat: replace secretary calendar tab with cash ledger flow
 - `4ee4bd4` feat: implement Q3 auto transfer-in and duplicate guard
+- `c3c2c9d` fix: move secretary transfer auto-income into recipient operational transactions (pending current working tree until commit if hash differs)
 - `e4fc3a2` feat: implement Q4 separate cash-ledger reporting stream
 - `5817c59` feat: add Q5 migration script for secretary ledger split
 - `53f8a4f` fix: show home balance from cash ledger and exclude 6487c846 ops totals
@@ -784,8 +785,9 @@ Transaction list UX has gone through multiple quick iterations today; current br
 - New: `app/api/cash-ledger/route.js`
   - GET list cash ledger entries
   - POST create entry
-  - `fund_transfer_out` auto-creates recipient `fund_transfer_in_auto` with shared `transfer_group_id`
-  - duplicate guard for manual income vs existing auto transfer-in
+  - `fund_transfer_out` creates ONLY the secretary cash-ledger expense row in `cash_ledger_entries`
+  - then auto-creates recipient operational income in `transactions` (driver / housekeeper side)
+  - duplicate guard for manual income vs existing auto-created transfer income transaction
 - New: `app/api/reports/cash-ledger-summary/route.js`
   - source = `cash_ledger_entries`
   - month/all scopes + by_kind breakdown
@@ -805,6 +807,10 @@ Transaction list UX has gone through multiple quick iterations today; current br
     - bank slip upload
     - robust OCR pipeline reused from existing flow (compress + preprocess + retry + templateHint)
     - animated phase progress (`compressing`, `scanning`, `uploading`)
+- Correct fund-transfer business rule:
+    - secretary sees transfer-out in cash ledger only
+    - recipient (driver / housekeeper) sees auto-created income in operational transaction list
+    - do NOT mirror transfer-in back into `cash_ledger_entries`, or secretary cash balance becomes wrong
 
 ### Important operational notes
 - Transactions flow remains operational ledger only.

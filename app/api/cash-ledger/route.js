@@ -5,6 +5,10 @@ const ALLOWED_ROLES = ["owner", "secretary"];
 const ALLOWED_TYPES = ["income", "expense"];
 const ALLOWED_KINDS = ["ops", "fund_transfer_out", "fund_transfer_in_auto"];
 
+function buildTransferMarker(transferGroupId) {
+  return `[AUTO_FUND_TRANSFER:${transferGroupId}]`;
+}
+
 export async function GET(request) {
   try {
     const auth = await resolveUser(request);
@@ -74,35 +78,37 @@ export async function POST(request) {
       }
     }
 
-    // Duplicate protection: if there's already an auto-created transfer-in for the same recipient,
-    // amount and date, block creating another manual income from the same slip/code.
+    // Duplicate protection for normal manual income: if there's already an auto-created
+    // transfer-in transaction for the same recipient/amount/date and same slip/code, block it.
     const duplicateTargetUserId = recipientUserId || profile.id;
     if (entry_kind !== "fund_transfer_in_auto" && type === "income" && duplicateTargetUserId) {
       const datePrefix = String(transactionDate).slice(0, 10);
-      let dupQuery = supabaseAdmin
-        .from("cash_ledger_entries")
-        .select("id, transaction_code, slip_image_url")
+      const { data: dupRows, error: dupError } = await supabaseAdmin
+        .from("transactions")
+        .select("id, transaction_code, slip_image_url, notes")
         .eq("created_by", duplicateTargetUserId)
-        .eq("entry_kind", "fund_transfer_in_auto")
+        .eq("type", "income")
         .eq("amount", amount)
         .gte("transaction_date", `${datePrefix}T00:00:00.000Z`)
         .lte("transaction_date", `${datePrefix}T23:59:59.999Z`)
         .limit(20);
 
-      const { data: dupRows, error: dupError } = await dupQuery;
       if (dupError) {
         console.error("cash-ledger duplicate check error:", dupError);
       } else {
         const code = String(body?.transaction_code || "").trim();
         const slip = String(body?.slip_image_url || "").trim();
         const matched = (dupRows || []).find((x) => {
+          const note = String(x?.notes || "");
+          const looksAutoTransfer = note.includes("[AUTO_FUND_TRANSFER:");
+          if (!looksAutoTransfer) return false;
           if (code && x.transaction_code && String(x.transaction_code).trim() === code) return true;
           if (slip && x.slip_image_url && String(x.slip_image_url).trim() === slip) return true;
           return !code && !slip;
         });
         if (matched) {
           return NextResponse.json({
-            error: "Đã có bút toán thu tự động cho giao dịch chuyển quỹ này. Vui lòng không tạo trùng.",
+            error: "Đã có giao dịch thu tự động cho giao dịch chuyển quỹ này. Vui lòng không tạo trùng.",
             duplicate_id: matched.id,
           }, { status: 409 });
         }
@@ -128,6 +134,7 @@ export async function POST(request) {
 
     if (entry_kind === "fund_transfer_out") {
       const transferGroupId = crypto.randomUUID();
+      const transferMarker = buildTransferMarker(transferGroupId);
       const { data: outEntry, error: outError } = await supabaseAdmin
         .from("cash_ledger_entries")
         .insert({ ...payload, transfer_group_id: transferGroupId })
@@ -141,41 +148,50 @@ export async function POST(request) {
 
       const { data: recipientProfile } = await supabaseAdmin
         .from("profiles")
-        .select("id, full_name")
+        .select("id, full_name, role")
         .eq("id", recipientUserId)
         .single();
 
-      const autoInPayload = {
+      const autoIncomePayload = {
         created_by: recipientUserId,
         type: "income",
-        entry_kind: "fund_transfer_in_auto",
         amount,
-        transaction_date: transactionDate,
-        transfer_group_id: transferGroupId,
-        linked_entry_id: outEntry.id,
-        recipient_user_id: profile.id,
-        recipient_name: profile.full_name || null,
+        fund_id: null,
+        category_id: null,
+        description: body?.description || `Thu quỹ được chuyển từ ${profile.full_name || "thư ký"}`,
+        recipient_name: recipientProfile?.full_name || body?.recipient_name || null,
         bank_name: body?.bank_name || null,
         bank_account: body?.bank_account || null,
         transaction_code: body?.transaction_code || null,
-        description: body?.description || `Thu tự động từ chuyển quỹ của ${profile.full_name || "thư ký"}`,
-        notes: body?.notes || `Auto-created from transfer group ${transferGroupId}`,
+        transaction_date: transactionDate,
+        notes: `${transferMarker} Auto-created income for ${recipientProfile?.role || "staff"} from secretary fund transfer. ${body?.notes || ""}`.trim(),
         slip_image_url: body?.slip_image_url || null,
         status: "approved",
         approved_by: profile.id,
         approved_at: new Date().toISOString(),
+        reviewed_by: profile.id,
+        reviewed_at: new Date().toISOString(),
+        source: "cash_ledger_transfer_auto",
+        ocr_raw_data: {
+          transfer_group_id: transferGroupId,
+          auto_created_from_cash_ledger_entry_id: outEntry.id,
+          auto_created_by_secretary_id: profile.id,
+          auto_created_by_secretary_name: profile.full_name || null,
+          recipient_user_id: recipientUserId,
+          recipient_role: recipientProfile?.role || null,
+        },
       };
 
-      const { data: inEntry, error: inError } = await supabaseAdmin
-        .from("cash_ledger_entries")
-        .insert(autoInPayload)
+      const { data: inTx, error: inError } = await supabaseAdmin
+        .from("transactions")
+        .insert(autoIncomePayload)
         .select("*")
         .single();
 
-      if (inError) {
-        console.error("cash-ledger auto transfer-in create error:", inError);
+      if (inError || !inTx) {
+        console.error("cash-ledger auto income transaction create error:", inError);
         return NextResponse.json({
-          error: "Đã tạo chuyển quỹ đi nhưng tạo thu tự động thất bại. Cần kiểm tra lại.",
+          error: "Đã tạo chuyển quỹ đi nhưng tạo thu tự động cho người nhận thất bại. Cần kiểm tra lại.",
           transfer_out_id: outEntry.id,
         }, { status: 500 });
       }
@@ -183,7 +199,7 @@ export async function POST(request) {
       return NextResponse.json({
         success: true,
         data: outEntry,
-        auto_created_income: inEntry,
+        auto_created_income: inTx,
         transfer_group_id: transferGroupId,
         recipient: recipientProfile || null,
       });
