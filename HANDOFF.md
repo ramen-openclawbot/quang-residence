@@ -820,11 +820,16 @@ Transaction list UX has gone through multiple quick iterations today; current br
 
 ### Suggested next checks
 1. Run Q5 migration on target DB and confirm `is_match=true` in `q5_migration_audit_6487c846`.
-2. Smoke test transfer flow:
+2. Run repair script for historical wrong auto-income rows:
+   - `supabase/fix_misrouted_transfer_auto_income.sql`
+   - verify `transfer_auto_income_repair_audit`
+   - only then delete old `cash_ledger_entries.entry_kind = 'fund_transfer_in_auto'` rows.
+3. Smoke test transfer flow:
    - create `fund_transfer_out` as secretary
-   - verify recipient gets `fund_transfer_in_auto`
+   - verify secretary cash ledger only shows transfer-out expense
+   - verify recipient (driver/housekeeper) gets auto-created income in `transactions`
    - verify duplicate guard blocks manual duplicate income.
-3. Verify owner reporting:
+4. Verify owner reporting:
    - `/api/reports/finance-summary` (transactions only)
    - `/api/reports/cash-ledger-summary` (cash ledger only)
-4. Optional hardening: expose ops-filtered `total` in `/api/transactions` response (currently `data/summary` filtered; DB count may differ).
+5. Optional hardening: expose ops-filtered `total` in `/api/transactions` response (currently `data/summary` filtered; DB count may differ).
