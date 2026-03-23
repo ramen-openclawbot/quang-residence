@@ -762,7 +762,7 @@ Transaction list UX has gone through multiple quick iterations today; current br
 - `0266512` feat: Q1 cash ledger schema foundation with RLS and transfer-linking fields
 - `4c676a1` feat: replace secretary calendar tab with cash ledger flow
 - `4ee4bd4` feat: implement Q3 auto transfer-in and duplicate guard
-- `c3c2c9d` fix: move secretary transfer auto-income into recipient operational transactions (pending current working tree until commit if hash differs)
+- `06605bb` fix: route secretary transfer auto-income into recipient operational transactions
 - `e4fc3a2` feat: implement Q4 separate cash-ledger reporting stream
 - `5817c59` feat: add Q5 migration script for secretary ledger split
 - `53f8a4f` fix: show home balance from cash ledger and exclude 6487c846 ops totals
