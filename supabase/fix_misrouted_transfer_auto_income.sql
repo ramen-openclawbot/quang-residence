@@ -69,7 +69,7 @@ SELECT
   c.approved_at,
   c.approved_by,
   c.approved_at,
-  'cash_ledger_transfer_repair'::text AS source,
+  'manual'::text AS source,
   jsonb_build_object(
     'repair_source_cash_ledger_entry_id', c.id,
     'transfer_group_id', c.transfer_group_id,
@@ -117,8 +117,7 @@ dst AS (
     COUNT(*)::bigint AS c,
     COALESCE(SUM(ABS(COALESCE(amount,0))), 0)::numeric(18,2) AS s
   FROM public.transactions
-  WHERE source = 'cash_ledger_transfer_repair'
-     OR source = 'cash_ledger_transfer_auto'
+  WHERE notes LIKE '[AUTO_FUND_TRANSFER:%'
 )
 SELECT src.c, dst.c, src.s, dst.s, (dst.c >= src.c AND dst.s >= src.s)
 FROM src, dst;
@@ -134,7 +133,7 @@ COMMIT;
 --
 -- SELECT id, created_by, amount, transaction_date, source, notes
 -- FROM public.transactions
--- WHERE source IN ('cash_ledger_transfer_repair', 'cash_ledger_transfer_auto')
+-- WHERE notes LIKE '[AUTO_FUND_TRANSFER:%'
 -- ORDER BY id DESC;
 
 -- 4) Delete wrong rows from cash ledger ONLY after verification
@@ -146,7 +145,8 @@ COMMIT;
 -- 5) Rollback helper if needed
 -- BEGIN;
 -- DELETE FROM public.transactions
--- WHERE source = 'cash_ledger_transfer_repair';
+-- WHERE notes LIKE '[AUTO_FUND_TRANSFER:%'
+--   AND source = 'manual';
 --
 -- INSERT INTO public.cash_ledger_entries
 -- SELECT b.*
