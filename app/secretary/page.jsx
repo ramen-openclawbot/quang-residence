@@ -588,7 +588,7 @@ export default function SecretaryPage() {
       alert("Số tiền phải lớn hơn 0");
       return;
     }
-    if (cashLedgerForm.entry_kind === "fund_transfer_out" && !cashLedgerForm.recipient_user_id) {
+    if (cashLedgerForm.type === "expense" && cashLedgerForm.entry_kind === "fund_transfer_out" && !cashLedgerForm.recipient_user_id) {
       alert("Vui lòng chọn người nhận quỹ");
       return;
     }
@@ -1719,25 +1719,60 @@ export default function SecretaryPage() {
                 )}
                 {cashLedgerOcrError && <div style={{ fontSize: 12, color: T.danger, marginBottom: 10 }}>{cashLedgerOcrError}</div>}
 
-                <input value="Chuyển quỹ" readOnly style={{ ...inputStyle, background: "#f7faf6", color: T.textMuted, fontWeight: 700, marginTop: 2 }} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 2 }}>
+                  <button
+                    type="button"
+                    onClick={() => setCashLedgerForm((p) => ({ ...p, type: "expense", entry_kind: "fund_transfer_out", recipient_user_id: p.recipient_user_id, recipient_name: p.recipient_name }))}
+                    style={{
+                      ...inputStyle,
+                      height: 46,
+                      background: cashLedgerForm.type === "expense" ? "#eef8e8" : "#f7faf6",
+                      color: cashLedgerForm.type === "expense" ? T.primary : T.textMuted,
+                      fontWeight: 700,
+                      border: cashLedgerForm.type === "expense" ? `1px solid ${T.primary}` : `1px solid ${T.border}`,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Chuyển quỹ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCashLedgerForm((p) => ({ ...p, type: "income", entry_kind: "ops", recipient_user_id: "", recipient_name: "" }))}
+                    style={{
+                      ...inputStyle,
+                      height: 46,
+                      background: cashLedgerForm.type === "income" ? "#eef8e8" : "#f7faf6",
+                      color: cashLedgerForm.type === "income" ? T.primary : T.textMuted,
+                      fontWeight: 700,
+                      border: cashLedgerForm.type === "income" ? `1px solid ${T.primary}` : `1px solid ${T.border}`,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Thu sổ quỹ
+                  </button>
+                </div>
                 <input type="number" min="0" step="0.01" placeholder="Số tiền" value={cashLedgerForm.amount} onChange={(e) => setCashLedgerForm((p) => ({ ...p, amount: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} required />
                 <input type="date" value={cashLedgerForm.transaction_date} onChange={(e) => setCashLedgerForm((p) => ({ ...p, transaction_date: e.target.value }))} style={{ ...dateInputStyle, marginTop: 10 }} required />
-                <input placeholder="Nội dung chuyển quỹ" value={cashLedgerForm.description} onChange={(e) => setCashLedgerForm((p) => ({ ...p, description: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} />
-                <select
-                  value={cashLedgerForm.recipient_user_id}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    const selected = transferRecipients.find((x) => String(x.id) === String(id));
-                    setCashLedgerForm((p) => ({ ...p, recipient_user_id: id, recipient_name: selected?.full_name || "" }));
-                  }}
-                  style={{ ...inputStyle, marginTop: 10 }}
-                  required
-                >
-                  <option value="">Chọn người nhận quỹ</option>
-                  {transferRecipients.map((p) => (
-                    <option key={p.id} value={p.id}>{p.full_name} ({ROLE_VI[p.role] || p.role})</option>
-                  ))}
-                </select>
+                <input placeholder={cashLedgerForm.type === "income" ? "Nội dung thu sổ quỹ" : "Nội dung chuyển quỹ"} value={cashLedgerForm.description} onChange={(e) => setCashLedgerForm((p) => ({ ...p, description: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} />
+                {cashLedgerForm.type === "expense" ? (
+                  <select
+                    value={cashLedgerForm.recipient_user_id}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      const selected = transferRecipients.find((x) => String(x.id) === String(id));
+                      setCashLedgerForm((p) => ({ ...p, recipient_user_id: id, recipient_name: selected?.full_name || "" }));
+                    }}
+                    style={{ ...inputStyle, marginTop: 10 }}
+                    required
+                  >
+                    <option value="">Chọn người nhận quỹ</option>
+                    {transferRecipients.map((p) => (
+                      <option key={p.id} value={p.id}>{p.full_name} ({ROLE_VI[p.role] || p.role})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input placeholder="Nguồn thu / người nộp (nếu có)" value={cashLedgerForm.recipient_name} onChange={(e) => setCashLedgerForm((p) => ({ ...p, recipient_name: e.target.value, recipient_user_id: "" }))} style={{ ...inputStyle, marginTop: 10 }} />
+                )}
                 <input placeholder="Mã giao dịch (nếu có)" value={cashLedgerForm.transaction_code} onChange={(e) => setCashLedgerForm((p) => ({ ...p, transaction_code: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} />
                 <input placeholder="Link ảnh biên lai (nếu có)" value={cashLedgerForm.slip_image_url} onChange={(e) => setCashLedgerForm((p) => ({ ...p, slip_image_url: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} />
                 <textarea placeholder="Ghi chú" value={cashLedgerForm.notes} onChange={(e) => setCashLedgerForm((p) => ({ ...p, notes: e.target.value }))} style={{ ...inputStyle, minHeight: 88, resize: "none", paddingTop: 12, marginTop: 10 }} />

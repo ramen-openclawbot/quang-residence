@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { resolveUser, supabaseAdmin } from "../../../lib/api-auth";
 
 const ALLOWED_ROLES = ["owner", "secretary"];
-const ALLOWED_TYPES = ["expense"];
-const ALLOWED_KINDS = ["fund_transfer_out"];
+const ALLOWED_TYPES = ["income", "expense"];
+const ALLOWED_KINDS = ["ops", "fund_transfer_out"];
 
 function buildTransferMarker(transferGroupId) {
   return `[AUTO_FUND_TRANSFER:${transferGroupId}]`;
@@ -54,16 +54,24 @@ export async function POST(request) {
 
     const body = await request.json();
     const type = String(body?.type || "expense").trim();
-    const entry_kind = String(body?.entry_kind || "fund_transfer_out").trim();
+    const entry_kind = String(body?.entry_kind || (type === "income" ? "ops" : "fund_transfer_out")).trim();
     const amount = Number(body?.amount || 0);
     const transactionDate = body?.transaction_date || new Date().toISOString();
     const recipientUserId = body?.recipient_user_id || null;
 
     if (!ALLOWED_TYPES.includes(type)) {
-      return NextResponse.json({ error: "Secretary cash ledger only allows expense transfer-out entries" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid type for secretary cash ledger" }, { status: 400 });
     }
     if (!ALLOWED_KINDS.includes(entry_kind)) {
-      return NextResponse.json({ error: "Secretary cash ledger only allows fund_transfer_out entries" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid entry_kind for secretary cash ledger" }, { status: 400 });
+    }
+
+    if (type === "income" && entry_kind !== "ops") {
+      return NextResponse.json({ error: "Secretary income entries must use ops kind" }, { status: 400 });
+    }
+
+    if (type === "expense" && entry_kind !== "fund_transfer_out") {
+      return NextResponse.json({ error: "Secretary expense entries must use fund_transfer_out kind" }, { status: 400 });
     }
     if (!isFinite(amount) || amount <= 0) {
       return NextResponse.json({ error: "Amount must be > 0" }, { status: 400 });
