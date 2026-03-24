@@ -1679,10 +1679,30 @@ export default function SecretaryPage() {
                   type="button"
                   onClick={() => cashLedgerSlipFileRef.current?.click()}
                   disabled={cashLedgerOcrLoading}
-                  style={{ ...inputStyle, marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#f9fff6", border: `1px dashed ${T.primary}`, cursor: cashLedgerOcrLoading ? "default" : "pointer" }}
+                  style={{
+                    ...cardStyle,
+                    width: "100%",
+                    marginBottom: 10,
+                    border: `1px solid ${cashLedgerOcrLoading ? "#cfe9c0" : T.primary}`,
+                    background: cashLedgerOcrLoading ? "linear-gradient(180deg,#f7fff2 0%, #f1f9eb 100%)" : "linear-gradient(180deg,#fbfff8 0%, #f3fbeef8 100%)",
+                    padding: "12px 14px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    cursor: cashLedgerOcrLoading ? "default" : "pointer",
+                    boxShadow: cashLedgerOcrLoading ? "0 6px 18px rgba(86,201,29,0.10)" : "0 8px 20px rgba(86,201,29,0.10)",
+                  }}
                 >
-                  <MIcon name="document_scanner" size={18} color={T.primary} />
-                  {cashLedgerOcrLoading ? "Đang OCR bank slip..." : "OCR từ bank slip"}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 12, background: cashLedgerOcrLoading ? "rgba(86,201,29,0.12)" : "rgba(86,201,29,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <MIcon name="upload_file" size={19} color={T.primary} />
+                    </div>
+                    <div style={{ minWidth: 0, textAlign: "left" }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{cashLedgerOcrLoading ? "Đang xử lý phiếu chuyển tiền..." : "Upload phiếu chuyển tiền"}</div>
+                      <div style={{ fontSize: 11, color: T.textMuted, marginTop: 3 }}>Tự động đọc số tiền, mã giao dịch và ngày chuyển</div>
+                    </div>
+                  </div>
+                  <MIcon name="north_east" size={18} color={T.primary} />
                 </button>
                 {cashLedgerOcrLoading && (
                   <div style={{ ...subtleCard, padding: 10, marginBottom: 10 }}>
@@ -1699,10 +1719,7 @@ export default function SecretaryPage() {
                 )}
                 {cashLedgerOcrError && <div style={{ fontSize: 12, color: T.danger, marginBottom: 10 }}>{cashLedgerOcrError}</div>}
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <input value="Chi chuyển quỹ" readOnly style={{ ...inputStyle, background: "#f7faf6", color: T.textMuted, fontWeight: 700 }} />
-                  <input value="Chuyển quỹ đi" readOnly style={{ ...inputStyle, background: "#f7faf6", color: T.textMuted, fontWeight: 700 }} />
-                </div>
+                <input value="Chuyển quỹ" readOnly style={{ ...inputStyle, background: "#f7faf6", color: T.textMuted, fontWeight: 700, marginTop: 2 }} />
                 <input type="number" min="0" step="0.01" placeholder="Số tiền" value={cashLedgerForm.amount} onChange={(e) => setCashLedgerForm((p) => ({ ...p, amount: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} required />
                 <input type="date" value={cashLedgerForm.transaction_date} onChange={(e) => setCashLedgerForm((p) => ({ ...p, transaction_date: e.target.value }))} style={{ ...dateInputStyle, marginTop: 10 }} required />
                 <input placeholder="Nội dung chuyển quỹ" value={cashLedgerForm.description} onChange={(e) => setCashLedgerForm((p) => ({ ...p, description: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} />
