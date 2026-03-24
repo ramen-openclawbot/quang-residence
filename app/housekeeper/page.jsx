@@ -197,9 +197,6 @@ export default function HousekeeperPage() {
     if (!profile?.id) return;
     setLoading(true);
     try {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
       const token = await getToken();
       let agendaLoaded = false;
       if (token) {
@@ -227,9 +224,8 @@ export default function HousekeeperPage() {
         .from("transactions")
         .select("*, categories!category_id(id, code, name_vi, name, color)")
         .eq("created_by", profile.id)
-        .gte("created_at", thirtyDaysAgo.toISOString())
         .order("created_at", { ascending: false })
-        .limit(30);
+        .limit(500);
       setTransactions(txData.data || []);
 
       if (!agendaLoaded) {
@@ -311,6 +307,7 @@ export default function HousekeeperPage() {
     const monthKey = today.slice(0, 7);
     return transactions.filter((tx) => [getLocalDateKey(tx.transaction_date), getLocalDateKey(tx.created_at)].some((key) => key.startsWith(monthKey))).reduce((sum, tx) => sum + Math.abs(Math.min(0, getSignedAmount(tx))), 0);
   }, [transactions, today]);
+  const currentBalance = useMemo(() => transactions.reduce((sum, tx) => sum + getSignedAmount(tx), 0), [transactions]);
   const openMaintenance = useMemo(() => maintenanceItems.filter((m) => m.status !== "completed"), [maintenanceItems]);
   const upcomingFamily = useMemo(() => familySchedule.filter((s) => s.event_date && s.event_date >= today), [familySchedule, today]);
 
@@ -354,7 +351,7 @@ export default function HousekeeperPage() {
                       </div>
                       <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Chi tiêu, chăm sóc và nhịp sống gia đình.</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Chi hôm nay</div><div style={{ fontSize: 18, fontWeight: 800 }}>{fmtVND(todayExpense)}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Số dư hiện có</div><div style={{ fontSize: 18, fontWeight: 800 }}>{fmtVND(currentBalance)}</div></div>
                         <div><div style={{ fontSize: 11, opacity: 0.7 }}>Việc đang mở</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openMaintenance.length}</div></div>
                         <div><div style={{ fontSize: 11, opacity: 0.7 }}>Sắp tới</div><div style={{ fontSize: 18, fontWeight: 800 }}>{upcomingFamily.length}</div></div>
                       </div>
@@ -363,7 +360,7 @@ export default function HousekeeperPage() {
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                     <StatCard label="Chi hôm nay" value={fmtVND(todayExpense)} color={T.danger} />
-                    <StatCard label="Tháng này" value={fmtVND(monthExpense)} color={T.text} />
+                    <StatCard label="Số dư hiện có" value={fmtVND(currentBalance)} color={currentBalance >= 0 ? T.text : T.danger} sub={`Chi tháng này ${fmtVND(monthExpense)}`} />
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
