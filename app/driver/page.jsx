@@ -183,7 +183,7 @@ export default function DriverPage() {
       if (!loaded) {
         const [tripsRes, txRes, tasksRes] = await Promise.all([
           supabase.from("driving_trips").select("*").eq("assigned_to", profile.id).order("scheduled_time", { ascending: true }),
-          supabase.from("transactions").select("*, categories!category_id(id, code, name_vi, name, color)").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(80),
+          supabase.from("transactions").select("*, categories!category_id(id, code, name_vi, name, color)").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(500),
           supabase.from("tasks").select("*").or(`assigned_to.eq.${profile.id},created_by.eq.${profile.id}`).order("due_date", { ascending: true }),
         ]);
         setTrips(tripsRes.data || []);
@@ -317,6 +317,7 @@ export default function DriverPage() {
     const monthKey = today.slice(0, 7);
     return transactions.filter((t) => [getLocalDateKey(t.transaction_date), getLocalDateKey(t.created_at)].some((key) => key.startsWith(monthKey))).reduce((s, t) => s + Math.abs(Math.min(0, getSignedAmount(t))), 0);
   }, [transactions, today]);
+  const currentBalance = useMemo(() => transactions.reduce((sum, tx) => sum + getSignedAmount(tx), 0), [transactions]);
 
   return (
     <StaffShell role="driver">
@@ -358,7 +359,7 @@ export default function DriverPage() {
                       </div>
                       <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 8 }}>Chuyến đi, công việc và con đường phía trước.</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Hôm nay</div><div style={{ fontSize: 18, fontWeight: 800 }}>{todayTrips.length}</div></div>
+                        <div><div style={{ fontSize: 11, opacity: 0.7 }}>Số dư hiện có</div><div style={{ fontSize: 18, fontWeight: 800 }}>{fmtVND(currentBalance)}</div></div>
                         <div><div style={{ fontSize: 11, opacity: 0.7 }}>Việc đang mở</div><div style={{ fontSize: 18, fontWeight: 800 }}>{openTasks.length}</div></div>
                         <div><div style={{ fontSize: 11, opacity: 0.7 }}>Trực tiếp</div><div style={{ fontSize: 18, fontWeight: 800 }}>{activeTrip ? 1 : 0}</div></div>
                       </div>
@@ -367,7 +368,7 @@ export default function DriverPage() {
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                     <StatCard label="Chi hôm nay" value={fmtVND(todayExpense)} color={T.danger} />
-                    <StatCard label="Tháng này" value={fmtVND(monthExpense)} color={T.text} />
+                    <StatCard label="Số dư hiện có" value={fmtVND(currentBalance)} color={currentBalance >= 0 ? T.text : T.danger} sub={`Chi tháng này ${fmtVND(monthExpense)}`} />
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
