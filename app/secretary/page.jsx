@@ -765,26 +765,44 @@ export default function SecretaryPage() {
   }, [txFiltered]);
 
   const staffFundBalances = useMemo(() => {
-    const map = new Map();
+    const recipients = new Set();
+
+    // First pass: identify staff who have ever received secretary fund transfer auto-income.
     for (const tx of transactions) {
       const note = String(tx?.notes || "");
       if (!note.includes("[AUTO_FUND_TRANSFER:")) continue;
       const userId = String(tx?.created_by || "");
       const profileInfo = staffById[userId] || null;
       if (!profileInfo || !["driver", "housekeeper"].includes(profileInfo.role)) continue;
-      const key = userId;
-      const signed = getSignedAmount(tx);
-      const prev = map.get(key) || {
+      recipients.add(userId);
+    }
+
+    // Second pass: compute current operational balance of those staff from all their ops transactions.
+    const map = new Map();
+    for (const tx of transactions) {
+      const userId = String(tx?.created_by || "");
+      if (!recipients.has(userId)) continue;
+      const profileInfo = staffById[userId] || null;
+      if (!profileInfo || !["driver", "housekeeper"].includes(profileInfo.role)) continue;
+
+      const prev = map.get(userId) || {
         userId,
         name: profileInfo.full_name || tx?.recipient_name || "Nhân sự",
         role: profileInfo.role,
         balance: 0,
+        totalIn: 0,
+        totalOut: 0,
       };
+
+      const signed = getSignedAmount(tx);
       prev.balance += signed;
-      map.set(key, prev);
+      if (signed > 0) prev.totalIn += signed;
+      if (signed < 0) prev.totalOut += Math.abs(signed);
+      map.set(userId, prev);
     }
+
     return Array.from(map.values())
-      .filter((x) => x.balance !== 0)
+      .filter((x) => x.totalIn > 0)
       .sort((a, b) => {
         if (a.role !== b.role) return a.role === "housekeeper" ? -1 : 1;
         return Math.abs(b.balance) - Math.abs(a.balance);
@@ -1275,6 +1293,7 @@ export default function SecretaryPage() {
                             <div style={{ minWidth: 0 }}>
                               <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{item.name}</div>
                               <div style={{ fontSize: 11, color: T.textMuted, marginTop: 3 }}>{ROLE_VI[item.role] || item.role}</div>
+                              <div style={{ fontSize: 10, color: T.textMuted, marginTop: 4 }}>Thu {fmtVND(item.totalIn)} • Chi {fmtVND(item.totalOut)}</div>
                             </div>
                             <div style={{ fontSize: 14, fontWeight: 800, color: item.balance >= 0 ? T.success : T.danger, whiteSpace: "nowrap" }}>{fmtVND(item.balance)}</div>
                           </div>
