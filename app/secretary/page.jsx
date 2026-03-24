@@ -307,6 +307,14 @@ export default function SecretaryPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tab);
+    window.history.replaceState({}, "", url.toString());
+    window.dispatchEvent(new CustomEvent("zenhome:secretary-tab", { detail: { tab } }));
+  }, [tab]);
+
   /* Auto-hide balance when leaving home tab (privacy) */
   useEffect(() => {
     if (tab !== "home") setBalanceRevealed(false);

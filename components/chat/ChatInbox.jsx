@@ -23,7 +23,12 @@ const CTX_MAP = {
   "/transactions": { label: "Sổ giao dịch", hint: "Tải hóa đơn ngân hàng để thêm mục mới." },
   "/owner": { label: "Bảng điều khiển chủ nhà", hint: "Hỏi tôi bất cứ điều gì về gia đình bạn." },
 };
-function getCtx(path) { return CTX_MAP[path] || { label: "ZenHome", hint: "How can I help?" }; }
+function getCtx(path, mode = "default") {
+  if (path === "/secretary" && mode === "cash-ledger") {
+    return { label: "Bàn thư ký • Sổ quỹ", hint: "Tải phiếu chuyển tiền để tạo chuyển quỹ cho nhân sự." };
+  }
+  return CTX_MAP[path] || { label: "ZenHome", hint: "How can I help?" };
+}
 
 // ─── Tiny ID generator ──────────────────────────────────────────
 let _seq = 0;
@@ -202,6 +207,11 @@ export default function ChatInbox() {
   const [supportCount, setSupportCount] = useState(0);
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [learnedCategoryMap, setLearnedCategoryMap] = useState({});
+  const [secretaryTab, setSecretaryTab] = useState(() => {
+    if (typeof window === "undefined") return "home";
+    return new URLSearchParams(window.location.search).get("tab") || "home";
+  });
+  const [transferRecipients, setTransferRecipients] = useState([]);
   const [fabRight, setFabRight] = useState(20);
   const [boxWidth, setBoxWidth] = useState(380);
   const [boxHeight, setBoxHeight] = useState(540);
@@ -228,10 +238,27 @@ export default function ChatInbox() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, processing, pendingOcr, askingSupport, dupeWarning]);
 
+  useEffect(() => {
+    function syncSecretaryTabFromUrl() {
+      if (typeof window === "undefined") return;
+      const tab = new URLSearchParams(window.location.search).get("tab") || "home";
+      setSecretaryTab(tab);
+    }
+    syncSecretaryTabFromUrl();
+    window.addEventListener("popstate", syncSecretaryTabFromUrl);
+    window.addEventListener("zenhome:secretary-tab", syncSecretaryTabFromUrl);
+    return () => {
+      window.removeEventListener("popstate", syncSecretaryTabFromUrl);
+      window.removeEventListener("zenhome:secretary-tab", syncSecretaryTabFromUrl);
+    };
+  }, []);
+
+  const chatMode = pathname === "/secretary" && secretaryTab === "cash-ledger" ? "cash-ledger" : "default";
+
   // Welcome message on first open
   useEffect(() => {
     if (open && messages.length === 0 && profile) {
-      const ctx = getCtx(pathname);
+      const ctx = getCtx(pathname, chatMode);
       const name = profile.full_name?.split(" ").pop() || "";
       setMessages([{
         id: uid(), role: "agent",
@@ -239,7 +266,7 @@ export default function ChatInbox() {
         ts: Date.now(),
       }]);
     }
-  }, [open, profile, pathname, messages.length]);
+  }, [open, profile, pathname, chatMode, messages.length]);
 
   // Clear badge when chat opens
   useEffect(() => {
@@ -251,7 +278,7 @@ export default function ChatInbox() {
     if (!profile?.id) return;
     let canceled = false;
     (async () => {
-      const [{ data: cats }, { data: txs }] = await Promise.all([
+      const [{ data: cats }, { data: txs }, { data: staff }] = await Promise.all([
         supabase
           .from("categories")
           .select("id, code, name, name_vi, color, sort_order")
@@ -262,9 +289,14 @@ export default function ChatInbox() {
           .not("category_id", "is", null)
           .order("created_at", { ascending: false })
           .limit(500),
+        supabase
+          .from("profiles")
+          .select("id, full_name, role")
+          .in("role", ["driver", "housekeeper"]),
       ]);
       if (!canceled) {
         setExpenseCategories(cats || []);
+        setTransferRecipients(staff || []);
         const m = {};
         for (const t of txs || []) {
           const k = `${normalizeTextKey(t.description)}|${normalizeTextKey(t.recipient_name)}`;
@@ -413,12 +445,15 @@ export default function ChatInbox() {
         bank_name: ocr.bank_name || "",
       }, expenseCategories, learnedCategoryMap);
 
+      const defaultRecipient = chatMode === "cash-ledger" ? (transferRecipients[0] || null) : null;
       setPendingOcr({
         amount: ocr.amount ? String(ocr.amount) : "",
-        type: "expense",
-        category_id: suggestion.id || "",
+        type: chatMode === "cash-ledger" ? "expense" : "expense",
+        entry_kind: chatMode === "cash-ledger" ? "fund_transfer_out" : "ops",
+        category_id: chatMode === "cash-ledger" ? "" : (suggestion.id || ""),
         description: ocr.description || "",
-        recipient_name: ocr.recipient_name || "",
+        recipient_user_id: chatMode === "cash-ledger" ? (defaultRecipient?.id || "") : "",
+        recipient_name: chatMode === "cash-ledger" ? (defaultRecipient?.full_name || "") : (ocr.recipient_name || ""),
         bank_name: ocr.bank_name || "",
         bank_account: ocr.bank_account || "",
         transaction_code: ocr.transaction_code || "",
@@ -444,7 +479,12 @@ export default function ChatInbox() {
       addAgent("Vui lòng nhập số tiền hợp lệ.");
       return;
     }
-    if (data.type === "expense" && !data.category_id) {
+    if (chatMode === "cash-ledger") {
+      if (!data.recipient_user_id) {
+        addAgent("Vui lòng chọn người nhận quỹ trước khi tạo chuyển quỹ.");
+        return;
+      }
+    } else if (data.type === "expense" && !data.category_id) {
       addAgent("Vui lòng chọn phân loại chi tiêu trước khi tạo giao dịch.");
       return;
     }
@@ -491,70 +531,98 @@ export default function ChatInbox() {
         return;
       }
 
-      const selectedCategory = expenseCategories.find((c) => String(c.id) === String(data.category_id));
-      const payload = {
-        type: data.type || "expense",
-        amount: Number(data.amount),
-        fund_id: null,
-        category_id: (data.type === "expense" && data.category_id) ? Number(data.category_id) : null,
-        description: data.description || null,
-        recipient_name: data.recipient_name || null,
-        bank_name: data.bank_name || null,
-        bank_account: data.bank_account || null,
-        transaction_code: data.transaction_code || null,
-        transaction_date: data.transaction_date
-          ? new Date(data.transaction_date).toISOString()
-          : null,
-        created_by: profile.id,
-        slip_image_url: slipUrl,
-        status: "pending",
-        source: "app",
-        ocr_raw_data: {
-          ...data,
-          category_meta: selectedCategory
-            ? {
-                id: selectedCategory.id,
-                code: selectedCategory.code || null,
-                label_vi: selectedCategory.name_vi || selectedCategory.name || null,
-                source: "user_selected",
-              }
-            : null,
-        },
-      };
-
-      const { data: inserted, error } = await supabase
-        .from("transactions")
-        .insert(payload)
-        .select("id")
-        .single();
-      if (error) throw error;
-
-      // Notify reviewer (fire-and-forget)
-      try {
-        await fetch("/api/transactions/notify-submit", {
+      if (chatMode === "cash-ledger") {
+        const res = await fetch("/api/cash-ledger", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            transaction_id: inserted.id,
-            amount: payload.amount,
-            type: payload.type,
-            description: payload.description,
+            type: "expense",
+            entry_kind: "fund_transfer_out",
+            amount: Number(data.amount),
+            description: data.description || null,
+            recipient_user_id: data.recipient_user_id || null,
+            recipient_name: data.recipient_name || null,
+            bank_name: data.bank_name || null,
+            bank_account: data.bank_account || null,
+            transaction_code: data.transaction_code || null,
+            transaction_date: data.transaction_date ? new Date(data.transaction_date).toISOString() : null,
+            slip_image_url: slipUrl,
+            notes: data.notes || null,
           }),
         });
-      } catch {
-        // Ignore notification errors
-      }
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || "Không tạo được chuyển quỹ");
 
-      setCreatedTxId(inserted.id);
-      setPendingOcr(null);
-      setSupportCount(0);
-      addAgent(
-        `Đã tạo giao dịch (${fmtVND(data.amount)}) và gửi để duyệt! Bạn có muốn đính kèm tài liệu bổ sung? (tối đa 10 ảnh)`
-      );
-      setAskingSupport(true);
+        setPendingOcr(null);
+        setSupportCount(0);
+        addAgent(`Đã tạo chuyển quỹ (${fmtVND(data.amount)}) cho ${data.recipient_name || "nhân sự"}. Thu vận hành sẽ được tạo tự động cho người nhận.`);
+        setAskingSupport(false);
+      } else {
+        const selectedCategory = expenseCategories.find((c) => String(c.id) === String(data.category_id));
+        const payload = {
+          type: data.type || "expense",
+          amount: Number(data.amount),
+          fund_id: null,
+          category_id: (data.type === "expense" && data.category_id) ? Number(data.category_id) : null,
+          description: data.description || null,
+          recipient_name: data.recipient_name || null,
+          bank_name: data.bank_name || null,
+          bank_account: data.bank_account || null,
+          transaction_code: data.transaction_code || null,
+          transaction_date: data.transaction_date
+            ? new Date(data.transaction_date).toISOString()
+            : null,
+          created_by: profile.id,
+          slip_image_url: slipUrl,
+          status: "pending",
+          source: "app",
+          ocr_raw_data: {
+            ...data,
+            category_meta: selectedCategory
+              ? {
+                  id: selectedCategory.id,
+                  code: selectedCategory.code || null,
+                  label_vi: selectedCategory.name_vi || selectedCategory.name || null,
+                  source: "user_selected",
+                }
+              : null,
+          },
+        };
+
+        const { data: inserted, error } = await supabase
+          .from("transactions")
+          .insert(payload)
+          .select("id")
+          .single();
+        if (error) throw error;
+
+        try {
+          await fetch("/api/transactions/notify-submit", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              transaction_id: inserted.id,
+              amount: payload.amount,
+              type: payload.type,
+              description: payload.description,
+            }),
+          });
+        } catch {}
+
+        setCreatedTxId(inserted.id);
+        setPendingOcr(null);
+        setSupportCount(0);
+        addAgent(
+          `Đã tạo giao dịch (${fmtVND(data.amount)}) và gửi để duyệt! Bạn có muốn đính kèm tài liệu bổ sung? (tối đa 10 ảnh)`
+        );
+        setAskingSupport(true);
+      }
     } catch (err) {
       console.error("Create tx error:", err);
       addAgent("Tạo giao dịch thất bại: " + (err.message || "Lỗi không xác định"));
@@ -638,7 +706,7 @@ export default function ChatInbox() {
   // ═══════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════
-  const ctx = getCtx(pathname);
+  const ctx = getCtx(pathname, chatMode);
 
   return (
     <>
@@ -795,6 +863,8 @@ export default function ChatInbox() {
                 <OCRCard
                   data={pendingOcr}
                   categories={expenseCategories}
+                  mode={chatMode}
+                  transferRecipients={transferRecipients}
                   onConfirm={handleConfirmTx}
                   onCancel={() => {
                     setPendingOcr(null);
@@ -1025,13 +1095,14 @@ function UserBubble({ msg }) {
   );
 }
 
-function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
+function OCRCard({ data, categories = [], mode = "default", transferRecipients = [], onConfirm, onCancel, loading }) {
   const [form, setForm] = useState({ ...data });
   const [showPicker, setShowPicker] = useState(false);
   const [q, setQ] = useState("");
   const [recent, setRecent] = useState([]);
   const upd = (k, v) => setForm((p) => ({ ...p, [k]: v }));
-  const categoryMissing = form.type === "expense" && !form.category_id;
+  const categoryMissing = mode !== "cash-ledger" && form.type === "expense" && !form.category_id;
+  const recipientMissing = mode === "cash-ledger" && !form.recipient_user_id;
   const dateMissing = !form.transaction_date;
 
   useEffect(() => {
@@ -1079,20 +1150,28 @@ function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
 
   return (
     <div style={{ background: "#fff", borderRadius: 16, padding: 16, border: `1px solid ${T.primary}30`, boxShadow: `0 2px 12px ${T.primary}10` }}>
-      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-        {["expense", "income"].map((t) => (
-          <button key={t} onClick={() => upd("type", t)} style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: T.font, background: form.type === t ? (t === "expense" ? "#fef2f2" : "#ecfdf3") : "#f1f5f1", color: form.type === t ? (t === "expense" ? "#dc2626" : "#16a34a") : T.textMuted }}>
-            {t === "expense" ? "Chi" : "Thu"}
-          </button>
-        ))}
-      </div>
+      {mode === "cash-ledger" ? (
+        <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+          <div style={{ flex: 1, padding: "8px 0", borderRadius: 10, fontSize: 13, fontWeight: 700, fontFamily: T.font, background: "#fef2f2", color: "#dc2626", textAlign: "center" }}>
+            Chuyển quỹ
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+          {["expense", "income"].map((t) => (
+            <button key={t} onClick={() => upd("type", t)} style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: T.font, background: form.type === t ? (t === "expense" ? "#fef2f2" : "#ecfdf3") : "#f1f5f1", color: form.type === t ? (t === "expense" ? "#dc2626" : "#16a34a") : T.textMuted }}>
+              {t === "expense" ? "Chi" : "Thu"}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div style={{ marginBottom: 10 }}>
         <div style={lbl}>Số tiền *</div>
         <input type="number" value={form.amount} onChange={(e) => upd("amount", e.target.value)} placeholder="0" style={{ ...fld, fontSize: 18, fontWeight: 700 }} />
       </div>
 
-      {form.type === "expense" && (
+      {mode !== "cash-ledger" && form.type === "expense" && (
         <div style={{ marginBottom: 10 }}>
           <div style={lbl}>Phân loại chi tiêu *</div>
           <button type="button" onClick={() => setShowPicker(true)} style={{ ...fld, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
@@ -1115,9 +1194,29 @@ function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
         </div>
       )}
 
-      <div style={{ marginBottom: 10 }}><div style={lbl}>Mô tả</div><input value={form.description} onChange={(e) => upd("description", e.target.value)} placeholder="Mục đích?" style={fld} /></div>
+      <div style={{ marginBottom: 10 }}><div style={lbl}>Mô tả</div><input value={form.description} onChange={(e) => upd("description", e.target.value)} placeholder={mode === "cash-ledger" ? "Nội dung chuyển quỹ" : "Mục đích?"} style={fld} /></div>
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        <div style={{ flex: 1 }}><div style={lbl}>Người nhận</div><input value={form.recipient_name} onChange={(e) => upd("recipient_name", e.target.value)} placeholder="Tên" style={fld} /></div>
+        <div style={{ flex: 1 }}>
+          <div style={lbl}>{mode === "cash-ledger" ? "Người nhận quỹ *" : "Người nhận"}</div>
+          {mode === "cash-ledger" ? (
+            <select
+              value={form.recipient_user_id || ""}
+              onChange={(e) => {
+                const id = e.target.value;
+                const selected = transferRecipients.find((x) => String(x.id) === String(id));
+                setForm((p) => ({ ...p, recipient_user_id: id, recipient_name: selected?.full_name || "" }));
+              }}
+              style={{ ...fld, height: 42 }}
+            >
+              <option value="">Chọn người nhận quỹ</option>
+              {transferRecipients.map((p) => (
+                <option key={p.id} value={p.id}>{p.full_name} ({p.role === "driver" ? "Lái xe" : "Quản gia"})</option>
+              ))}
+            </select>
+          ) : (
+            <input value={form.recipient_name} onChange={(e) => upd("recipient_name", e.target.value)} placeholder="Tên" style={fld} />
+          )}
+        </div>
         <div style={{ flex: 1 }}><div style={lbl}>Ngân hàng</div><input value={form.bank_name} onChange={(e) => upd("bank_name", e.target.value)} placeholder="Ngân hàng" style={fld} /></div>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
@@ -1128,7 +1227,7 @@ function OCRCard({ data, categories = [], onConfirm, onCancel, loading }) {
 
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={onCancel} disabled={loading} style={{ ...actionBtnS, flex: 1, justifyContent: "center", background: "#f1f5f1", color: T.textSec }}>Hủy</button>
-        <button onClick={() => onConfirm(form)} disabled={loading || categoryMissing || dateMissing} style={{ ...actionBtnS, flex: 2, justifyContent: "center", background: (loading || categoryMissing || dateMissing) ? `${T.primary}80` : T.primary, color: "#fff" }}>{loading ? "Đang tạo..." : "Gửi để duyệt"}</button>
+        <button onClick={() => onConfirm(form)} disabled={loading || categoryMissing || recipientMissing || dateMissing} style={{ ...actionBtnS, flex: 2, justifyContent: "center", background: (loading || categoryMissing || recipientMissing || dateMissing) ? `${T.primary}80` : T.primary, color: "#fff" }}>{loading ? "Đang tạo..." : (mode === "cash-ledger" ? "Tạo chuyển quỹ" : "Gửi để duyệt")}</button>
       </div>
 
       {showPicker && (
