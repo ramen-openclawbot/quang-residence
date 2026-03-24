@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireRole, supabaseAdmin } from "../../../../lib/api-auth";
 import { getSignedAmount } from "../../../../lib/transaction";
 
+const OPS_EXCLUDED_USER_PREFIX = "6487c846";
+
 function parseMonth(searchParams) {
   const month = searchParams.get("month"); // YYYY-MM
   if (month && /^\d{4}-\d{2}$/.test(month)) {
@@ -28,7 +30,7 @@ async function fetchAllTransactionsInRange(startDateIso, endDateIso) {
     const to = from + pageSize - 1;
     const { data, error } = await supabaseAdmin
       .from("transactions")
-      .select("type,amount,adjustment_direction,status,transaction_date")
+      .select("type,amount,adjustment_direction,status,transaction_date,created_by")
       .gte("transaction_date", startDateIso)
       .lte("transaction_date", endDateIso)
       .order("created_at", { ascending: false })
@@ -71,7 +73,8 @@ export async function GET(request) {
       endDate = new Date(year, monthIndex + 1, 0, 23, 59, 59).toISOString();
     }
 
-    const rows = await fetchAllTransactionsInRange(startDate, endDate);
+    const rawRows = await fetchAllTransactionsInRange(startDate, endDate);
+    const rows = rawRows.filter((tx) => !String(tx?.created_by || "").startsWith(OPS_EXCLUDED_USER_PREFIX));
 
     let income = 0;
     let expense = 0;

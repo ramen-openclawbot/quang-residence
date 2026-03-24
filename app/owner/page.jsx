@@ -113,6 +113,8 @@ export default function OwnerPage() {
   const [staffProfiles, setStaffProfiles] = useState([]);
   const [settingsData, setSettingsData] = useState([]);
   const [summaryData, setSummaryData] = useState(null);
+  const [cashLedgerSummary, setCashLedgerSummary] = useState(null);
+  const [cashLedgerEntries, setCashLedgerEntries] = useState([]);
   const [agendaItems, setAgendaItems] = useState([]);
 
   useEffect(() => {
@@ -158,11 +160,15 @@ export default function OwnerPage() {
 
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
-      const [res, agendaRes, monthSummaryRes, allSummaryRes] = await Promise.all([
+      const [res, agendaRes, monthSummaryRes, allSummaryRes, cashLedgerAllRes, cashLedgerMonthRes, txListRes, cashLedgerListRes] = await Promise.all([
         fetch(`/api/dashboard/owner?month=${month}&year=${year}`, { headers }),
         fetch(`/api/agenda/feed?limit=300`, { headers }),
         fetch(`/api/reports/finance-summary?scope=month&month=${monthKey}&include_pending=true&include_rejected=false`, { headers }),
         fetch(`/api/reports/finance-summary?scope=all&include_pending=true&include_rejected=false`, { headers }),
+        fetch(`/api/reports/cash-ledger-summary?scope=all&include_pending=true&include_rejected=false`, { headers }),
+        fetch(`/api/reports/cash-ledger-summary?scope=month&month=${monthKey}&include_pending=true&include_rejected=false`, { headers }),
+        fetch(`/api/transactions?limit=300`, { headers }),
+        fetch(`/api/cash-ledger?limit=300`, { headers }),
       ]);
 
       if (!res.ok) {
@@ -173,7 +179,11 @@ export default function OwnerPage() {
       const agendaJson = agendaRes.ok ? await agendaRes.json() : { items: [] };
       const monthSummaryJson = monthSummaryRes.ok ? await monthSummaryRes.json() : null;
       const allSummaryJson = allSummaryRes.ok ? await allSummaryRes.json() : null;
-      setTransactions(json.recentTx || []);
+      const cashLedgerAllJson = cashLedgerAllRes.ok ? await cashLedgerAllRes.json() : null;
+      const cashLedgerMonthJson = cashLedgerMonthRes.ok ? await cashLedgerMonthRes.json() : null;
+      const txListJson = txListRes.ok ? await txListRes.json() : null;
+      const cashLedgerListJson = cashLedgerListRes.ok ? await cashLedgerListRes.json() : null;
+      setTransactions(txListJson?.data || json.recentTx || []);
       setTasks(json.tasks || []);
       setMaintenanceItems(json.maintenance || []);
       setFamilySchedule(json.familySchedule || []);
@@ -183,6 +193,11 @@ export default function OwnerPage() {
         all: allSummaryJson ? { income: allSummaryJson.income, expense: allSummaryJson.expense, net: allSummaryJson.net, pending: allSummaryJson.pending_count } : (json.summary?.all || null),
         month: monthSummaryJson ? { income: monthSummaryJson.income, expense: monthSummaryJson.expense, net: monthSummaryJson.net, pending: monthSummaryJson.pending_count } : (json.summary?.month || null),
       });
+      setCashLedgerSummary({
+        all: cashLedgerAllJson ? { income: cashLedgerAllJson.income, expense: cashLedgerAllJson.expense, net: cashLedgerAllJson.net, pending: cashLedgerAllJson.pending_count } : null,
+        month: cashLedgerMonthJson ? { income: cashLedgerMonthJson.income, expense: cashLedgerMonthJson.expense, net: cashLedgerMonthJson.net, pending: cashLedgerMonthJson.pending_count } : null,
+      });
+      setCashLedgerEntries(cashLedgerListJson?.data || []);
       setAgendaItems(agendaJson.items || []);
     } catch (error) {
       console.error("Owner fetchData error:", error);
@@ -334,13 +349,68 @@ export default function OwnerPage() {
   const pendingTransactions = useMemo(() => transactions.filter((tx) => tx.status === "pending"), [transactions]);
   const openTasks = useMemo(() => tasks.filter((task) => task.status !== "done"), [tasks]);
 
-  const ledgerBalance = summaryData?.all?.net ?? fallbackLedgerBalance;
-  const incomeThisMonth = summaryData?.month?.income ?? 0;
-  const spentThisMonth = summaryData?.month?.expense ?? 0;
-  const pendingCount = summaryData?.all?.pending ?? pendingTransactions.length;
+  const ledgerBalance = cashLedgerSummary?.all?.net ?? 0;
+  const incomeThisMonth = cashLedgerSummary?.month?.income ?? 0;
+  const spentThisMonth = cashLedgerSummary?.month?.expense ?? 0;
+  const pendingCount = cashLedgerSummary?.all?.pending ?? 0;
+  const opsIncomeThisMonth = summaryData?.month?.income ?? 0;
+  const opsSpentThisMonth = summaryData?.month?.expense ?? 0;
   const recentTasks = useMemo(() => tasks.slice(0, 4), [tasks]);
   const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);
   const ROLE_VI = { secretary: "Thư ký", driver: "Lái xe", housekeeper: "Quản gia" };
+  const spendingPieData = useMemo(() => {
+    const expenseRows = transactions.filter((tx) => getSignedAmount(tx) < 0);
+    const total = expenseRows.reduce((sum, tx) => sum + Math.abs(getSignedAmount(tx)), 0);
+    const palette = ["#56c91d", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6"];
+    const buckets = new Map();
+    for (const tx of expenseRows) {
+      const key = tx?.categories?.name_vi || tx?.categories?.name || tx?.ocr_raw_data?.category_meta?.label_vi || "Chưa phân loại";
+      const color = tx?.categories?.color || palette[buckets.size % palette.length];
+      const prev = buckets.get(key) || { label: key, value: 0, color };
+      prev.value += Math.abs(getSignedAmount(tx));
+      buckets.set(key, prev);
+    }
+    const items = Array.from(buckets.values()).sort((a, b) => b.value - a.value);
+    let cursor = 0;
+    return {
+      total,
+      items: items.map((item) => {
+        const pct = total > 0 ? (item.value / total) * 100 : 0;
+        const slice = { ...item, percent: pct, dash: `${pct} ${100 - pct}`, offset: -cursor };
+        cursor += pct;
+        return slice;
+      }),
+    };
+  }, [transactions]);
+
+  const staffFundBalances = useMemo(() => {
+    const recipients = new Set();
+    for (const tx of transactions) {
+      const note = String(tx?.notes || "");
+      if (!note.includes("[AUTO_FUND_TRANSFER:")) continue;
+      const userId = String(tx?.created_by || "");
+      const profileInfo = staffById[userId] || null;
+      if (!profileInfo || !["driver", "housekeeper"].includes(profileInfo.role)) continue;
+      recipients.add(userId);
+    }
+    const map = new Map();
+    for (const tx of transactions) {
+      const userId = String(tx?.created_by || "");
+      if (!recipients.has(userId)) continue;
+      const profileInfo = staffById[userId] || null;
+      if (!profileInfo || !["driver", "housekeeper"].includes(profileInfo.role)) continue;
+      const prev = map.get(userId) || { userId, name: profileInfo.full_name || "Nhân sự", role: profileInfo.role, balance: 0, totalIn: 0, totalOut: 0 };
+      const signed = getSignedAmount(tx);
+      prev.balance += signed;
+      if (signed > 0) prev.totalIn += signed;
+      if (signed < 0) prev.totalOut += Math.abs(signed);
+      map.set(userId, prev);
+    }
+    return Array.from(map.values()).filter((x) => x.totalIn > 0).sort((a, b) => {
+      if (a.role !== b.role) return a.role === "housekeeper" ? -1 : 1;
+      return Math.abs(b.balance) - Math.abs(a.balance);
+    });
+  }, [transactions, staffById]);
   const ownerAgendaTasks = useMemo(() => {
     if (agendaItems.length) return agendaItems;
     const taskRows = (tasks || []).map((t) => ({
@@ -529,8 +599,8 @@ export default function OwnerPage() {
                   {/* Spent / Income monthly cards — hidden until revealed */}
                   {balanceRevealed ? (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14, animation: "ownerFadeIn 0.5s ease-out 0.1s both" }}>
-                      <SmallStat label="Chi tháng này" value={fmtVND(spentThisMonth)} color={T.danger} />
-                      <SmallStat label="Thu tháng này" value={fmtVND(incomeThisMonth)} color={T.success} />
+                      <SmallStat label="Chi sổ quỹ tháng này" value={fmtVND(spentThisMonth)} color={T.danger} />
+                      <SmallStat label="Thu sổ quỹ tháng này" value={fmtVND(incomeThisMonth)} color={T.success} />
                     </div>
                   ) : (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
@@ -644,17 +714,86 @@ export default function OwnerPage() {
             </div>
 
             <div style={{ textAlign: "center", marginBottom: 24 }}>
-              <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Số dư ròng</div>
+              <div style={{ fontSize: 12, color: T.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Số dư sổ quỹ</div>
               <div style={{ fontSize: 36, fontWeight: 900, color: T.text, marginTop: 8 }}>{fmtVND(ledgerBalance)}</div>
               <div style={{ display: "flex", justifyContent: "center", gap: 20, marginTop: 12 }}>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, textTransform: "uppercase" }}>Thu nhập</div>
+                  <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, textTransform: "uppercase" }}>Thu sổ quỹ</div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: T.success, marginTop: 2 }}>+{fmtVND(incomeThisMonth)}</div>
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, textTransform: "uppercase" }}>Chi tiêu</div>
+                  <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, textTransform: "uppercase" }}>Chi sổ quỹ</div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: T.danger, marginTop: 2 }}>-{fmtVND(spentThisMonth)}</div>
                 </div>
+              </div>
+            </div>
+
+            <div style={{ ...softCard, padding: 14, marginBottom: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "132px 1fr", gap: 14, alignItems: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="120" height="120" viewBox="0 0 42 42" style={{ transform: "rotate(-90deg)" }}>
+                    <circle cx="21" cy="21" r="15.915" fill="none" stroke="#edf3ea" strokeWidth="5.2" />
+                    {spendingPieData.items.length === 0 ? (
+                      <circle cx="21" cy="21" r="15.915" fill="none" stroke="#dfe8da" strokeWidth="5.2" strokeDasharray="100 0" />
+                    ) : spendingPieData.items.map((item) => (
+                      <circle key={item.label} cx="21" cy="21" r="15.915" fill="none" stroke={item.color} strokeWidth="5.2" strokeDasharray={item.dash} strokeDashoffset={item.offset} strokeLinecap="butt" />
+                    ))}
+                  </svg>
+                  <div style={{ marginTop: -72, textAlign: "center", pointerEvents: "none" }}>
+                    <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 700, textTransform: "uppercase" }}>% Chi tiêu</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{spendingPieData.total > 0 ? `${Math.round((spendingPieData.items[0]?.percent || 0))}%` : "0%"}</div>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: T.text, marginBottom: 8 }}>Cơ cấu chi tiêu vận hành</div>
+                  {spendingPieData.items.length === 0 ? (
+                    <div style={{ fontSize: 12, color: T.textMuted }}>Chưa có dữ liệu chi tiêu vận hành.</div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 8 }}>
+                      {spendingPieData.items.slice(0, 5).map((item) => (
+                        <div key={item.label} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8, alignItems: "center" }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ width: 8, height: 8, borderRadius: 999, background: item.color, flexShrink: 0 }} />
+                              <span style={{ fontSize: 12, color: T.text, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.label}</span>
+                            </div>
+                          </div>
+                          <div style={{ textAlign: "right" }}>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: T.text }}>{Math.round(item.percent)}%</div>
+                            <div style={{ fontSize: 10, color: T.textMuted }}>{fmtVND(item.value)}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ ...softCard, padding: 14, marginBottom: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: T.text, marginBottom: 10 }}>Số dư quỹ hiện có của nhân sự</div>
+              {staffFundBalances.length === 0 ? (
+                <div style={{ fontSize: 12, color: T.textMuted }}>Chưa có số dư quỹ nào từ luồng chuyển quỹ.</div>
+              ) : (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {staffFundBalances.map((item) => (
+                    <div key={item.userId} style={{ ...cardStyle, boxShadow: "none", padding: 12, display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 10, alignItems: "center" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{item.name}</div>
+                        <div style={{ fontSize: 11, color: T.textMuted, marginTop: 3 }}>{ROLE_VI[item.role] || item.role}</div>
+                        <div style={{ fontSize: 10, color: T.textMuted, marginTop: 4 }}>Thu {fmtVND(item.totalIn)} • Chi {fmtVND(item.totalOut)}</div>
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: item.balance >= 0 ? T.success : T.danger, whiteSpace: "nowrap" }}>{fmtVND(item.balance)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ ...softCard, padding: 14, marginBottom: 18 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <SmallStat label="Thu vận hành tháng này" value={fmtVND(opsIncomeThisMonth)} color={T.success} />
+                <SmallStat label="Chi vận hành tháng này" value={fmtVND(opsSpentThisMonth)} color={T.danger} />
               </div>
             </div>
 
