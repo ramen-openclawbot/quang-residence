@@ -771,12 +771,13 @@ export default function SecretaryPage() {
       if (!note.includes("[AUTO_FUND_TRANSFER:")) continue;
       const userId = String(tx?.created_by || "");
       const profileInfo = staffById[userId] || null;
-      const key = userId || `unknown-${map.size}`;
+      if (!profileInfo || !["driver", "housekeeper"].includes(profileInfo.role)) continue;
+      const key = userId;
       const signed = getSignedAmount(tx);
       const prev = map.get(key) || {
         userId,
-        name: tx?.recipient_name || profileInfo?.full_name || "Nhân sự",
-        role: profileInfo?.role || "staff",
+        name: profileInfo.full_name || tx?.recipient_name || "Nhân sự",
+        role: profileInfo.role,
         balance: 0,
       };
       prev.balance += signed;
@@ -784,7 +785,10 @@ export default function SecretaryPage() {
     }
     return Array.from(map.values())
       .filter((x) => x.balance !== 0)
-      .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
+      .sort((a, b) => {
+        if (a.role !== b.role) return a.role === "housekeeper" ? -1 : 1;
+        return Math.abs(b.balance) - Math.abs(a.balance);
+      });
   }, [transactions, staffById]);
 
   const cashLedgerFiltered = useMemo(() => {
