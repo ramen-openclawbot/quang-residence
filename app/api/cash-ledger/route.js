@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { resolveUser, supabaseAdmin } from "../../../lib/api-auth";
 
 const ALLOWED_ROLES = ["owner", "secretary"];
-const ALLOWED_TYPES = ["income", "expense"];
-const ALLOWED_KINDS = ["ops", "fund_transfer_out", "fund_transfer_in_auto"];
+const ALLOWED_TYPES = ["expense"];
+const ALLOWED_KINDS = ["fund_transfer_out"];
 
 function buildTransferMarker(transferGroupId) {
   return `[AUTO_FUND_TRANSFER:${transferGroupId}]`;
@@ -53,17 +53,17 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const type = String(body?.type || "").trim();
-    const entry_kind = String(body?.entry_kind || "ops").trim();
+    const type = String(body?.type || "expense").trim();
+    const entry_kind = String(body?.entry_kind || "fund_transfer_out").trim();
     const amount = Number(body?.amount || 0);
     const transactionDate = body?.transaction_date || new Date().toISOString();
     const recipientUserId = body?.recipient_user_id || null;
 
     if (!ALLOWED_TYPES.includes(type)) {
-      return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+      return NextResponse.json({ error: "Secretary cash ledger only allows expense transfer-out entries" }, { status: 400 });
     }
     if (!ALLOWED_KINDS.includes(entry_kind)) {
-      return NextResponse.json({ error: "Invalid entry_kind" }, { status: 400 });
+      return NextResponse.json({ error: "Secretary cash ledger only allows fund_transfer_out entries" }, { status: 400 });
     }
     if (!isFinite(amount) || amount <= 0) {
       return NextResponse.json({ error: "Amount must be > 0" }, { status: 400 });
@@ -78,40 +78,35 @@ export async function POST(request) {
       }
     }
 
-    // Duplicate protection for normal manual income: if there's already an auto-created
-    // transfer-in transaction for the same recipient/amount/date and same slip/code, block it.
-    const duplicateTargetUserId = recipientUserId || profile.id;
-    if (entry_kind !== "fund_transfer_in_auto" && type === "income" && duplicateTargetUserId) {
-      const datePrefix = String(transactionDate).slice(0, 10);
-      const { data: dupRows, error: dupError } = await supabaseAdmin
-        .from("transactions")
-        .select("id, transaction_code, slip_image_url, notes")
-        .eq("created_by", duplicateTargetUserId)
-        .eq("type", "income")
-        .eq("amount", amount)
-        .gte("transaction_date", `${datePrefix}T00:00:00.000Z`)
-        .lte("transaction_date", `${datePrefix}T23:59:59.999Z`)
-        .limit(20);
+    const datePrefix = String(transactionDate).slice(0, 10);
+    const { data: dupRows, error: dupError } = await supabaseAdmin
+      .from("transactions")
+      .select("id, transaction_code, slip_image_url, notes")
+      .eq("created_by", recipientUserId)
+      .eq("type", "income")
+      .eq("amount", amount)
+      .gte("transaction_date", `${datePrefix}T00:00:00.000Z`)
+      .lte("transaction_date", `${datePrefix}T23:59:59.999Z`)
+      .limit(20);
 
-      if (dupError) {
-        console.error("cash-ledger duplicate check error:", dupError);
-      } else {
-        const code = String(body?.transaction_code || "").trim();
-        const slip = String(body?.slip_image_url || "").trim();
-        const matched = (dupRows || []).find((x) => {
-          const note = String(x?.notes || "");
-          const looksAutoTransfer = note.includes("[AUTO_FUND_TRANSFER:");
-          if (!looksAutoTransfer) return false;
-          if (code && x.transaction_code && String(x.transaction_code).trim() === code) return true;
-          if (slip && x.slip_image_url && String(x.slip_image_url).trim() === slip) return true;
-          return !code && !slip;
-        });
-        if (matched) {
-          return NextResponse.json({
-            error: "Đã có giao dịch thu tự động cho giao dịch chuyển quỹ này. Vui lòng không tạo trùng.",
-            duplicate_id: matched.id,
-          }, { status: 409 });
-        }
+    if (dupError) {
+      console.error("cash-ledger duplicate check error:", dupError);
+    } else {
+      const code = String(body?.transaction_code || "").trim();
+      const slip = String(body?.slip_image_url || "").trim();
+      const matched = (dupRows || []).find((x) => {
+        const note = String(x?.notes || "");
+        const looksAutoTransfer = note.includes("[AUTO_FUND_TRANSFER:");
+        if (!looksAutoTransfer) return false;
+        if (code && x.transaction_code && String(x.transaction_code).trim() === code) return true;
+        if (slip && x.slip_image_url && String(x.slip_image_url).trim() === slip) return true;
+        return !code && !slip;
+      });
+      if (matched) {
+        return NextResponse.json({
+          error: "Đã có giao dịch thu tự động cho giao dịch chuyển quỹ này. Vui lòng không tạo trùng.",
+          duplicate_id: matched.id,
+        }, { status: 409 });
       }
     }
 
@@ -171,7 +166,7 @@ export async function POST(request) {
         approved_at: new Date().toISOString(),
         reviewed_by: profile.id,
         reviewed_at: new Date().toISOString(),
-        source: "cash_ledger_transfer_auto",
+        source: "manual",
         ocr_raw_data: {
           transfer_group_id: transferGroupId,
           auto_created_from_cash_ledger_entry_id: outEntry.id,
