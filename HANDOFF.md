@@ -830,6 +830,66 @@ Transaction list UX has gone through multiple quick iterations today; current br
    - verify recipient (driver/housekeeper) gets auto-created income in `transactions`
    - verify duplicate guard blocks manual duplicate income.
 4. Verify owner reporting:
-   - `/api/reports/finance-summary` (transactions only)
+   - `/api/reports/finance-summary` (transactions only, now ops-filtered for `6487c846`)
    - `/api/reports/cash-ledger-summary` (cash ledger only)
 5. Optional hardening: expose ops-filtered `total` in `/api/transactions` response (currently `data/summary` filtered; DB count may differ).
+
+---
+
+## Latest follow-up fixes after cash-ledger rollout
+
+### Secretary / cash-ledger / chat
+- Secretary cash-ledger form now supports both:
+  - `fund_transfer_out` (expense transfer to driver/housekeeper)
+  - direct `income` entry into cash ledger for secretary
+- Secretary form UI simplified:
+  - merged transfer label into a single `Chuyển quỹ`
+  - upload CTA renamed to `Upload phiếu chuyển tiền`
+  - OCR button restyled to match app design system more closely
+- Secretary chat box now respects current tab context:
+  - when secretary is on `cash-ledger`, OCR/chat flow switches from operational-expense mode to cash-ledger mode
+  - chat cash-ledger mode supports both `Chuyển quỹ` and `Thu sổ quỹ`
+  - other roles remain unchanged
+
+### Driver / housekeeper balance corrections
+- Home dashboards for both `driver` and `housekeeper` were corrected to show `Số dư hiện có` using net transaction balance (`sum(getSignedAmount)`), instead of implying balance from only short-window expense views.
+- Transaction fetch window for balance computation increased to `limit(500)` on those role pages to better approximate real current balance.
+
+### Owner finance alignment
+- Owner balance now aligns with secretary cash-ledger source of truth:
+  - owner `ledgerBalance` switched from `transactions` net to `cash_ledger_entries` net via `/api/reports/cash-ledger-summary`
+- Owner operational finance summary now excludes secretary historical rows created by user prefix `6487c846`, matching secretary ops filtering.
+- Owner wealth/finance page now mirrors secretary transaction insights more closely:
+  - pie chart for operational expense mix
+  - staff transferred-fund balance cards for active `driver` / `housekeeper`
+  - separate display for cash-ledger monthly income/expense and operational monthly income/expense
+
+### Audit context / current risk list
+These areas should be audited carefully next:
+1. Source-of-truth consistency between:
+   - `cash_ledger_entries`
+   - `transactions`
+   - owner dashboards
+   - secretary dashboards
+2. Remaining historical data repairs / one-off scripts:
+   - `supabase/fix_misrouted_transfer_auto_income.sql`
+   - `supabase/repair_mistagged_secretary_ops_to_transfer.sql`
+   - `supabase/find_mistagged_secretary_ops_candidates.sql`
+3. Owner/secretary/report parity:
+   - owner home balance
+   - owner finance page
+   - secretary home balance
+   - secretary transaction insights
+4. Chat OCR parity with page forms:
+   - secretary cash-ledger mode
+   - standard transaction mode for non-secretary roles
+5. Count-vs-data mismatch in `/api/transactions`:
+   - current `data` is ops-filtered, but `total` still comes from pre-filter DB count
+
+### Most recent relevant commits before full audit
+- `5ab805b` fix: show actual current balance on housekeeper home dashboard
+- `2f3edd3` fix: show actual current balance on driver home dashboard
+- `da4dc3f` feat: align owner financial dashboard with secretary cash-ledger data
+- `c24bb7c` fix: make secretary chat OCR respect cash-ledger tab context
+- `f1ef29f` feat: allow secretary cash-ledger income flow in chat OCR
+
