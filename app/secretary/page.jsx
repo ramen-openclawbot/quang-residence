@@ -647,6 +647,9 @@ export default function SecretaryPage() {
   }, [cashLedgerEntries]);
 
   const pendingTx = useMemo(() => transactions.filter((t) => t.status === "pending" && isOpsTransaction(t)), [transactions, isOpsTransaction]);
+  const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);
+  const transferRecipients = useMemo(() => (staffProfiles || []).filter((p) => ["driver", "housekeeper"].includes(p.role)), [staffProfiles]);
+  const ROLE_VI = { secretary: "Thư ký", driver: "Lái xe", housekeeper: "Quản gia" };
   const yearOptions = useMemo(() => {
     const current = new Date().getFullYear();
     const years = [];
@@ -736,6 +739,54 @@ export default function SecretaryPage() {
   }, 0), [txFiltered]);
   const txPendingCount = useMemo(() => txFiltered.filter((tx) => tx.status === "pending").length, [txFiltered]);
 
+  const spendingPieData = useMemo(() => {
+    const expenseRows = txFiltered.filter((tx) => getSignedAmount(tx) < 0);
+    const total = expenseRows.reduce((sum, tx) => sum + Math.abs(getSignedAmount(tx)), 0);
+    const palette = ["#56c91d", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6"];
+    const buckets = new Map();
+    for (const tx of expenseRows) {
+      const cat = getCategoryMeta(tx);
+      const key = cat?.label || "Chưa phân loại";
+      const prev = buckets.get(key) || { label: key, value: 0, color: cat?.color || palette[buckets.size % palette.length] };
+      prev.value += Math.abs(getSignedAmount(tx));
+      buckets.set(key, prev);
+    }
+    const items = Array.from(buckets.values()).sort((a, b) => b.value - a.value);
+    let cursor = 0;
+    return {
+      total,
+      items: items.map((item) => {
+        const pct = total > 0 ? (item.value / total) * 100 : 0;
+        const slice = { ...item, percent: pct, dash: `${pct} ${100 - pct}`, offset: -cursor };
+        cursor += pct;
+        return slice;
+      }),
+    };
+  }, [txFiltered]);
+
+  const staffFundBalances = useMemo(() => {
+    const map = new Map();
+    for (const tx of transactions) {
+      const note = String(tx?.notes || "");
+      if (!note.includes("[AUTO_FUND_TRANSFER:")) continue;
+      const userId = String(tx?.created_by || "");
+      const profileInfo = staffById[userId] || null;
+      const key = userId || `unknown-${map.size}`;
+      const signed = getSignedAmount(tx);
+      const prev = map.get(key) || {
+        userId,
+        name: tx?.recipient_name || profileInfo?.full_name || "Nhân sự",
+        role: profileInfo?.role || "staff",
+        balance: 0,
+      };
+      prev.balance += signed;
+      map.set(key, prev);
+    }
+    return Array.from(map.values())
+      .filter((x) => x.balance !== 0)
+      .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
+  }, [transactions, staffById]);
+
   const cashLedgerFiltered = useMemo(() => {
     const q = cashLedgerSearch.trim().toLowerCase();
     return cashLedgerEntries.filter((entry) => {
@@ -798,10 +849,6 @@ export default function SecretaryPage() {
   }, [agendaItems, tasks, maintenanceItems, familySchedule, drivingTrips]);
 
   const upcomingItems = useMemo(() => workItems.filter((t) => t.due_date), [workItems]);
-  const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);
-  const transferRecipients = useMemo(() => (staffProfiles || []).filter((p) => ["driver", "housekeeper"].includes(p.role)), [staffProfiles]);
-  const ROLE_VI = { secretary: "Thư ký", driver: "Lái xe", housekeeper: "Quản gia" };
-
   return (
     <StaffShell role="secretary">
       <div style={{ background: T.bg, minHeight: "100vh", paddingBottom: 100 }}>
@@ -1158,6 +1205,78 @@ export default function SecretaryPage() {
                   <div style={{ position: "relative", marginBottom: 14 }}>
                     <MIcon name="search" size={18} color={T.textMuted} style={{ position: "absolute", left: 14, top: 12 }} />
                     <input value={txSearch} onChange={(e) => setTxSearch(e.target.value)} placeholder="Tìm kiếm giao dịch..." style={{ width: "100%", height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: T.card, paddingLeft: 40, paddingRight: 14, fontSize: 14, color: T.text, boxSizing: "border-box" }} />
+                  </div>
+
+                  <div style={{ ...subtleCard, padding: 14, marginBottom: 14 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "132px 1fr", gap: 14, alignItems: "center" }}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                        <svg width="120" height="120" viewBox="0 0 42 42" style={{ transform: "rotate(-90deg)" }}>
+                          <circle cx="21" cy="21" r="15.915" fill="none" stroke="#edf3ea" strokeWidth="5.2" />
+                          {spendingPieData.items.length === 0 ? (
+                            <circle cx="21" cy="21" r="15.915" fill="none" stroke="#dfe8da" strokeWidth="5.2" strokeDasharray="100 0" />
+                          ) : spendingPieData.items.map((item) => (
+                            <circle
+                              key={item.label}
+                              cx="21"
+                              cy="21"
+                              r="15.915"
+                              fill="none"
+                              stroke={item.color}
+                              strokeWidth="5.2"
+                              strokeDasharray={item.dash}
+                              strokeDashoffset={item.offset}
+                              strokeLinecap="butt"
+                            />
+                          ))}
+                        </svg>
+                        <div style={{ marginTop: -72, textAlign: "center", pointerEvents: "none" }}>
+                          <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 700, textTransform: "uppercase" }}>% Chi tiêu</div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{spendingPieData.total > 0 ? `${Math.round((spendingPieData.items[0]?.percent || 0))}%` : "0%"}</div>
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: T.text, marginBottom: 8 }}>Cơ cấu chi tiêu theo bộ lọc hiện tại</div>
+                        {spendingPieData.items.length === 0 ? (
+                          <div style={{ fontSize: 12, color: T.textMuted }}>Chưa có dữ liệu chi tiêu trong filter đang chọn.</div>
+                        ) : (
+                          <div style={{ display: "grid", gap: 8 }}>
+                            {spendingPieData.items.slice(0, 5).map((item) => (
+                              <div key={item.label} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8, alignItems: "center" }}>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                    <span style={{ width: 8, height: 8, borderRadius: 999, background: item.color, flexShrink: 0 }} />
+                                    <span style={{ fontSize: 12, color: T.text, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.label}</span>
+                                  </div>
+                                </div>
+                                <div style={{ textAlign: "right" }}>
+                                  <div style={{ fontSize: 12, fontWeight: 800, color: T.text }}>{Math.round(item.percent)}%</div>
+                                  <div style={{ fontSize: 10, color: T.textMuted }}>{fmtVND(item.value)}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ ...subtleCard, padding: 14, marginBottom: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: T.text, marginBottom: 10 }}>Số dư quỹ đã chuyển cho nhân sự</div>
+                    {staffFundBalances.length === 0 ? (
+                      <div style={{ fontSize: 12, color: T.textMuted }}>Chưa có số dư quỹ nào từ luồng chuyển quỹ.</div>
+                    ) : (
+                      <div style={{ display: "grid", gap: 8 }}>
+                        {staffFundBalances.map((item) => (
+                          <div key={item.userId} style={{ ...cardStyle, boxShadow: "none", padding: 12, display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 10, alignItems: "center" }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{item.name}</div>
+                              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 3 }}>{ROLE_VI[item.role] || item.role}</div>
+                            </div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: item.balance >= 0 ? T.success : T.danger, whiteSpace: "nowrap" }}>{fmtVND(item.balance)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Summary strip — clickable filters */}
