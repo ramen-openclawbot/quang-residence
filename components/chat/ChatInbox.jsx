@@ -448,7 +448,7 @@ export default function ChatInbox() {
       const defaultRecipient = chatMode === "cash-ledger" ? (transferRecipients[0] || null) : null;
       setPendingOcr({
         amount: ocr.amount ? String(ocr.amount) : "",
-        type: chatMode === "cash-ledger" ? "expense" : "expense",
+        type: "expense",
         entry_kind: chatMode === "cash-ledger" ? "fund_transfer_out" : "ops",
         category_id: chatMode === "cash-ledger" ? "" : (suggestion.id || ""),
         description: ocr.description || "",
@@ -480,7 +480,7 @@ export default function ChatInbox() {
       return;
     }
     if (chatMode === "cash-ledger") {
-      if (!data.recipient_user_id) {
+      if (data.type === "expense" && !data.recipient_user_id) {
         addAgent("Vui lòng chọn người nhận quỹ trước khi tạo chuyển quỹ.");
         return;
       }
@@ -532,6 +532,7 @@ export default function ChatInbox() {
       }
 
       if (chatMode === "cash-ledger") {
+        const isTransfer = data.type === "expense";
         const res = await fetch("/api/cash-ledger", {
           method: "POST",
           headers: {
@@ -539,11 +540,11 @@ export default function ChatInbox() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            type: "expense",
-            entry_kind: "fund_transfer_out",
+            type: isTransfer ? "expense" : "income",
+            entry_kind: isTransfer ? "fund_transfer_out" : "ops",
             amount: Number(data.amount),
             description: data.description || null,
-            recipient_user_id: data.recipient_user_id || null,
+            recipient_user_id: isTransfer ? (data.recipient_user_id || null) : null,
             recipient_name: data.recipient_name || null,
             bank_name: data.bank_name || null,
             bank_account: data.bank_account || null,
@@ -554,11 +555,15 @@ export default function ChatInbox() {
           }),
         });
         const json = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(json.error || "Không tạo được chuyển quỹ");
+        if (!res.ok) throw new Error(json.error || (isTransfer ? "Không tạo được chuyển quỹ" : "Không tạo được thu sổ quỹ"));
 
         setPendingOcr(null);
         setSupportCount(0);
-        addAgent(`Đã tạo chuyển quỹ (${fmtVND(data.amount)}) cho ${data.recipient_name || "nhân sự"}. Thu vận hành sẽ được tạo tự động cho người nhận.`);
+        addAgent(
+          isTransfer
+            ? `Đã tạo chuyển quỹ (${fmtVND(data.amount)}) cho ${data.recipient_name || "nhân sự"}. Thu vận hành sẽ được tạo tự động cho người nhận.`
+            : `Đã ghi nhận thu sổ quỹ (${fmtVND(data.amount)}) thành công.`
+        );
         setAskingSupport(false);
       } else {
         const selectedCategory = expenseCategories.find((c) => String(c.id) === String(data.category_id));
@@ -1152,9 +1157,36 @@ function OCRCard({ data, categories = [], mode = "default", transferRecipients =
     <div style={{ background: "#fff", borderRadius: 16, padding: 16, border: `1px solid ${T.primary}30`, boxShadow: `0 2px 12px ${T.primary}10` }}>
       {mode === "cash-ledger" ? (
         <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-          <div style={{ flex: 1, padding: "8px 0", borderRadius: 10, fontSize: 13, fontWeight: 700, fontFamily: T.font, background: "#fef2f2", color: "#dc2626", textAlign: "center" }}>
-            Chuyển quỹ
-          </div>
+          {[
+            { id: "expense", label: "Chuyển quỹ", bg: "#fef2f2", active: "#dc2626" },
+            { id: "income", label: "Thu sổ quỹ", bg: "#ecfdf3", active: "#16a34a" },
+          ].map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setForm((p) => ({
+                ...p,
+                type: item.id,
+                entry_kind: item.id === "expense" ? "fund_transfer_out" : "ops",
+                recipient_user_id: item.id === "expense" ? p.recipient_user_id : "",
+                recipient_name: item.id === "expense" ? p.recipient_name : "",
+              }))}
+              style={{
+                flex: 1,
+                padding: "8px 0",
+                borderRadius: 10,
+                border: "none",
+                cursor: "pointer",
+                fontSize: 13,
+                fontWeight: 700,
+                fontFamily: T.font,
+                background: form.type === item.id ? item.active : "#f1f5f1",
+                color: form.type === item.id ? "#fff" : T.textMuted,
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
       ) : (
         <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
@@ -1194,11 +1226,11 @@ function OCRCard({ data, categories = [], mode = "default", transferRecipients =
         </div>
       )}
 
-      <div style={{ marginBottom: 10 }}><div style={lbl}>Mô tả</div><input value={form.description} onChange={(e) => upd("description", e.target.value)} placeholder={mode === "cash-ledger" ? "Nội dung chuyển quỹ" : "Mục đích?"} style={fld} /></div>
+      <div style={{ marginBottom: 10 }}><div style={lbl}>Mô tả</div><input value={form.description} onChange={(e) => upd("description", e.target.value)} placeholder={mode === "cash-ledger" ? (form.type === "income" ? "Nội dung thu sổ quỹ" : "Nội dung chuyển quỹ") : "Mục đích?"} style={fld} /></div>
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         <div style={{ flex: 1 }}>
-          <div style={lbl}>{mode === "cash-ledger" ? "Người nhận quỹ *" : "Người nhận"}</div>
-          {mode === "cash-ledger" ? (
+          <div style={lbl}>{mode === "cash-ledger" ? (form.type === "income" ? "Nguồn thu / người nộp" : "Người nhận quỹ *") : "Người nhận"}</div>
+          {mode === "cash-ledger" && form.type === "expense" ? (
             <select
               value={form.recipient_user_id || ""}
               onChange={(e) => {
@@ -1214,7 +1246,7 @@ function OCRCard({ data, categories = [], mode = "default", transferRecipients =
               ))}
             </select>
           ) : (
-            <input value={form.recipient_name} onChange={(e) => upd("recipient_name", e.target.value)} placeholder="Tên" style={fld} />
+            <input value={form.recipient_name} onChange={(e) => upd("recipient_name", e.target.value)} placeholder={mode === "cash-ledger" ? "Tên / nguồn thu" : "Tên"} style={fld} />
           )}
         </div>
         <div style={{ flex: 1 }}><div style={lbl}>Ngân hàng</div><input value={form.bank_name} onChange={(e) => upd("bank_name", e.target.value)} placeholder="Ngân hàng" style={fld} /></div>
@@ -1227,7 +1259,7 @@ function OCRCard({ data, categories = [], mode = "default", transferRecipients =
 
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={onCancel} disabled={loading} style={{ ...actionBtnS, flex: 1, justifyContent: "center", background: "#f1f5f1", color: T.textSec }}>Hủy</button>
-        <button onClick={() => onConfirm(form)} disabled={loading || categoryMissing || recipientMissing || dateMissing} style={{ ...actionBtnS, flex: 2, justifyContent: "center", background: (loading || categoryMissing || recipientMissing || dateMissing) ? `${T.primary}80` : T.primary, color: "#fff" }}>{loading ? "Đang tạo..." : (mode === "cash-ledger" ? "Tạo chuyển quỹ" : "Gửi để duyệt")}</button>
+        <button onClick={() => onConfirm(form)} disabled={loading || categoryMissing || recipientMissing || dateMissing} style={{ ...actionBtnS, flex: 2, justifyContent: "center", background: (loading || categoryMissing || recipientMissing || dateMissing) ? `${T.primary}80` : T.primary, color: "#fff" }}>{loading ? "Đang tạo..." : (mode === "cash-ledger" ? (form.type === "income" ? "Ghi nhận thu quỹ" : "Tạo chuyển quỹ") : "Gửi để duyệt")}</button>
       </div>
 
       {showPicker && (
