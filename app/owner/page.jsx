@@ -121,6 +121,8 @@ export default function OwnerPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedDay, setSelectedDay] = useState(null);
   const [txSearch, setTxSearch] = useState("");
+  const [debugInfo, setDebugInfo] = useState(null);
+  const ownerDebugMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug") === "1";
 
   useEffect(() => {
     fetchData();
@@ -188,6 +190,36 @@ export default function OwnerPage() {
       const txListJson = txListRes.ok ? await txListRes.json() : null;
       const allTxListJson = allTxListRes.ok ? await allTxListRes.json() : null;
       const cashLedgerListJson = cashLedgerListRes.ok ? await cashLedgerListRes.json() : null;
+
+      if (ownerDebugMode) {
+        setDebugInfo({
+          statuses: {
+            dashboardOwner: res.status,
+            agenda: agendaRes.status,
+            financeMonth: monthSummaryRes.status,
+            financeAll: allSummaryRes.status,
+            cashLedgerAll: cashLedgerAllRes.status,
+            cashLedgerMonth: cashLedgerMonthRes.status,
+            txMonth: txListRes.status,
+            txAll: allTxListRes.status,
+            cashLedgerList: cashLedgerListRes.status,
+          },
+          counts: {
+            transactionsMonth: txListJson?.data?.length || 0,
+            transactionsAll: allTxListJson?.data?.length || 0,
+            cashLedgerEntries: cashLedgerListJson?.data?.length || 0,
+            recentTx: json?.recentTx?.length || 0,
+          },
+          values: {
+            cashLedgerAllNet: cashLedgerAllJson?.net ?? null,
+            cashLedgerMonthIncome: cashLedgerMonthJson?.income ?? null,
+            cashLedgerMonthExpense: cashLedgerMonthJson?.expense ?? null,
+            opsMonthIncome: monthSummaryJson?.income ?? null,
+            opsMonthExpense: monthSummaryJson?.expense ?? null,
+            ownerSummaryAllNet: allSummaryJson?.net ?? null,
+          },
+        });
+      }
 
       setTransactions(txListJson?.data || json.recentTx || []);
       setAllOpsTransactions(allTxListJson?.data || []);
@@ -513,6 +545,12 @@ export default function OwnerPage() {
         {tab === "home" && (
           <>
             <div style={{ padding: "24px 18px 18px" }}>
+              {ownerDebugMode && debugInfo && (
+                <div style={{ ...softCard, padding: 14, marginBottom: 14, background: "#fffaf0", border: `1px solid ${T.border}` }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: T.text, marginBottom: 8 }}>Owner debug</div>
+                  <pre style={{ margin: 0, fontSize: 10, lineHeight: 1.45, color: T.textMuted, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{JSON.stringify(debugInfo, null, 2)}</pre>
+                </div>
+              )}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <OwnerAvatar name={profile?.full_name || "Mr. Quang"} />
