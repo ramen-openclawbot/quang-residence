@@ -33,6 +33,3 @@ export async function GET(request) {
     return NextResponse.json({ error: "An error occurred while loading the housekeeper dashboard." }, { status: 500 });
   }
 }
- });
-  }
-}
