@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole, supabaseAdmin } from "../../../../lib/api-auth";
-import { getSignedAmount } from "../../../../lib/transaction";
+import { summarizeBalanceRows } from "../../../../lib/dashboard-finance";
 
 export async function GET(request) {
   try {
@@ -20,17 +20,7 @@ export async function GET(request) {
     ]);
 
     const txSummaryRows = txSummaryRes.data || [];
-    const current_balance = txSummaryRows.reduce((sum, tx) => sum + getSignedAmount(tx), 0);
-    const today_expense = txSummaryRows.reduce((sum, tx) => {
-      const txDay = String(tx?.transaction_date || tx?.created_at || "").slice(0, 10);
-      const signed = getSignedAmount(tx);
-      return txDay === todayKey && signed < 0 ? sum + Math.abs(signed) : sum;
-    }, 0);
-    const month_expense = txSummaryRows.reduce((sum, tx) => {
-      const txMonth = String(tx?.transaction_date || tx?.created_at || "").slice(0, 7);
-      const signed = getSignedAmount(tx);
-      return txMonth === monthKey && signed < 0 ? sum + Math.abs(signed) : sum;
-    }, 0);
+    const { current_balance, today_expense, month_expense } = summarizeBalanceRows(txSummaryRows, { todayKey, monthKey });
 
     return NextResponse.json({
       success: true,
