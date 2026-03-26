@@ -64,13 +64,8 @@ export async function GET(request) {
       .range(offset, offset + limit - 1);
 
     // Optional month/year filter — use transaction_date for consistency with display
-    const month = searchParams.get("month");
-    const year = searchParams.get("year");
     if (month !== null && year !== null) {
-      const m = Number(month);
-      const y = Number(year);
-      const startDate = new Date(y, m, 1).toISOString();
-      const endDate = new Date(y, m + 1, 0, 23, 59, 59).toISOString();
+      const { startDate, endDate } = buildMonthDateRange(Number(year), Number(month));
       query = query
         .gte("transaction_date", startDate)
         .lte("transaction_date", endDate);
