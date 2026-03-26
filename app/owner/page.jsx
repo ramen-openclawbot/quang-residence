@@ -394,9 +394,11 @@ export default function OwnerPage() {
     };
   }, [txSearchFiltered]);
 
+  const staffFundBalanceSource = allOpsTransactions.length > 0 ? allOpsTransactions : transactions;
+
   const staffFundBalances = useMemo(() => {
     const recipients = new Set();
-    for (const tx of allOpsTransactions) {
+    for (const tx of staffFundBalanceSource) {
       const note = String(tx?.notes || "");
       if (!note.includes("[AUTO_FUND_TRANSFER:")) continue;
       const userId = String(tx?.created_by || "");
@@ -405,7 +407,7 @@ export default function OwnerPage() {
       recipients.add(userId);
     }
     const map = new Map();
-    for (const tx of allOpsTransactions) {
+    for (const tx of staffFundBalanceSource) {
       const userId = String(tx?.created_by || "");
       if (!recipients.has(userId)) continue;
       const profileInfo = staffById[userId] || null;
@@ -421,7 +423,7 @@ export default function OwnerPage() {
       if (a.role !== b.role) return a.role === "housekeeper" ? -1 : 1;
       return Math.abs(b.balance) - Math.abs(a.balance);
     });
-  }, [allOpsTransactions, staffById]);
+  }, [staffFundBalanceSource, staffById]);
   const ownerAgendaTasks = useMemo(() => {
     if (agendaItems.length) return agendaItems;
     const taskRows = (tasks || []).map((t) => ({
