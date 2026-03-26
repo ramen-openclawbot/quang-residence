@@ -161,8 +161,9 @@ export default function OwnerPage() {
 
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Missing session token");
 
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const headers = { Authorization: `Bearer ${token}` };
       const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
       const [res, agendaRes, monthSummaryRes, allSummaryRes, cashLedgerAllRes, cashLedgerMonthRes, txListRes, allTxListRes, cashLedgerListRes] = await Promise.all([
         fetch(`/api/dashboard/owner?month=${month}&year=${year}`, { headers }),
@@ -172,12 +173,11 @@ export default function OwnerPage() {
         fetch(`/api/reports/cash-ledger-summary?scope=all&include_pending=true&include_rejected=false`, { headers }),
         fetch(`/api/reports/cash-ledger-summary?scope=month&month=${monthKey}&include_pending=true&include_rejected=false`, { headers }),
         fetch(`/api/transactions?limit=300&month=${month}&year=${year}`, { headers }),
+        fetch(`/api/transactions?limit=1000`, { headers }),
         fetch(`/api/cash-ledger?limit=300`, { headers }),
       ]);
 
-      if (!res.ok) {
-        throw new Error("Owner dashboard API failed");
-      }
+      if (!res.ok) throw new Error("Owner dashboard API failed");
 
       const json = await res.json();
       const agendaJson = agendaRes.ok ? await agendaRes.json() : { items: [] };
@@ -186,8 +186,11 @@ export default function OwnerPage() {
       const cashLedgerAllJson = cashLedgerAllRes.ok ? await cashLedgerAllRes.json() : null;
       const cashLedgerMonthJson = cashLedgerMonthRes.ok ? await cashLedgerMonthRes.json() : null;
       const txListJson = txListRes.ok ? await txListRes.json() : null;
+      const allTxListJson = allTxListRes.ok ? await allTxListRes.json() : null;
       const cashLedgerListJson = cashLedgerListRes.ok ? await cashLedgerListRes.json() : null;
+
       setTransactions(txListJson?.data || json.recentTx || []);
+      setAllOpsTransactions(allTxListJson?.data || []);
       setTasks(json.tasks || []);
       setMaintenanceItems(json.maintenance || []);
       setFamilySchedule(json.familySchedule || []);
@@ -205,25 +208,6 @@ export default function OwnerPage() {
       setAgendaItems(agendaJson.items || []);
     } catch (error) {
       console.error("Owner fetchData error:", error);
-      // Fallback to direct Supabase for resilience
-      try {
-        const [txRes, tasksRes, maintenanceRes, scheduleRes, profilesRes, settingsRes] = await Promise.all([
-          supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(30),
-          supabase.from("tasks").select("*").order("due_date", { ascending: true }).limit(120),
-          supabase.from("home_maintenance").select("*").order("created_at", { ascending: false }).limit(120),
-          supabase.from("family_schedule").select("*").order("event_date", { ascending: true }).limit(120),
-          supabase.from("profiles").select("id, full_name, role"),
-          supabase.from("home_settings").select("*").order("setting_key"),
-        ]);
-        setTransactions(txRes.data || []);
-        setTasks(tasksRes.data || []);
-        setMaintenanceItems(maintenanceRes.data || []);
-        setFamilySchedule(scheduleRes.data || []);
-        setStaffProfiles(profilesRes.data || []);
-        setSettingsData(settingsRes.data || []);
-      } catch (fallbackErr) {
-        console.error("Owner fallback fetchData error:", fallbackErr);
-      }
     } finally {
       setLoading(false);
     }
