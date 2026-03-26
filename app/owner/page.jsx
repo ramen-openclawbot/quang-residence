@@ -107,6 +107,7 @@ export default function OwnerPage() {
   const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
   const [inviteForm, setInviteForm] = useState({ email: "", full_name: "", role: "driver" });
   const [transactions, setTransactions] = useState([]);
+  const [allOpsTransactions, setAllOpsTransactions] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [maintenanceItems, setMaintenanceItems] = useState([]);
   const [familySchedule, setFamilySchedule] = useState([]);
@@ -411,7 +412,7 @@ export default function OwnerPage() {
 
   const staffFundBalances = useMemo(() => {
     const recipients = new Set();
-    for (const tx of txSearchFiltered) {
+    for (const tx of allOpsTransactions) {
       const note = String(tx?.notes || "");
       if (!note.includes("[AUTO_FUND_TRANSFER:")) continue;
       const userId = String(tx?.created_by || "");
@@ -420,7 +421,7 @@ export default function OwnerPage() {
       recipients.add(userId);
     }
     const map = new Map();
-    for (const tx of txSearchFiltered) {
+    for (const tx of allOpsTransactions) {
       const userId = String(tx?.created_by || "");
       if (!recipients.has(userId)) continue;
       const profileInfo = staffById[userId] || null;
@@ -436,7 +437,7 @@ export default function OwnerPage() {
       if (a.role !== b.role) return a.role === "housekeeper" ? -1 : 1;
       return Math.abs(b.balance) - Math.abs(a.balance);
     });
-  }, [txSearchFiltered, staffById]);
+  }, [allOpsTransactions, staffById]);
   const ownerAgendaTasks = useMemo(() => {
     if (agendaItems.length) return agendaItems;
     const taskRows = (tasks || []).map((t) => ({
@@ -834,12 +835,6 @@ export default function OwnerPage() {
               )}
             </div>
 
-            <div style={{ ...softCard, padding: 14, marginBottom: 18 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <SmallStat label="Thu vận hành tháng này" value={fmtVND(opsIncomeThisMonth)} color={T.success} />
-                <SmallStat label="Chi vận hành tháng này" value={fmtVND(opsSpentThisMonth)} color={T.danger} />
-              </div>
-            </div>
 
             <button onClick={() => window.location.href = "/transactions"} style={{ ...cardStyle, width: "100%", padding: 14, marginBottom: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
