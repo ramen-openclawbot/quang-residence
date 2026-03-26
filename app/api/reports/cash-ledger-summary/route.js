@@ -79,6 +79,9 @@ export async function GET(request) {
     const byKind = {
       ops: { income: 0, expense: 0 },
       fund_transfer_out: { income: 0, expense: 0 },
+    };
+
+    const legacy = {
       fund_transfer_in_auto: { income: 0, expense: 0 },
     };
 
@@ -94,9 +97,11 @@ export async function GET(request) {
       if (isIncome) {
         income += amount;
         if (byKind[kind]) byKind[kind].income += amount;
+        else if (legacy[kind]) legacy[kind].income += amount;
       } else {
         expense += amount;
         if (byKind[kind]) byKind[kind].expense += amount;
+        else if (legacy[kind]) legacy[kind].expense += amount;
       }
     }
 
