@@ -164,7 +164,7 @@ export default function OwnerPage() {
 
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
-      const [res, agendaRes, monthSummaryRes, allSummaryRes, cashLedgerAllRes, cashLedgerMonthRes, txListRes, cashLedgerListRes] = await Promise.all([
+      const [res, agendaRes, monthSummaryRes, allSummaryRes, cashLedgerAllRes, cashLedgerMonthRes, txListRes, allTxListRes, cashLedgerListRes] = await Promise.all([
         fetch(`/api/dashboard/owner?month=${month}&year=${year}`, { headers }),
         fetch(`/api/agenda/feed?limit=300`, { headers }),
         fetch(`/api/reports/finance-summary?scope=month&month=${monthKey}&include_pending=true&include_rejected=false`, { headers }),
