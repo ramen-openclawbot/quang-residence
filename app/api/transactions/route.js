@@ -22,6 +22,26 @@ function getSignedAmount(tx) {
   return 0;
 }
 
+async function computeFilteredTotal({ month, year }) {
+  let query = supabaseAdmin
+    .from("transactions")
+    .select("created_by")
+    .order("created_at", { ascending: false })
+    .limit(5000);
+
+  if (month !== null && year !== null) {
+    const m = Number(month);
+    const y = Number(year);
+    const startDate = new Date(y, m, 1).toISOString();
+    const endDate = new Date(y, m + 1, 0, 23, 59, 59).toISOString();
+    query = query.gte("transaction_date", startDate).lte("transaction_date", endDate);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []).filter(isOpsTransaction).length;
+}
+
 // ─── GET: list transactions for owner / secretary ──────────────────────
 export async function GET(request) {
   try {
@@ -64,6 +84,7 @@ export async function GET(request) {
     }
 
     const opsData = (data || []).filter(isOpsTransaction);
+    const filteredTotal = await computeFilteredTotal({ month, year });
 
     // Month-level summary across the full filtered month/year set (not only current page)
     let summary = null;
@@ -103,8 +124,9 @@ export async function GET(request) {
     return NextResponse.json({
       success: true,
       data: opsData,
-      total: count,
-      hasMore: (offset + limit) < (count || 0),
+      total: filteredTotal,
+      raw_total: count,
+      hasMore: (offset + opsData.length) < filteredTotal,
       summary,
       ops_filtered: true,
     });
