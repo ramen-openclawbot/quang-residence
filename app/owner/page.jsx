@@ -179,17 +179,15 @@ export default function OwnerPage() {
         fetch(`/api/cash-ledger?limit=300`, { headers }),
       ]);
 
-      if (!res.ok) throw new Error("Owner dashboard API failed");
-
-      const json = await res.json();
+      const json = res.ok ? await res.json() : {};
       const agendaJson = agendaRes.ok ? await agendaRes.json() : { items: [] };
       const monthSummaryJson = monthSummaryRes.ok ? await monthSummaryRes.json() : null;
       const allSummaryJson = allSummaryRes.ok ? await allSummaryRes.json() : null;
       const cashLedgerAllJson = cashLedgerAllRes.ok ? await cashLedgerAllRes.json() : null;
       const cashLedgerMonthJson = cashLedgerMonthRes.ok ? await cashLedgerMonthRes.json() : null;
       const txListJson = txListRes.ok ? await txListRes.json() : null;
-      const allTxListJson = allTxListRes.ok ? await allTxListRes.json() : null;
-      const cashLedgerListJson = cashLedgerListRes.ok ? await cashLedgerListRes.json() : null;
+      const allTxListJson = allTxListRes?.ok ? await allTxListRes.json() : null;
+      const cashLedgerListJson = cashLedgerListRes?.ok ? await cashLedgerListRes.json() : null;
 
       if (ownerDebugMode) {
         setDebugInfo({
@@ -222,7 +220,7 @@ export default function OwnerPage() {
       }
 
       setTransactions(txListJson?.data || json.recentTx || []);
-      setAllOpsTransactions(allTxListJson?.data || []);
+      setAllOpsTransactions(allTxListJson?.data || txListJson?.data || json.recentTx || []);
       setTasks(json.tasks || []);
       setMaintenanceItems(json.maintenance || []);
       setFamilySchedule(json.familySchedule || []);
