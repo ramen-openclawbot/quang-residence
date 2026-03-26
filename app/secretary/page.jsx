@@ -208,15 +208,17 @@ export default function SecretaryPage() {
       if (res.ok) {
         const json = await res.json();
         const agendaJson = agendaRes.ok ? await agendaRes.json() : { items: [] };
-        setFunds(json.funds || []);
-        setTasks(json.tasks || []);
-        setMaintenanceItems(json.maintenance || []);
-        setFamilySchedule(json.familySchedule || []);
-        setDrivingTrips(json.drivingTrips || []);
-        setStaffProfiles(json.staffProfiles || []);
+        const resources = json.resources || {};
+        const ops = json.ops || {};
+        setFunds(resources.funds || json.funds || []);
+        setTasks(resources.tasks || json.tasks || []);
+        setMaintenanceItems(resources.maintenance || json.maintenance || []);
+        setFamilySchedule(resources.familySchedule || json.familySchedule || []);
+        setDrivingTrips(resources.drivingTrips || json.drivingTrips || []);
+        setStaffProfiles(resources.staffProfiles || json.staffProfiles || []);
         setAgendaItems(agendaJson.items || []);
-        setTransactions(json.recentTx || []);
-        setServerSummary({ todaySummary: json.todaySummary, pendingCount: json.pendingCount });
+        setTransactions(ops.recentTx || json.recentTx || []);
+        setServerSummary({ todaySummary: ops.todaySummary || json.todaySummary, pendingCount: ops.pendingCount ?? json.pendingCount });
       } else {
         /* Fallback: direct Supabase queries */
         const [fundsRes, tasksRes, maintenanceRes, scheduleRes, tripsRes, profilesRes, txRes] = await Promise.all([
