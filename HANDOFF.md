@@ -885,6 +885,10 @@ These areas should be audited carefully next:
    - standard transaction mode for non-secretary roles
 5. Count-vs-data mismatch in `/api/transactions`:
    - current `data` is ops-filtered, but `total` still comes from pre-filter DB count
+6. Supabase Advisor security debt from temporary public backup/audit tables:
+   - remediation file added: `supabase/fix_public_backup_tables_rls.sql`
+   - immediate action: enable + force RLS on all temporary backup/audit tables in `public`
+   - later cleanup: drop these tables entirely once audit/repair is fully closed
 
 ### Most recent relevant commits before full audit
 - `5ab805b` fix: show actual current balance on housekeeper home dashboard
