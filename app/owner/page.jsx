@@ -116,10 +116,14 @@ export default function OwnerPage() {
   const [cashLedgerSummary, setCashLedgerSummary] = useState(null);
   const [cashLedgerEntries, setCashLedgerEntries] = useState([]);
   const [agendaItems, setAgendaItems] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [txSearch, setTxSearch] = useState("");
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedMonth, selectedYear]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -151,9 +155,8 @@ export default function OwnerPage() {
   async function fetchData() {
     try {
       setLoading(true);
-      const now = new Date();
-      const month = now.getMonth();
-      const year = now.getFullYear();
+      const month = selectedMonth;
+      const year = selectedYear;
 
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
@@ -167,7 +170,7 @@ export default function OwnerPage() {
         fetch(`/api/reports/finance-summary?scope=all&include_pending=true&include_rejected=false`, { headers }),
         fetch(`/api/reports/cash-ledger-summary?scope=all&include_pending=true&include_rejected=false`, { headers }),
         fetch(`/api/reports/cash-ledger-summary?scope=month&month=${monthKey}&include_pending=true&include_rejected=false`, { headers }),
-        fetch(`/api/transactions?limit=300`, { headers }),
+        fetch(`/api/transactions?limit=300&month=${month}&year=${year}`, { headers }),
         fetch(`/api/cash-ledger?limit=300`, { headers }),
       ]);
 
@@ -358,8 +361,31 @@ export default function OwnerPage() {
   const recentTasks = useMemo(() => tasks.slice(0, 4), [tasks]);
   const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);
   const ROLE_VI = { secretary: "Thư ký", driver: "Lái xe", housekeeper: "Quản gia" };
+
+  const txDayFiltered = useMemo(() => {
+    if (selectedDay === null) return transactions;
+    return transactions.filter((tx) => {
+      const raw = String(tx?.transaction_date || tx?.created_at || "").slice(8, 10);
+      return Number(raw) === selectedDay;
+    });
+  }, [transactions, selectedDay]);
+
+  const txSearchFiltered = useMemo(() => {
+    const q = txSearch.trim().toLowerCase();
+    if (!q) return txDayFiltered;
+    return txDayFiltered.filter((tx) => [
+      tx.description,
+      tx.recipient_name,
+      tx.bank_name,
+      tx.transaction_code,
+      tx.profiles?.full_name,
+      tx.status,
+      tx.type,
+    ].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
+  }, [txDayFiltered, txSearch]);
+
   const spendingPieData = useMemo(() => {
-    const expenseRows = transactions.filter((tx) => getSignedAmount(tx) < 0);
+    const expenseRows = txSearchFiltered.filter((tx) => getSignedAmount(tx) < 0);
     const total = expenseRows.reduce((sum, tx) => sum + Math.abs(getSignedAmount(tx)), 0);
     const palette = ["#56c91d", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6"];
     const buckets = new Map();
@@ -381,11 +407,11 @@ export default function OwnerPage() {
         return slice;
       }),
     };
-  }, [transactions]);
+  }, [txSearchFiltered]);
 
   const staffFundBalances = useMemo(() => {
     const recipients = new Set();
-    for (const tx of transactions) {
+    for (const tx of txSearchFiltered) {
       const note = String(tx?.notes || "");
       if (!note.includes("[AUTO_FUND_TRANSFER:")) continue;
       const userId = String(tx?.created_by || "");
@@ -394,7 +420,7 @@ export default function OwnerPage() {
       recipients.add(userId);
     }
     const map = new Map();
-    for (const tx of transactions) {
+    for (const tx of txSearchFiltered) {
       const userId = String(tx?.created_by || "");
       if (!recipients.has(userId)) continue;
       const profileInfo = staffById[userId] || null;
@@ -410,7 +436,7 @@ export default function OwnerPage() {
       if (a.role !== b.role) return a.role === "housekeeper" ? -1 : 1;
       return Math.abs(b.balance) - Math.abs(a.balance);
     });
-  }, [transactions, staffById]);
+  }, [txSearchFiltered, staffById]);
   const ownerAgendaTasks = useMemo(() => {
     if (agendaItems.length) return agendaItems;
     const taskRows = (tasks || []).map((t) => ({
@@ -710,7 +736,25 @@ export default function OwnerPage() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <button onClick={() => setTab("home")} style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${T.border}`, background: "white", cursor: "pointer" }}><MIcon name="arrow_back" size={20} color={T.text} /></button>
               <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>Phân tích tài chính</div>
-              <button style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${T.border}`, background: "white", cursor: "pointer" }}><MIcon name="search" size={20} color={T.textMuted} /></button>
+              <div style={{ width: 40 }} />
+            </div>
+
+            <div style={{ ...softCard, padding: 14, marginBottom: 14 }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <input value={txSearch} onChange={(e) => setTxSearch(e.target.value)} placeholder="Tìm giao dịch vận hành..." style={{ ...inputStyle, height: 42 }} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} style={{ ...inputStyle, height: 42 }}>
+                  {Array.from({ length: 12 }).map((_, idx) => <option key={idx} value={idx}>Tháng {idx + 1}</option>)}
+                </select>
+                <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} style={{ ...inputStyle, height: 42 }}>
+                  {[selectedYear - 1, selectedYear, selectedYear + 1].filter((v, i, arr) => arr.indexOf(v) === i).map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <select value={selectedDay ?? "all"} onChange={(e) => setSelectedDay(e.target.value === "all" ? null : Number(e.target.value))} style={{ ...inputStyle, height: 42 }}>
+                  <option value="all">Cả tháng</option>
+                  {Array.from({ length: 31 }).map((_, idx) => <option key={idx + 1} value={idx + 1}>Ngày {idx + 1}</option>)}
+                </select>
+              </div>
             </div>
 
             <div style={{ textAlign: "center", marginBottom: 24 }}>
@@ -807,7 +851,7 @@ export default function OwnerPage() {
 
             <div style={{ ...cardStyle, padding: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 12 }}>Giao dịch gần đây</div>
-              {transactions.slice(0, 6).map((tx) => {
+              {txSearchFiltered.slice(0, 6).map((tx) => {
                 const signedAmount = getSignedAmount(tx);
                 const isPositive = signedAmount >= 0;
                 return (
