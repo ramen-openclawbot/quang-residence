@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole, supabaseAdmin } from "../../../../lib/api-auth";
-import { summarizeBalanceRows } from "../../../../lib/dashboard-finance";
+import { fetchUserBalanceRows, summarizeBalanceRows } from "../../../../lib/dashboard-finance";
 
 export async function GET(request) {
   try {
@@ -12,26 +12,21 @@ export async function GET(request) {
     const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     const monthKey = todayKey.slice(0, 7);
 
-    const [txRes, txSummaryRes, maintenanceRes, scheduleRes] = await Promise.all([
+    const [txRes, txSummaryRows, maintenanceRes, scheduleRes] = await Promise.all([
       supabaseAdmin.from("transactions").select("*, categories!category_id(id, code, name_vi, name, color)").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(120),
-      supabaseAdmin.from("transactions").select("type, amount, adjustment_direction, transaction_date, created_at").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(5000),
+      fetchUserBalanceRows(supabaseAdmin, profile.id),
       supabaseAdmin.from("home_maintenance").select("*").or(`created_by.eq.${profile.id},reported_by.eq.${profile.id}`).order("created_at", { ascending: false }),
       supabaseAdmin.from("family_schedule").select("*").eq("created_by", profile.id).order("event_date", { ascending: true }),
     ]);
 
-    const txSummaryRows = txSummaryRes.data || [];
-    const { current_balance, today_expense, month_expense } = summarizeBalanceRows(txSummaryRows, { todayKey, monthKey });
+    const { current_balance, today_expense, month_expense } = summarizeBalanceRows(txSummaryRows || [], { todayKey, monthKey });
 
     return NextResponse.json({
       success: true,
       transactions: txRes.data || [],
       maintenance: maintenanceRes.data || [],
       familySchedule: scheduleRes.data || [],
-      summary: {
-        current_balance,
-        today_expense,
-        month_expense,
-      },
+      summary: { current_balance, today_expense, month_expense },
     });
   } catch (err) {
     console.error("Housekeeper dashboard API error:", err);

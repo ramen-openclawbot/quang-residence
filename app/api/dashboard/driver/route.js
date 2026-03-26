@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole, supabaseAdmin } from "../../../../lib/api-auth";
-import { summarizeBalanceRows } from "../../../../lib/dashboard-finance";
+import { fetchUserBalanceRows, summarizeBalanceRows } from "../../../../lib/dashboard-finance";
 
 export async function GET(request) {
   try {

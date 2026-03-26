@@ -1,45 +1,33 @@
 import { NextResponse } from "next/server";
 import { resolveUser, supabaseAdmin, notify } from "../../../lib/api-auth";
+import { buildMonthDateRange, fetchPagedRows, isOpsTransaction, summarizeOpsTransactions } from "../../../lib/finance-ops";
 
 const MAX_REJECT_REASON_LENGTH = 500;
-const OPS_EXCLUDED_USER_PREFIX = "6487c846";
 
-function isOpsTransaction(tx) {
-  const createdBy = String(tx?.created_by || "");
-  return !createdBy.startsWith(OPS_EXCLUDED_USER_PREFIX);
-}
-
-function getSignedAmount(tx) {
-  const amount = Math.abs(Number(tx?.amount || 0));
-  const type = String(tx?.type || "").trim().toLowerCase();
-  const direction = String(tx?.adjustment_direction || "").trim().toLowerCase();
-  if (type === "income") return amount;
-  if (type === "expense") return -amount;
-  if (type === "adjustment") {
-    if (direction === "increase") return amount;
-    if (direction === "decrease") return -amount;
+async function fetchFilteredTransactionRows({ month, year, columns = "created_by" }) {
+  let startDate = null;
+  let endDate = null;
+  if (month !== null && year !== null) {
+    ({ startDate, endDate } = buildMonthDateRange(Number(year), Number(month)));
   }
-  return 0;
+
+  return fetchPagedRows((from, to) => {
+    let query = supabaseAdmin
+      .from("transactions")
+      .select(columns)
+      .order("created_at", { ascending: false })
+      .range(from, to);
+
+    if (startDate && endDate) {
+      query = query.gte("transaction_date", startDate).lte("transaction_date", endDate);
+    }
+    return query;
+  });
 }
 
 async function computeFilteredTotal({ month, year }) {
-  let query = supabaseAdmin
-    .from("transactions")
-    .select("created_by")
-    .order("created_at", { ascending: false })
-    .limit(5000);
-
-  if (month !== null && year !== null) {
-    const m = Number(month);
-    const y = Number(year);
-    const startDate = new Date(y, m, 1).toISOString();
-    const endDate = new Date(y, m + 1, 0, 23, 59, 59).toISOString();
-    query = query.gte("transaction_date", startDate).lte("transaction_date", endDate);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data || []).filter(isOpsTransaction).length;
+  const rows = await fetchFilteredTransactionRows({ month, year, columns: "created_by" });
+  return rows.filter(isOpsTransaction).length;
 }
 
 // ─── GET: list transactions for owner / secretary ──────────────────────
@@ -56,6 +44,8 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const limit = Math.min(Math.max(Number(searchParams.get("limit") || 40), 1), 300);
     const offset = Math.max(Number(searchParams.get("offset") || 0), 0);
+    const month = searchParams.get("month");
+    const year = searchParams.get("year");
 
     let query = supabaseAdmin
       .from("transactions")
@@ -63,16 +53,12 @@ export async function GET(request) {
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
-    // Optional month/year filter — use transaction_date for consistency with display
     if (month !== null && year !== null) {
       const { startDate, endDate } = buildMonthDateRange(Number(year), Number(month));
-      query = query
-        .gte("transaction_date", startDate)
-        .lte("transaction_date", endDate);
+      query = query.gte("transaction_date", startDate).lte("transaction_date", endDate);
     }
 
     const { data, error, count } = await query;
-
     if (error) {
       console.error("Transaction GET error:", error);
       return NextResponse.json({ error: "Failed to fetch transactions." }, { status: 500 });
@@ -81,38 +67,20 @@ export async function GET(request) {
     const opsData = (data || []).filter(isOpsTransaction);
     const filteredTotal = await computeFilteredTotal({ month, year });
 
-    // Month-level summary across the full filtered month/year set (not only current page)
     let summary = null;
     if (month !== null && year !== null) {
-      let summaryQuery = supabaseAdmin
-        .from("transactions")
-        .select("type, amount, adjustment_direction, status, created_by")
-        .order("created_at", { ascending: false })
-        .limit(3000);
-
-      const m = Number(month);
-      const y = Number(year);
-      const startDate = new Date(y, m, 1).toISOString();
-      const endDate = new Date(y, m + 1, 0, 23, 59, 59).toISOString();
-      summaryQuery = summaryQuery
-        .gte("transaction_date", startDate)
-        .lte("transaction_date", endDate);
-
-      const { data: summaryRows, error: summaryError } = await summaryQuery;
-      if (summaryError) {
+      try {
+        const summaryRows = await fetchFilteredTransactionRows({ month, year, columns: "type, amount, adjustment_direction, status, created_by" });
+        const rows = summaryRows.filter(isOpsTransaction);
+        const opsSummary = summarizeOpsTransactions(rows, { includePending: true, includeRejected: false });
+        summary = {
+          income: opsSummary.income,
+          expense: opsSummary.expense,
+          pending: opsSummary.pending_count,
+          sampleSize: rows.length,
+        };
+      } catch (summaryError) {
         console.warn("Transaction summary query error:", summaryError);
-      } else {
-        const rows = (summaryRows || []).filter(isOpsTransaction);
-        const income = rows.reduce((sum, tx) => {
-          const signed = getSignedAmount(tx);
-          return signed > 0 ? sum + signed : sum;
-        }, 0);
-        const expense = rows.reduce((sum, tx) => {
-          const signed = getSignedAmount(tx);
-          return signed < 0 ? sum + Math.abs(signed) : sum;
-        }, 0);
-        const pending = rows.filter((tx) => String(tx?.status || "").trim().toLowerCase() === "pending").length;
-        summary = { income, expense, pending, sampleSize: rows.length };
       }
     }
 
@@ -144,7 +112,6 @@ export async function PATCH(request) {
 
     const { transaction_id, action, reject_reason } = await request.json();
 
-    // Validate transaction_id format
     if (!transaction_id || (typeof transaction_id !== "number" && typeof transaction_id !== "string")) {
       return NextResponse.json({ error: "Valid transaction_id is required" }, { status: 400 });
     }
@@ -152,7 +119,6 @@ export async function PATCH(request) {
       return NextResponse.json({ error: "action must be approve or reject" }, { status: 400 });
     }
 
-    // Fetch the transaction
     const { data: tx, error: txErr } = await supabaseAdmin
       .from("transactions")
       .select("*, profiles!created_by(id, full_name, role)")
@@ -163,20 +129,15 @@ export async function PATCH(request) {
       return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
     }
 
-    // Secretary cannot review their own transactions
     if (profile.role === "secretary" && tx.created_by === profile.id) {
       return NextResponse.json({ error: "Cannot review your own transaction" }, { status: 403 });
     }
 
-    // Idempotency guard — prevent double-approval / double-rejection
     if (tx.status !== "pending") {
       return NextResponse.json({ error: `Transaction is already ${tx.status}` }, { status: 409 });
     }
 
-    const submitterName = tx.profiles?.full_name || "Staff";
     const amount = Number(tx.amount || 0);
-
-    // Validate amount is a valid positive number
     if (!isFinite(amount) || amount <= 0) {
       return NextResponse.json({ error: "Transaction has invalid amount" }, { status: 422 });
     }
@@ -221,7 +182,6 @@ export async function PATCH(request) {
         }
       }
 
-      // Mark as approved
       const { error } = await supabaseAdmin
         .from("transactions")
         .update({
@@ -235,13 +195,9 @@ export async function PATCH(request) {
         .eq("id", transaction_id);
 
       if (error) {
-        // CRITICAL: Fund was updated but transaction approval failed — rollback fund balance
-        console.error("CRITICAL: Transaction approval failed, rolling back fund balance", {
-          transaction_id, fund_id: tx.fund_id, error
-        });
+        console.error("CRITICAL: Transaction approval failed, rolling back fund balance", { transaction_id, fund_id: tx.fund_id, error });
 
         if (tx.fund_id) {
-          // Reverse the balance change
           const { data: currentFund } = await supabaseAdmin
             .from("funds")
             .select("current_balance")
@@ -262,9 +218,7 @@ export async function PATCH(request) {
               .eq("id", tx.fund_id);
 
             if (rollbackErr) {
-              console.error("CRITICAL: Fund rollback also failed — manual intervention required", {
-                transaction_id, fund_id: tx.fund_id, rollbackErr
-              });
+              console.error("CRITICAL: Fund rollback also failed — manual intervention required", { transaction_id, fund_id: tx.fund_id, rollbackErr });
             }
           }
         }
@@ -272,7 +226,6 @@ export async function PATCH(request) {
         return NextResponse.json({ error: "Failed to approve transaction." }, { status: 500 });
       }
 
-      // Notify submitter (non-fatal)
       if (tx.created_by) {
         try {
           await notify(
@@ -300,8 +253,6 @@ export async function PATCH(request) {
       }
 
       const reviewedAt = new Date().toISOString();
-
-      // Keep the transaction for audit trail, mark it as rejected instead of deleting.
       let rejectUpdateError = null;
 
       const { error } = await supabaseAdmin
@@ -316,8 +267,6 @@ export async function PATCH(request) {
 
       rejectUpdateError = error;
 
-      // Fallback for production schema drift / FK mismatch on audit fields:
-      // still allow the rejection state to be stored even if reviewed_by/reviewed_at fails.
       if (rejectUpdateError) {
         console.error("Transaction reject full audit update error:", rejectUpdateError);
 
@@ -337,7 +286,6 @@ export async function PATCH(request) {
         }
       }
 
-      // Notify submitter after the audit state is stored (non-fatal).
       if (tx.created_by) {
         try {
           await notify(

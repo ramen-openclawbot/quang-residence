@@ -32,19 +32,24 @@ export async function GET(request) {
       supabaseAdmin.from("profiles").select("id, full_name, role"),
       supabaseAdmin.from("home_settings").select("*").order("setting_key"),
       getCachedSummary("owner:summary:all", async () => {
-        const { data } = await supabaseAdmin.from("transactions").select("type, amount, adjustment_direction, status, created_by").limit(5000);
-        const rows = (data || []).filter(isOpsTransaction);
+        const allRows = await fetchPagedRows((from, to) => supabaseAdmin
+          .from("transactions")
+          .select("type, amount, adjustment_direction, status, created_by")
+          .order("created_at", { ascending: false })
+          .range(from, to));
+        const rows = allRows.filter(isOpsTransaction);
         const s = summarizeOpsTransactions(rows, { includePending: true, includeRejected: false });
         return { income: s.income, expense: s.expense, net: s.net, pending: s.pending_count, sampleSize: rows.length };
       }),
       getCachedSummary(`owner:summary:${year}-${String(month + 1).padStart(2, "0")}`, async () => {
-        const { data } = await supabaseAdmin
+        const monthRows = await fetchPagedRows((from, to) => supabaseAdmin
           .from("transactions")
           .select("type, amount, adjustment_direction, status, created_by")
           .gte("transaction_date", startDate)
           .lte("transaction_date", endDate)
-          .limit(5000);
-        const rows = (data || []).filter(isOpsTransaction);
+          .order("created_at", { ascending: false })
+          .range(from, to));
+        const rows = monthRows.filter(isOpsTransaction);
         const s = summarizeOpsTransactions(rows, { includePending: true, includeRejected: false });
         return { income: s.income, expense: s.expense, net: s.net, pending: s.pending_count, sampleSize: rows.length };
       }),
