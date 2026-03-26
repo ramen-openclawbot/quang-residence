@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import StaffShell, { MIcon } from "../../components/shared/StaffShell";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
+import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
 import { getSignedAmount, getLocalDateKey, getTodayKey } from "../../lib/transaction";
 import TransactionForm from "../../components/TransactionForm";
