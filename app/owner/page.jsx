@@ -337,12 +337,47 @@ export default function OwnerPage() {
   const pendingTransactions = useMemo(() => transactions.filter((tx) => tx.status === "pending"), [transactions]);
   const openTasks = useMemo(() => tasks.filter((task) => task.status !== "done"), [tasks]);
 
-  const ledgerBalance = cashLedgerSummary?.all?.net ?? 0;
-  const incomeThisMonth = cashLedgerSummary?.month?.income ?? 0;
-  const spentThisMonth = cashLedgerSummary?.month?.expense ?? 0;
+  const cashLedgerFallbackAll = useMemo(() => (cashLedgerEntries || []).reduce((sum, entry) => {
+    const status = String(entry?.status || "").toLowerCase();
+    if (status === "rejected") return sum;
+    const amount = Math.abs(Number(entry?.amount || 0));
+    return String(entry?.type || "").toLowerCase() === "income" ? sum + amount : sum - amount;
+  }, 0), [cashLedgerEntries]);
+
+  const cashLedgerMonthFallback = useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    for (const entry of cashLedgerEntries || []) {
+      const raw = String(entry?.transaction_date || entry?.created_at || "");
+      const y = Number(raw.slice(0, 4));
+      const m = Number(raw.slice(5, 7)) - 1;
+      const status = String(entry?.status || "").toLowerCase();
+      if (status === "rejected") continue;
+      if (y !== selectedYear || m !== selectedMonth) continue;
+      const amount = Math.abs(Number(entry?.amount || 0));
+      if (String(entry?.type || "").toLowerCase() === "income") income += amount;
+      else expense += amount;
+    }
+    return { income, expense, net: income - expense };
+  }, [cashLedgerEntries, selectedMonth, selectedYear]);
+
+  const opsMonthFallback = useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    for (const tx of transactions || []) {
+      const signed = getSignedAmount(tx);
+      if (signed > 0) income += signed;
+      if (signed < 0) expense += Math.abs(signed);
+    }
+    return { income, expense };
+  }, [transactions]);
+
+  const ledgerBalance = cashLedgerSummary?.all?.net ?? cashLedgerFallbackAll;
+  const incomeThisMonth = cashLedgerSummary?.month?.income ?? cashLedgerMonthFallback.income;
+  const spentThisMonth = cashLedgerSummary?.month?.expense ?? cashLedgerMonthFallback.expense;
   const pendingCount = cashLedgerSummary?.all?.pending ?? 0;
-  const opsIncomeThisMonth = summaryData?.month?.income ?? 0;
-  const opsSpentThisMonth = summaryData?.month?.expense ?? 0;
+  const opsIncomeThisMonth = summaryData?.month?.income ?? opsMonthFallback.income;
+  const opsSpentThisMonth = summaryData?.month?.expense ?? opsMonthFallback.expense;
   const recentTasks = useMemo(() => tasks.slice(0, 4), [tasks]);
   const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);
   const ROLE_VI = { secretary: "Thư ký", driver: "Lái xe", housekeeper: "Quản gia" };
