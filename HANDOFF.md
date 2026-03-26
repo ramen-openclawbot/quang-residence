@@ -863,6 +863,10 @@ Transaction list UX has gone through multiple quick iterations today; current br
   - pie chart for operational expense mix
   - staff transferred-fund balance cards for active `driver` / `housekeeper`
   - separate display for cash-ledger monthly income/expense and operational monthly income/expense
+  - added secretary-style filters for month/year/day/search on owner finance analysis
+- Legacy cleanup:
+  - `fund_transfer_in_auto` remains readable only as historical legacy in cash-ledger summary output (`legacy_by_kind`)
+  - active cash-ledger business flow now only uses `ops` and `fund_transfer_out`
 
 ### Audit context / current risk list
 These areas should be audited carefully next:

@@ -113,6 +113,8 @@ export async function GET(request) {
       include_pending: includePending,
       include_rejected: includeRejected,
       by_kind: byKind,
+      legacy_by_kind: legacy,
+      note: "fund_transfer_in_auto is legacy-only and no longer part of active cash-ledger flow",
     });
   } catch (err) {
     console.error("cash-ledger-summary API error:", err);
