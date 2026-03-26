@@ -143,6 +143,7 @@ export default function DriverPage() {
   const [trips, setTrips] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [summary, setSummary] = useState({ current_balance: 0, today_expense: 0, month_expense: 0 });
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
@@ -169,6 +170,7 @@ export default function DriverPage() {
           const json = await res.json();
           setTrips(json.trips || []);
           setTransactions(json.transactions || []);
+          setSummary(json.summary || { current_balance: 0, today_expense: 0, month_expense: 0 });
           if (agendaRes.ok) {
             const agenda = await agendaRes.json();
             const taskItems = (agenda.items || []).filter((x) => x.source === "task").map((x) => x.payload || x);
@@ -189,6 +191,14 @@ export default function DriverPage() {
         setTrips(tripsRes.data || []);
         setTransactions(txRes.data || []);
         setTasks(tasksRes.data || []);
+        setSummary({
+          current_balance: (txRes.data || []).reduce((sum, tx) => sum + getSignedAmount(tx), 0),
+          today_expense: (txRes.data || []).filter((t) => isCurrentDayTransaction(t)).reduce((s, t) => s + Math.abs(Math.min(0, getSignedAmount(t))), 0),
+          month_expense: (() => {
+            const monthKey = getTodayKey().slice(0, 7);
+            return (txRes.data || []).filter((t) => [getLocalDateKey(t.transaction_date), getLocalDateKey(t.created_at)].some((key) => key.startsWith(monthKey))).reduce((s, t) => s + Math.abs(Math.min(0, getSignedAmount(t))), 0);
+          })(),
+        });
       }
     } catch (error) {
       console.error("Driver fetchData error:", error);
@@ -312,12 +322,9 @@ export default function DriverPage() {
   const activeTrip = useMemo(() => trips.find((t) => t.status === "in_progress") || null, [trips]);
   const openTasks = useMemo(() => tasks.filter((t) => t.status !== "done"), [tasks]);
   const isCurrentDayTransaction = (t) => getLocalDateKey(t.transaction_date) === today || getLocalDateKey(t.created_at) === today;
-  const todayExpense = useMemo(() => transactions.filter((t) => isCurrentDayTransaction(t)).reduce((s, t) => s + Math.abs(Math.min(0, getSignedAmount(t))), 0), [transactions, today]);
-  const monthExpense = useMemo(() => {
-    const monthKey = today.slice(0, 7);
-    return transactions.filter((t) => [getLocalDateKey(t.transaction_date), getLocalDateKey(t.created_at)].some((key) => key.startsWith(monthKey))).reduce((s, t) => s + Math.abs(Math.min(0, getSignedAmount(t))), 0);
-  }, [transactions, today]);
-  const currentBalance = useMemo(() => transactions.reduce((sum, tx) => sum + getSignedAmount(tx), 0), [transactions]);
+  const todayExpense = summary?.today_expense ?? 0;
+  const monthExpense = summary?.month_expense ?? 0;
+  const currentBalance = summary?.current_balance ?? 0;
 
   return (
     <StaffShell role="driver">

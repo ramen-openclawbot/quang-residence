@@ -4,7 +4,7 @@ import { getSignedAmount } from "../../../../lib/transaction";
 
 export async function GET(request) {
   try {
-    const auth = await requireRole(request, "driver");
+    const auth = await requireRole(request, "housekeeper");
     if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
     const { profile } = auth;
 
@@ -12,11 +12,11 @@ export async function GET(request) {
     const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     const monthKey = todayKey.slice(0, 7);
 
-    const [tripsRes, txRes, tasksRes, txSummaryRes] = await Promise.all([
-      supabaseAdmin.from("driving_trips").select("*").eq("assigned_to", profile.id).order("scheduled_time", { ascending: true }),
+    const [txRes, txSummaryRes, maintenanceRes, scheduleRes] = await Promise.all([
       supabaseAdmin.from("transactions").select("*, categories!category_id(id, code, name_vi, name, color)").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(120),
-      supabaseAdmin.from("tasks").select("*").or(`assigned_to.eq.${profile.id},created_by.eq.${profile.id}`).order("due_date", { ascending: true }),
       supabaseAdmin.from("transactions").select("type, amount, adjustment_direction, transaction_date, created_at").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(5000),
+      supabaseAdmin.from("home_maintenance").select("*").or(`created_by.eq.${profile.id},reported_by.eq.${profile.id}`).order("created_at", { ascending: false }),
+      supabaseAdmin.from("family_schedule").select("*").eq("created_by", profile.id).order("event_date", { ascending: true }),
     ]);
 
     const txSummaryRows = txSummaryRes.data || [];
@@ -34,9 +34,9 @@ export async function GET(request) {
 
     return NextResponse.json({
       success: true,
-      trips: tripsRes.data || [],
       transactions: txRes.data || [],
-      tasks: tasksRes.data || [],
+      maintenance: maintenanceRes.data || [],
+      familySchedule: scheduleRes.data || [],
       summary: {
         current_balance,
         today_expense,
@@ -44,7 +44,7 @@ export async function GET(request) {
       },
     });
   } catch (err) {
-    console.error("Driver dashboard API error:", err);
-    return NextResponse.json({ error: "An error occurred while loading the driver dashboard." }, { status: 500 });
+    console.error("Housekeeper dashboard API error:", err);
+    return NextResponse.json({ error: "An error occurred while loading the housekeeper dashboard." }, { status: 500 });
   }
 }

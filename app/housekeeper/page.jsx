@@ -140,6 +140,7 @@ export default function HousekeeperPage() {
   const [transactions, setTransactions] = useState([]);
   const [maintenanceItems, setMaintenanceItems] = useState([]);
   const [familySchedule, setFamilySchedule] = useState([]);
+  const [summary, setSummary] = useState({ current_balance: 0, today_expense: 0, month_expense: 0 });
 
   const [maintenanceFormData, setMaintenanceFormData] = useState({
     title: "",
@@ -198,37 +199,38 @@ export default function HousekeeperPage() {
     setLoading(true);
     try {
       const token = await getToken();
-      let agendaLoaded = false;
+      let loaded = false;
       if (token) {
-        const agendaRes = await fetch("/api/agenda/feed?limit=300", {
+        const res = await fetch("/api/dashboard/housekeeper", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (agendaRes.ok) {
-          const agenda = await agendaRes.json();
-          const items = agenda.items || [];
-          const maintenance = items
-            .filter((x) => x.source === "maintenance")
-            .map((x) => x.payload || x)
-            .filter((m) => m.created_by === profile.id || m.reported_by === profile.id);
-          const schedule = items
-            .filter((x) => x.source === "schedule")
-            .map((x) => x.payload || x)
-            .filter((s) => s.created_by === profile.id);
-          setMaintenanceItems(maintenance);
-          setFamilySchedule(schedule);
-          agendaLoaded = true;
+        if (res.ok) {
+          const json = await res.json();
+          setTransactions(json.transactions || []);
+          setMaintenanceItems(json.maintenance || []);
+          setFamilySchedule(json.familySchedule || []);
+          setSummary(json.summary || { current_balance: 0, today_expense: 0, month_expense: 0 });
+          loaded = true;
         }
       }
 
-      const txData = await supabase
-        .from("transactions")
-        .select("*, categories!category_id(id, code, name_vi, name, color)")
-        .eq("created_by", profile.id)
-        .order("created_at", { ascending: false })
-        .limit(500);
-      setTransactions(txData.data || []);
+      if (!loaded) {
+        const txData = await supabase
+          .from("transactions")
+          .select("*, categories!category_id(id, code, name_vi, name, color)")
+          .eq("created_by", profile.id)
+          .order("created_at", { ascending: false })
+          .limit(500);
+        setTransactions(txData.data || []);
+        setSummary({
+          current_balance: (txData.data || []).reduce((sum, tx) => sum + getSignedAmount(tx), 0),
+          today_expense: (txData.data || []).filter((tx) => getLocalDateKey(tx.transaction_date) === getTodayKey() || getLocalDateKey(tx.created_at) === getTodayKey()).reduce((sum, tx) => sum + Math.abs(Math.min(0, getSignedAmount(tx))), 0),
+          month_expense: (() => {
+            const monthKey = getTodayKey().slice(0, 7);
+            return (txData.data || []).filter((tx) => [getLocalDateKey(tx.transaction_date), getLocalDateKey(tx.created_at)].some((key) => key.startsWith(monthKey))).reduce((sum, tx) => sum + Math.abs(Math.min(0, getSignedAmount(tx))), 0);
+          })(),
+        });
 
-      if (!agendaLoaded) {
         const [maintenanceData, scheduleData] = await Promise.all([
           supabase.from("home_maintenance").select("*").or(`created_by.eq.${profile.id},reported_by.eq.${profile.id}`).order("created_at", { ascending: false }),
           supabase.from("family_schedule").select("*").eq("created_by", profile.id).order("event_date", { ascending: true }),
@@ -302,12 +304,9 @@ export default function HousekeeperPage() {
 
   const today = useMemo(() => getTodayKey(), []);
   const isCurrentDayTransaction = (tx) => getLocalDateKey(tx.transaction_date) === today || getLocalDateKey(tx.created_at) === today;
-  const todayExpense = useMemo(() => transactions.filter((tx) => isCurrentDayTransaction(tx)).reduce((sum, tx) => sum + Math.abs(Math.min(0, getSignedAmount(tx))), 0), [transactions, today]);
-  const monthExpense = useMemo(() => {
-    const monthKey = today.slice(0, 7);
-    return transactions.filter((tx) => [getLocalDateKey(tx.transaction_date), getLocalDateKey(tx.created_at)].some((key) => key.startsWith(monthKey))).reduce((sum, tx) => sum + Math.abs(Math.min(0, getSignedAmount(tx))), 0);
-  }, [transactions, today]);
-  const currentBalance = useMemo(() => transactions.reduce((sum, tx) => sum + getSignedAmount(tx), 0), [transactions]);
+  const todayExpense = summary?.today_expense ?? 0;
+  const monthExpense = summary?.month_expense ?? 0;
+  const currentBalance = summary?.current_balance ?? 0;
   const openMaintenance = useMemo(() => maintenanceItems.filter((m) => m.status !== "completed"), [maintenanceItems]);
   const upcomingFamily = useMemo(() => familySchedule.filter((s) => s.event_date && s.event_date >= today), [familySchedule, today]);
 
