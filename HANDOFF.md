@@ -818,21 +818,18 @@ Transaction list UX has gone through multiple quick iterations today; current br
 - Q5 delete step is intentionally manual (only after verify count+amount match).
 - If OCR fails in cash-ledger form, use new phase/error indicator and re-upload a clearer slip.
 
-### Suggested next checks
-1. Run Q5 migration on target DB and confirm `is_match=true` in `q5_migration_audit_6487c846`.
-2. Run repair script for historical wrong auto-income rows:
-   - `supabase/fix_misrouted_transfer_auto_income.sql`
-   - verify `transfer_auto_income_repair_audit`
-   - only then delete old `cash_ledger_entries.entry_kind = 'fund_transfer_in_auto'` rows.
-3. Smoke test transfer flow:
+### Suggested next checks before / during Phase 2
+1. Re-run Supabase Advisor and confirm Priority 1 security findings are cleared or reduced.
+2. Smoke test transfer flow end-to-end:
    - create `fund_transfer_out` as secretary
    - verify secretary cash ledger only shows transfer-out expense
    - verify recipient (driver/housekeeper) gets auto-created income in `transactions`
-   - verify duplicate guard blocks manual duplicate income.
-4. Verify owner reporting:
-   - `/api/reports/finance-summary` (transactions only, now ops-filtered for `6487c846`)
-   - `/api/reports/cash-ledger-summary` (cash ledger only)
-5. Optional hardening: expose ops-filtered `total` in `/api/transactions` response (currently `data/summary` filtered; DB count may differ).
+   - verify duplicate guard blocks manual duplicate income
+3. Verify owner/secretary parity manually on latest deploy:
+   - owner home balance == secretary cash balance
+   - owner finance filters behave consistently with secretary analysis
+4. Review one-off SQL helpers and keep only those still needed for data repair/audit.
+5. Begin Phase 2 API consistency audit.
 
 ---
 
@@ -894,7 +891,15 @@ These areas should be audited carefully next:
    - immediate action: enable + force RLS on all temporary backup/audit tables in `public`
    - later cleanup: drop these tables entirely once audit/repair is fully closed
 
-### Most recent relevant commits before full audit
+### Most recent relevant commits before Phase 2
+- `16002fe` fix: restore owner cash-ledger summary values after legacy cleanup
+- `fe9f549` refactor: mark fund_transfer_in_auto as legacy in cash-ledger summary
+- `54759fa` feat: add secretary-style filters to owner finance analysis
+- `c2a6b0a` fix: return ops-filtered totals from transactions API
+- `113d780` fix: move driver and housekeeper balance summaries to backend
+- `313ccc0` security: add RLS remediation for temporary public backup tables
+
+## Most recent relevant commits before full audit
 - `5ab805b` fix: show actual current balance on housekeeper home dashboard
 - `2f3edd3` fix: show actual current balance on driver home dashboard
 - `da4dc3f` feat: align owner financial dashboard with secretary cash-ledger data
