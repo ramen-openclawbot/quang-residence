@@ -160,45 +160,22 @@ export default function DriverPage() {
     setLoading(true);
     try {
       const token = await getToken();
-      let loaded = false;
-      if (token) {
-        const [res, agendaRes] = await Promise.all([
-          fetch("/api/dashboard/driver", { headers: { Authorization: `Bearer ${token}` } }),
-          fetch("/api/agenda/feed?limit=300", { headers: { Authorization: `Bearer ${token}` } }),
-        ]);
-        if (res.ok) {
-          const json = await res.json();
-          setTrips(json.trips || []);
-          setTransactions(json.transactions || []);
-          setSummary(json.summary || { current_balance: 0, today_expense: 0, month_expense: 0 });
-          if (agendaRes.ok) {
-            const agenda = await agendaRes.json();
-            const taskItems = (agenda.items || []).filter((x) => x.source === "task").map((x) => x.payload || x);
-            setTasks(taskItems);
-          } else {
-            setTasks(json.tasks || []);
-          }
-          loaded = true;
-        }
-      }
-
-      if (!loaded) {
-        const [tripsRes, txRes, tasksRes] = await Promise.all([
-          supabase.from("driving_trips").select("*").eq("assigned_to", profile.id).order("scheduled_time", { ascending: true }),
-          supabase.from("transactions").select("*, categories!category_id(id, code, name_vi, name, color)").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(500),
-          supabase.from("tasks").select("*").or(`assigned_to.eq.${profile.id},created_by.eq.${profile.id}`).order("due_date", { ascending: true }),
-        ]);
-        setTrips(tripsRes.data || []);
-        setTransactions(txRes.data || []);
-        setTasks(tasksRes.data || []);
-        setSummary({
-          current_balance: (txRes.data || []).reduce((sum, tx) => sum + getSignedAmount(tx), 0),
-          today_expense: (txRes.data || []).filter((t) => isCurrentDayTransaction(t)).reduce((s, t) => s + Math.abs(Math.min(0, getSignedAmount(t))), 0),
-          month_expense: (() => {
-            const monthKey = getTodayKey().slice(0, 7);
-            return (txRes.data || []).filter((t) => [getLocalDateKey(t.transaction_date), getLocalDateKey(t.created_at)].some((key) => key.startsWith(monthKey))).reduce((s, t) => s + Math.abs(Math.min(0, getSignedAmount(t))), 0);
-          })(),
-        });
+      if (!token) throw new Error("Missing session token");
+      const [res, agendaRes] = await Promise.all([
+        fetch("/api/dashboard/driver", { headers: { Authorization: `Bearer ${token}` } }),
+        fetch("/api/agenda/feed?limit=300", { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      if (!res.ok) throw new Error("Driver dashboard API failed");
+      const json = await res.json();
+      setTrips(json.trips || []);
+      setTransactions(json.transactions || []);
+      setSummary(json.summary || { current_balance: 0, today_expense: 0, month_expense: 0 });
+      if (agendaRes.ok) {
+        const agenda = await agendaRes.json();
+        const taskItems = (agenda.items || []).filter((x) => x.source === "task").map((x) => x.payload || x);
+        setTasks(taskItems);
+      } else {
+        setTasks(json.tasks || []);
       }
     } catch (error) {
       console.error("Driver fetchData error:", error);
@@ -737,6 +714,7 @@ Hoàn thành
     </StaffShell>
   );
 }
+
 
 const primaryBtn = {
   height: 40,

@@ -252,13 +252,9 @@ export default function SecretaryPage() {
       const txApiRes = await fetch(`/api/transactions?limit=${limit}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (txApiRes.ok) {
-        const txJson = await txApiRes.json();
-        setTransactions(txJson.data || []);
-      } else {
-        const txFallback = await supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(limit);
-        setTransactions(txFallback.data || []);
-      }
+      if (!txApiRes.ok) throw new Error("Transactions API failed");
+      const txJson = await txApiRes.json();
+      setTransactions(txJson.data || []);
       setTxFullLoaded(true);
     } catch (err) {
       console.error("Thư ký loadFullTransactions error:", err);
