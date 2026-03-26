@@ -1227,14 +1227,3 @@ export default function OwnerPage() {
     </StaffShell>
   );
 }
-ize={22} color={a ? T.primary : T.textMuted} />
-                  <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.04em", color: a ? T.primary : T.textMuted }}>{t.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-      </div>
-    </StaffShell>
-  );
-}
