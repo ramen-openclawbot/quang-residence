@@ -818,18 +818,46 @@ Transaction list UX has gone through multiple quick iterations today; current br
 - Q5 delete step is intentionally manual (only after verify count+amount match).
 - If OCR fails in cash-ledger form, use new phase/error indicator and re-upload a clearer slip.
 
-### Suggested next checks before / during Phase 2
-1. Re-run Supabase Advisor and confirm Priority 1 security findings are cleared or reduced.
+### Phase 2 close status (2026-03-26)
+Phase 2 is now considered **DONE**, with the following completed:
+1. Shared finance helpers extracted
+   - `lib/finance-ops.js`
+   - `lib/dashboard-finance.js`
+2. Canonical backend refactor
+   - `/api/transactions` and `/api/reports/finance-summary` now share ops finance logic
+   - `/api/dashboard/owner` now uses shared ops summary helpers
+   - `/api/dashboard/driver` and `/api/dashboard/housekeeper` now use shared dashboard balance helpers
+3. Limit-based summary hardening
+   - high-risk summary paths moved from fixed `limit(3000/5000)` to paged backend aggregation via `fetchPagedRows(...)`
+4. Secretary mixed-domain cleanup
+   - `/api/dashboard/secretary` now exposes `resources` and `ops` groups while keeping backward compatibility
+5. Fallback cleanup on sensitive screens
+   - removed risky direct-Supabase finance fallbacks from owner / secretary / driver / housekeeper dashboards
+   - sensitive views now depend on canonical API/domain logic instead of hidden fallback logic
+
+### Post-Phase-2 monitoring mode
+The project should now pause before opening a new phase.
+Recommended immediate focus:
+1. Observe runtime behavior and regression risk on live usage
+2. Re-check owner / secretary / driver / housekeeper dashboards under normal operation
+3. Watch OCR/chat/page flows for mismatches introduced by refactors
+4. Only start a new phase after enough observation confirms stability
+
+### Suggested monitoring checks after Phase 2
+1. Verify owner / secretary parity manually on latest deploy:
+   - owner home balance == secretary cash balance
+   - owner finance filters behave consistently with secretary analysis
 2. Smoke test transfer flow end-to-end:
    - create `fund_transfer_out` as secretary
    - verify secretary cash ledger only shows transfer-out expense
    - verify recipient (driver/housekeeper) gets auto-created income in `transactions`
    - verify duplicate guard blocks manual duplicate income
-3. Verify owner/secretary parity manually on latest deploy:
-   - owner home balance == secretary cash balance
-   - owner finance filters behave consistently with secretary analysis
-4. Review one-off SQL helpers and keep only those still needed for data repair/audit.
-5. Begin Phase 2 API consistency audit.
+3. Check driver / housekeeper home dashboards under real usage:
+   - `Số dư hiện có`
+   - `Chi hôm nay`
+   - `Chi tháng này`
+4. Watch chat/OCR flows for secretary cash-ledger mode vs normal ops mode
+5. Start a new phase only after a stable observation window
 
 ---
 
