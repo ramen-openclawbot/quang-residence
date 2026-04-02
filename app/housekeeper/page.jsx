@@ -5,7 +5,7 @@ import StaffShell, { MIcon } from "../../components/shared/StaffShell";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
-import { getSignedAmount, getLocalDateKey, getTodayKey } from "../../lib/transaction";
+import { getSignedAmount, getLocalDateKey, getTodayKey, getTransactionCategoryMeta } from "../../lib/transaction";
 import TransactionForm from "../../components/TransactionForm";
 import TransactionDetail from "../../components/shared/TransactionDetail";
 
@@ -117,11 +117,7 @@ function tone(status) {
 }
 
 function getCategoryMeta(tx) {
-  const c = tx?.categories;
-  if (c) return { label: c.name_vi || c.name || "Chưa phân loại", color: c.color || "#94a3b8" };
-  const m = tx?.ocr_raw_data?.category_meta;
-  if (m) return { label: m.label_vi || m.code || "Chưa phân loại", color: "#94a3b8" };
-  return { label: "Chưa phân loại", color: "#94a3b8" };
+  return getTransactionCategoryMeta(tx) || { label: "Chưa phân loại", color: "#94a3b8" };
 }
 
 export default function HousekeeperPage() {
@@ -217,7 +213,7 @@ export default function HousekeeperPage() {
       if (!loaded) {
         const txData = await supabase
           .from("transactions")
-          .select("*, categories!category_id(id, code, name_vi, name, color)")
+          .select("*, categories!category_id(id, code, name_vi, name, color, parent_id, parent:categories!parent_id(id, code, name_vi, name, color, parent_id, parent:categories!parent_id(id, code, name_vi, name, color)))")
           .eq("created_by", profile.id)
           .order("created_at", { ascending: false })
           .limit(500);

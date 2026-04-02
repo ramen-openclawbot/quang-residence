@@ -13,7 +13,7 @@ export async function GET(request) {
     const monthKey = todayKey.slice(0, 7);
 
     const [txRes, txSummaryRows, maintenanceRes, scheduleRes] = await Promise.all([
-      supabaseAdmin.from("transactions").select("*, categories!category_id(id, code, name_vi, name, color)").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(120),
+      supabaseAdmin.from("transactions").select("*, categories!category_id(id, code, name_vi, name, color, parent_id, parent:categories!parent_id(id, code, name_vi, name, color, parent_id, parent:categories!parent_id(id, code, name_vi, name, color)))").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(120),
       fetchUserBalanceRows(supabaseAdmin, profile.id),
       supabaseAdmin.from("home_maintenance").select("*").or(`created_by.eq.${profile.id},reported_by.eq.${profile.id}`).order("created_at", { ascending: false }),
       supabaseAdmin.from("family_schedule").select("*").eq("created_by", profile.id).order("event_date", { ascending: true }),

@@ -49,7 +49,7 @@ export async function GET(request) {
 
     let query = supabaseAdmin
       .from("transactions")
-      .select("*, profiles!created_by(id, full_name, role), categories!category_id(id, code, name_vi, name, color), approved_by_profile:profiles!approved_by(id, full_name), reviewed_by_profile:profiles!reviewed_by(id, full_name)", { count: "exact" })
+      .select("*, profiles!created_by(id, full_name, role), categories!category_id(id, code, name_vi, name, color, parent_id, parent:categories!parent_id(id, code, name_vi, name, color, parent_id, parent:categories!parent_id(id, code, name_vi, name, color))), approved_by_profile:profiles!approved_by(id, full_name), reviewed_by_profile:profiles!reviewed_by(id, full_name)", { count: "exact" })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 

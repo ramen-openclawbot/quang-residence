@@ -14,7 +14,7 @@ export async function GET(request) {
 
     const [tripsRes, txRes, tasksRes, txSummaryRes] = await Promise.all([
       supabaseAdmin.from("driving_trips").select("*").eq("assigned_to", profile.id).order("scheduled_time", { ascending: true }),
-      supabaseAdmin.from("transactions").select("*, categories!category_id(id, code, name_vi, name, color)").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(120),
+      supabaseAdmin.from("transactions").select("*, categories!category_id(id, code, name_vi, name, color, parent_id, parent:categories!parent_id(id, code, name_vi, name, color, parent_id, parent:categories!parent_id(id, code, name_vi, name, color)))").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(120),
       supabaseAdmin.from("tasks").select("*").or(`assigned_to.eq.${profile.id},created_by.eq.${profile.id}`).order("due_date", { ascending: true }),
       supabaseAdmin.from("transactions").select("type, amount, adjustment_direction, transaction_date, created_at").eq("created_by", profile.id).order("created_at", { ascending: false }).limit(5000),
     ]);

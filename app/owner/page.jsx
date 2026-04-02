@@ -6,7 +6,7 @@ import NotificationCenter from "../../components/shared/NotificationCenter";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtVND } from "../../lib/format";
-import { getSignedAmount } from "../../lib/transaction";
+import { getSignedAmount, getTransactionCategoryMeta } from "../../lib/transaction";
 
 const T = {
   primary: "#56c91d",
@@ -438,15 +438,39 @@ export default function OwnerPage() {
     const expenseRows = txSearchFiltered.filter((tx) => getSignedAmount(tx) < 0);
     const total = expenseRows.reduce((sum, tx) => sum + Math.abs(getSignedAmount(tx)), 0);
     const palette = ["#56c91d", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6"];
-    const buckets = new Map();
+    const leafBuckets = new Map();
+    const parentBuckets = new Map();
     for (const tx of expenseRows) {
-      const key = tx?.categories?.name_vi || tx?.categories?.name || tx?.ocr_raw_data?.category_meta?.label_vi || "Chưa phân loại";
-      const color = tx?.categories?.color || palette[buckets.size % palette.length];
-      const prev = buckets.get(key) || { label: key, value: 0, color };
-      prev.value += Math.abs(getSignedAmount(tx));
-      buckets.set(key, prev);
+      const value = Math.abs(getSignedAmount(tx));
+      const cat = getTransactionCategoryMeta(tx);
+      const key = cat?.key || "UNCATEGORIZED";
+      const label = cat?.fullLabel || "Chưa phân loại";
+      const rootLabel = cat?.rootLabel || label;
+      const color = cat?.color || palette[leafBuckets.size % palette.length];
+      const prev = leafBuckets.get(key) || { key, label, rootLabel, value: 0, color };
+      prev.value += value;
+      leafBuckets.set(key, prev);
+
+      const parentKey = rootLabel;
+      const parentPrev = parentBuckets.get(parentKey) || { key: parentKey, label: rootLabel, value: 0, color };
+      parentPrev.value += value;
+      parentBuckets.set(parentKey, parentPrev);
     }
-    const items = Array.from(buckets.values()).sort((a, b) => b.value - a.value);
+    const items = Array.from(leafBuckets.values()).sort((a, b) => b.value - a.value);
+    const parents = Array.from(parentBuckets.values())
+      .sort((a, b) => b.value - a.value)
+      .map((parent) => {
+        const children = items.filter((item) => item.rootLabel === parent.label).slice(0, 4);
+        return {
+          ...parent,
+          percent: total > 0 ? (parent.value / total) * 100 : 0,
+          children: children.map((child) => ({
+            ...child,
+            parentPercent: parent.value > 0 ? (child.value / parent.value) * 100 : 0,
+            totalPercent: total > 0 ? (child.value / total) * 100 : 0,
+          })),
+        };
+      });
     let cursor = 0;
     return {
       total,
@@ -456,6 +480,7 @@ export default function OwnerPage() {
         cursor += pct;
         return slice;
       }),
+      parents,
     };
   }, [txSearchFiltered]);
 
@@ -845,19 +870,37 @@ export default function OwnerPage() {
                   {spendingPieData.items.length === 0 ? (
                     <div style={{ fontSize: 12, color: T.textMuted }}>Chưa có dữ liệu chi tiêu vận hành.</div>
                   ) : (
-                    <div style={{ display: "grid", gap: 8 }}>
-                      {spendingPieData.items.slice(0, 5).map((item) => (
-                        <div key={item.label} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8, alignItems: "center" }}>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              <span style={{ width: 8, height: 8, borderRadius: 999, background: item.color, flexShrink: 0 }} />
-                              <span style={{ fontSize: 12, color: T.text, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.label}</span>
+                    <div style={{ display: "grid", gap: 10 }}>
+                      {spendingPieData.parents.slice(0, 4).map((parent) => (
+                        <div key={parent.key} style={{ border: `1px solid ${T.border}`, borderRadius: 14, background: "rgba(255,255,255,0.72)", padding: 10 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8, alignItems: "center" }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <span style={{ width: 8, height: 8, borderRadius: 999, background: parent.color, flexShrink: 0 }} />
+                                <span style={{ fontSize: 12, color: T.text, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{parent.label}</span>
+                              </div>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontSize: 12, fontWeight: 800, color: T.text }}>{Math.round(parent.percent)}%</div>
+                              <div style={{ fontSize: 10, color: T.textMuted }}>{fmtVND(parent.value)}</div>
                             </div>
                           </div>
-                          <div style={{ textAlign: "right" }}>
-                            <div style={{ fontSize: 12, fontWeight: 800, color: T.text }}>{Math.round(item.percent)}%</div>
-                            <div style={{ fontSize: 10, color: T.textMuted }}>{fmtVND(item.value)}</div>
-                          </div>
+                          {parent.children.length > 0 && (
+                            <div style={{ display: "grid", gap: 6, marginTop: 8, paddingTop: 8, borderTop: `1px dashed ${T.border}` }}>
+                              {parent.children.map((child) => (
+                                <div key={child.key} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8, alignItems: "start", paddingLeft: 14 }}>
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, color: T.text, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{child.label}</div>
+                                    <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{Math.round(child.parentPercent)}% trong nhóm</div>
+                                  </div>
+                                  <div style={{ textAlign: "right" }}>
+                                    <div style={{ fontSize: 11, fontWeight: 800, color: T.text }}>{Math.round(child.totalPercent)}%</div>
+                                    <div style={{ fontSize: 10, color: T.textMuted }}>{fmtVND(child.value)}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

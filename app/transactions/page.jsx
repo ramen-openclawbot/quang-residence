@@ -5,7 +5,7 @@ import { MIcon } from "../../components/shared/StaffShell";
 import TransactionDetail from "../../components/shared/TransactionDetail";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
-import { getSignedAmount, getTransactionDateKey, matchesTransactionFilter } from "../../lib/transaction";
+import { getSignedAmount, getTransactionDateKey, matchesTransactionFilter, getTransactionCategoryMeta } from "../../lib/transaction";
 import { fmtAmountVND as fmtVND, fmtDate } from "../../lib/format";
 
 /* ─── design tokens (must match app-wide palette) ─── */
@@ -38,12 +38,7 @@ const MONTHS = ["Tháng 1","Tháng 2","Tháng 3","Tháng 4","Tháng 5","Tháng 6
 const STATUS_VI = { approved: "Đã duyệt", pending: "Chờ duyệt", rejected: "Từ chối" };
 
 function getCategoryMeta(tx) {
-  if (tx?.type !== "expense") return null;
-  const c = tx?.categories;
-  if (c) return { label: c.name_vi || c.name || "Chưa phân loại", color: c.color || "#94a3b8" };
-  const m = tx?.ocr_raw_data?.category_meta;
-  if (m) return { label: m.label_vi || m.code || "Chưa phân loại", color: "#94a3b8" };
-  return { label: "Chưa phân loại", color: "#94a3b8" };
+  return getTransactionCategoryMeta(tx);
 }
 
 /* ═══════════════════════════════════════════════════════

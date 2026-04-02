@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MIcon } from "./shared/StaffShell";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
+import { getCategoryDisplayLabel } from "../lib/transaction";
 
 const T = {
   bg: "#f6f8f6",
@@ -26,6 +27,15 @@ function normalizeTextKey(v = "") {
 
 function getCategoryIconName(category) {
   const code = String(category?.code || "").toUpperCase();
+  if (code.startsWith("P_")) return "folder";
+  if (code === "C_THUOC_MEN") return "pill";
+  if (code === "C_BENH_VIEN_KHAM_CHUA") return "local_hospital";
+  if (code === "C_MUA_SAM_CA_NHAN") return "shopping_bag";
+  if (code === "C_GIAO_DUC") return "school";
+  if (code.startsWith("THUOC_")) return "pill";
+  if (code.startsWith("KHAM_CHUA_")) return "local_hospital";
+  if (code.startsWith("MUA_SAM_")) return "shopping_bag";
+  if (code.startsWith("GIAO_DUC_") || code.startsWith("HOC_PHI_")) return "school";
   if (code === "TIEN_CHO" || code === "CHI_BEP") return "shopping_basket";
   if (code === "DO_AN_GOI") return "ramen_dining";
   if (code === "DIEN_NUOC_GAS_NET" || code === "DANG_KY_DICH_VU") return "bolt";
@@ -37,9 +47,38 @@ function getCategoryIconName(category) {
   return "label";
 }
 
+function isSelectableExpenseCategory(category, allCategories = []) {
+  if (!category) return false;
+  const code = String(category.code || "").toUpperCase();
+  if (code.startsWith("P_") || code.startsWith("C_")) return false;
+  return !allCategories.some((item) => String(item.parent_id || "") === String(category.id));
+}
+
+function buildExpenseCategoryGroups(categories = []) {
+  const byParent = new Map();
+  for (const category of categories) {
+    const key = category.parent_id == null ? "ROOT" : String(category.parent_id);
+    if (!byParent.has(key)) byParent.set(key, []);
+    byParent.get(key).push(category);
+  }
+  for (const list of byParent.values()) {
+    list.sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0) || Number(a.id || 0) - Number(b.id || 0));
+  }
+
+  return (byParent.get("ROOT") || []).map((parent) => ({
+    parent,
+    children: (byParent.get(String(parent.id)) || []).map((child) => ({
+      category: child,
+      leaves: (byParent.get(String(child.id)) || []).filter((leaf) => isSelectableExpenseCategory(leaf, categories)),
+    })),
+  }));
+}
+
 function suggestCategory({ description = "", recipient_name = "", bank_name = "" }, categories = [], learnedMap = {}) {
   const hay = `${description} ${recipient_name} ${bank_name}`.toLowerCase();
   if (!hay.trim() || !categories.length) return { id: "", source: "none", confidence: 0 };
+
+  const selectableCategories = categories.filter((c) => isSelectableExpenseCategory(c, categories));
 
   const descKey = normalizeTextKey(description);
   const recKey = normalizeTextKey(recipient_name);
@@ -59,12 +98,12 @@ function suggestCategory({ description = "", recipient_name = "", bank_name = ""
 
   for (const rule of codeByKeyword) {
     if (rule.keys.some((k) => hay.includes(k))) {
-      const hit = categories.find((c) => String(c.code || "").toUpperCase() === rule.code);
+      const hit = selectableCategories.find((c) => String(c.code || "").toUpperCase() === rule.code);
       if (hit) return { id: String(hit.id), source: "keyword", confidence: 0.9 };
     }
   }
 
-  const fallbackOther = categories.find((c) => {
+  const fallbackOther = selectableCategories.find((c) => {
     const code = String(c.code || "").toUpperCase();
     const vi = String(c.name_vi || "").toLowerCase();
     const en = String(c.name || "").toLowerCase();
@@ -102,6 +141,15 @@ export default function TransactionForm({ onClose, onSuccess }) {
   const [recentCategoryIds, setRecentCategoryIds] = useState([]);
   const [retryingIdx, setRetryingIdx] = useState(null);
   const [pendingQueue, setPendingQueue] = useState([]);
+
+  const selectableExpenseCategories = useMemo(
+    () => expenseCategories.filter((c) => isSelectableExpenseCategory(c, expenseCategories)),
+    [expenseCategories]
+  );
+  const expenseCategoryGroups = useMemo(
+    () => buildExpenseCategoryGroups(expenseCategories),
+    [expenseCategories]
+  );
 
   // ==================== HELPERS ====================
   const fileToBase64 = (file) =>
@@ -196,7 +244,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
       const [{ data: cats }, { data: txs }] = await Promise.all([
         supabase
           .from("categories")
-          .select("id, code, name, name_vi, color, sort_order")
+          .select("id, code, name, name_vi, color, sort_order, parent_id")
           .order("sort_order", { ascending: true }),
         supabase
           .from("transactions")
@@ -593,6 +641,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
                     id: selectedCategory.id,
                     code: selectedCategory.code || null,
                     label_vi: selectedCategory.name_vi || selectedCategory.name || null,
+                    full_label_vi: getCategoryDisplayLabel(selectedCategory, { withParents: true }),
                     source: "user_selected",
                   }
                 : null,
@@ -1221,7 +1270,10 @@ export default function TransactionForm({ onClose, onSuccess }) {
                             style={{ ...inputStyle, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}
                           >
                             <span style={{ color: result.form.category_id ? T.text : T.textMuted }}>
-                              {expenseCategories.find((c) => String(c.id) === String(result.form.category_id))?.name_vi || "Chọn phân loại"}
+                              {(() => {
+                                const selected = expenseCategories.find((c) => String(c.id) === String(result.form.category_id));
+                                return selected ? getCategoryDisplayLabel(selected, { withParents: true }) : "Chọn phân loại";
+                              })()}
                             </span>
                             <MIcon name="expand_more" size={18} color={T.textMuted} />
                           </button>
@@ -1234,8 +1286,11 @@ export default function TransactionForm({ onClose, onSuccess }) {
                                   <>
                                     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 999, background: `${selected.color || T.primary}22`, color: selected.color || T.primary, fontSize: 11, fontWeight: 700, border: `1px solid ${(selected.color || T.primary)}33` }}>
                                       <span style={{ width: 6, height: 6, borderRadius: 999, background: selected.color || T.primary }} />
-                                      {selected.name_vi || selected.name}
+                                      {getCategoryDisplayLabel(selected)}
                                     </span>
+                                    <div style={{ marginTop: 4, fontSize: 10, color: T.textMuted }}>
+                                      {getCategoryDisplayLabel(selected, { withParents: true })}
+                                    </div>
                                     {result.form.suggestion_source && result.form.suggestion_source !== "none" && (
                                       <div style={{ marginTop: 4, fontSize: 10, color: T.textMuted }}>
                                         Gợi ý: {result.form.suggestion_source} · tin cậy {Math.round(Number(result.form.suggestion_confidence || 0) * 100)}%
@@ -1397,9 +1452,14 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
                     {(() => {
                       const result = scanResults[categoryPicker.resultIdx];
-                      const suggested = expenseCategories.find((c) => String(c.id) === String(result?.form?.category_id));
-                      const recentCats = recentCategoryIds.map((id) => expenseCategories.find((c) => String(c.id) === String(id))).filter(Boolean);
-                      const filtered = expenseCategories.filter((c) => (c.name_vi || c.name || "").toLowerCase().includes((categoryPicker.q || "").toLowerCase()));
+                      const suggested = selectableExpenseCategories.find((c) => String(c.id) === String(result?.form?.category_id));
+                      const recentCats = recentCategoryIds.map((id) => selectableExpenseCategories.find((c) => String(c.id) === String(id))).filter(Boolean);
+                      const q = (categoryPicker.q || "").trim().toLowerCase();
+                      const filtered = selectableExpenseCategories.filter((c) => {
+                        const full = getCategoryDisplayLabel(c, { withParents: true }).toLowerCase();
+                        const leaf = (c.name_vi || c.name || "").toLowerCase();
+                        return !q || full.includes(q) || leaf.includes(q);
+                      });
 
                       return (
                         <>
@@ -1407,7 +1467,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
                             <div style={{ marginBottom: 10 }}>
                               <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>Gợi ý từ OCR</div>
                               <button type="button" onClick={() => pickCategoryForResult(categoryPicker.resultIdx, suggested.id)} style={{ ...inputStyle, textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <span>{suggested.name_vi || suggested.name}</span><span style={{ fontSize: 10, color: T.primary }}>Đề xuất</span>
+                                <span>{getCategoryDisplayLabel(suggested, { withParents: true })}</span><span style={{ fontSize: 10, color: T.primary }}>Đề xuất</span>
                               </button>
                             </div>
                           )}
@@ -1418,7 +1478,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
                               <div style={{ display: "grid", gap: 6 }}>
                                 {recentCats.map((c) => (
                                   <button key={c.id} type="button" onClick={() => pickCategoryForResult(categoryPicker.resultIdx, c.id)} style={{ ...inputStyle, textAlign: "left" }}>
-                                    {c.name_vi || c.name}
+                                    {getCategoryDisplayLabel(c, { withParents: true })}
                                   </button>
                                 ))}
                               </div>
@@ -1426,16 +1486,62 @@ export default function TransactionForm({ onClose, onSuccess }) {
                           )}
 
                           <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>Tất cả phân loại</div>
-                          <div style={{ display: "grid", gap: 6 }}>
-                            {filtered.map((c) => (
-                              <button key={c.id} type="button" onClick={() => pickCategoryForResult(categoryPicker.resultIdx, c.id)} style={{ ...inputStyle, textAlign: "left", padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
-                                <span style={{ width: 22, height: 22, borderRadius: 999, background: `${c.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                                  <MIcon name={getCategoryIconName(c)} size={13} color={c.color || T.primary} />
-                                </span>
-                                <span>{c.name_vi || c.name}</span>
-                              </button>
-                            ))}
-                          </div>
+                          {!q ? (
+                            <div style={{ display: "grid", gap: 10 }}>
+                              {expenseCategoryGroups.map((group) => (
+                                <div key={group.parent.id} style={{ border: `1px solid ${T.border}`, borderRadius: 14, padding: 10, background: "#fafcf9" }}>
+                                  <div style={{ fontSize: 12, fontWeight: 800, color: T.text, marginBottom: 8 }}>
+                                    {group.parent.name_vi || group.parent.name}
+                                  </div>
+                                  <div style={{ display: "grid", gap: 8 }}>
+                                    {group.children.map((childGroup) => {
+                                      const child = childGroup.category;
+                                      const leaves = childGroup.leaves;
+                                      if (!leaves.length) {
+                                        if (!isSelectableExpenseCategory(child, expenseCategories)) return null;
+                                        return (
+                                          <button key={child.id} type="button" onClick={() => pickCategoryForResult(categoryPicker.resultIdx, child.id)} style={{ ...inputStyle, textAlign: "left", padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                                            <span style={{ width: 22, height: 22, borderRadius: 999, background: `${child.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                                              <MIcon name={getCategoryIconName(child)} size={13} color={child.color || T.primary} />
+                                            </span>
+                                            <span>{getCategoryDisplayLabel(child, { withParents: true })}</span>
+                                          </button>
+                                        );
+                                      }
+                                      return (
+                                        <div key={child.id}>
+                                          <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>
+                                            {child.name_vi || child.name}
+                                          </div>
+                                          <div style={{ display: "grid", gap: 6 }}>
+                                            {leaves.map((c) => (
+                                              <button key={c.id} type="button" onClick={() => pickCategoryForResult(categoryPicker.resultIdx, c.id)} style={{ ...inputStyle, textAlign: "left", padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                                                <span style={{ width: 22, height: 22, borderRadius: 999, background: `${c.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                                                  <MIcon name={getCategoryIconName(c)} size={13} color={c.color || T.primary} />
+                                                </span>
+                                                <span>{getCategoryDisplayLabel(c)}</span>
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div style={{ display: "grid", gap: 6 }}>
+                              {filtered.map((c) => (
+                                <button key={c.id} type="button" onClick={() => pickCategoryForResult(categoryPicker.resultIdx, c.id)} style={{ ...inputStyle, textAlign: "left", padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                                  <span style={{ width: 22, height: 22, borderRadius: 999, background: `${c.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                                    <MIcon name={getCategoryIconName(c)} size={13} color={c.color || T.primary} />
+                                  </span>
+                                  <span>{getCategoryDisplayLabel(c, { withParents: true })}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </>
                       );
                     })()}

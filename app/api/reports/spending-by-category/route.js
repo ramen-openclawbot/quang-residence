@@ -1,6 +1,19 @@
 import { NextResponse } from "next/server";
 import { requireRole, supabaseAdmin } from "../../../../lib/api-auth";
 
+function getCategoryPathLabel(category) {
+  if (!category) return "Chưa phân loại";
+  const parts = [];
+  const seen = new Set();
+  let current = category;
+  while (current && !seen.has(current.id) && parts.length < 6) {
+    seen.add(current.id);
+    parts.unshift(current.name_vi || current.name || "");
+    current = current.parent || null;
+  }
+  return parts.filter(Boolean).join(" / ") || "Chưa phân loại";
+}
+
 function parseMonthParam(searchParams) {
   const monthParam = searchParams.get("month"); // YYYY-MM
   if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
@@ -56,7 +69,7 @@ export async function GET(request) {
 
     let query = supabaseAdmin
       .from("transactions")
-      .select("amount, category_id, status, categories!category_id(id, code, name_vi, name)")
+      .select("amount, category_id, status, categories!category_id(id, code, name_vi, name, parent_id, parent:categories!parent_id(id, code, name_vi, name, parent_id, parent:categories!parent_id(id, code, name_vi, name)))")
       .eq("type", "expense")
       .neq("status", "rejected")
       .gte("transaction_date", startDate)
@@ -85,6 +98,7 @@ export async function GET(request) {
       const prev = byCategoryMap.get(key) || {
         code: cat?.code || null,
         name_vi: cat?.name_vi || cat?.name || "Chưa phân loại",
+        full_name_vi: getCategoryPathLabel(cat),
         count: 0,
         total: 0,
       };
