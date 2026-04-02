@@ -775,13 +775,16 @@ export default function SecretaryPage() {
         value: Number(parent.total || 0),
         percent: Number(parent.percent || 0),
         color: palette[idx % palette.length],
-        children: (parent.children || []).slice(0, 6).map((child) => ({
-          key: child.code || child.full_name_vi || child.name_vi,
-          label: child.full_name_vi || child.name_vi,
-          value: Number(child.total || 0),
-          parentPercent: Number(child.percent_of_parent || 0),
-          totalPercent: Number(child.percent_of_total || 0),
-        })),
+        children: (parent.children || [])
+          .filter((child) => (child.full_name_vi || child.name_vi) !== parent.name_vi)
+          .slice(0, 6)
+          .map((child) => ({
+            key: child.code || child.full_name_vi || child.name_vi,
+            label: child.full_name_vi || child.name_vi,
+            value: Number(child.total || 0),
+            parentPercent: Number(child.percent_of_parent || 0),
+            totalPercent: Number(child.percent_of_total || 0),
+          })),
       }));
       let cursor = 0;
       return {
@@ -1356,26 +1359,28 @@ export default function SecretaryPage() {
                               const visibleChildren = isExpanded ? parent.children : parent.children.slice(0, 3);
                               return (
                                 <div key={parent.key} style={{ border: `1px solid ${T.border}`, borderRadius: 14, background: "rgba(255,255,255,0.72)", padding: 10 }}>
-                                  <button type="button" onClick={() => setExpandedSpendingParents((prev) => ({ ...prev, [parent.key]: !prev[parent.key] }))} style={{ width: "100%", padding: 0, border: "none", background: "transparent", cursor: "pointer", textAlign: "left" }}>
-                                    <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8, alignItems: "center" }}>
-                                      <div style={{ minWidth: 0 }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                          <span style={{ width: 8, height: 8, borderRadius: 999, background: parent.color, flexShrink: 0 }} />
-                                          <span style={{ fontSize: 12, color: T.text, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{parent.label}</span>
-                                          <span onClick={(e) => { e.stopPropagation(); setActiveSpendingParent((prev) => (prev === parent.label ? null : parent.label)); }} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: 999, background: activeSpendingParent === parent.label ? `${T.primary}18` : "#f3f6f3", cursor: "pointer" }}>
-                                            <MIcon name="filter_alt" size={12} color={activeSpendingParent === parent.label ? T.primary : T.textMuted} />
-                                          </span>
-                                        </div>
+                                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8, alignItems: "center" }}>
+                                    <button type="button" onClick={() => parent.children.length > 0 && setExpandedSpendingParents((prev) => ({ ...prev, [parent.key]: !prev[parent.key] }))} style={{ minWidth: 0, padding: 0, border: "none", background: "transparent", cursor: parent.children.length > 0 ? "pointer" : "default", textAlign: "left" }}>
+                                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                        <span style={{ width: 8, height: 8, borderRadius: 999, background: parent.color, flexShrink: 0 }} />
+                                        <span style={{ fontSize: 12, color: T.text, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{parent.label}</span>
                                       </div>
-                                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                        <div style={{ textAlign: "right" }}>
-                                          <div style={{ fontSize: 12, fontWeight: 800, color: T.text }}>{Math.round(parent.percent)}%</div>
-                                          <div style={{ fontSize: 10, color: T.textMuted }}>{fmtVND(parent.value)}</div>
-                                        </div>
-                                        <MIcon name={isExpanded ? "expand_less" : "expand_more"} size={18} color={T.textMuted} />
+                                    </button>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                      <button type="button" onClick={() => setActiveSpendingParent((prev) => (prev === parent.label ? null : parent.label))} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 999, border: "none", background: activeSpendingParent === parent.label ? `${T.primary}18` : "#f3f6f3", cursor: "pointer" }}>
+                                        <MIcon name="filter_alt" size={12} color={activeSpendingParent === parent.label ? T.primary : T.textMuted} />
+                                      </button>
+                                      <div style={{ textAlign: "right" }}>
+                                        <div style={{ fontSize: 12, fontWeight: 800, color: T.text }}>{Math.round(parent.percent)}%</div>
+                                        <div style={{ fontSize: 10, color: T.textMuted }}>{fmtVND(parent.value)}</div>
                                       </div>
+                                      {parent.children.length > 0 && (
+                                        <button type="button" onClick={() => setExpandedSpendingParents((prev) => ({ ...prev, [parent.key]: !prev[parent.key] }))} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 999, border: "none", background: "transparent", cursor: "pointer" }}>
+                                          <MIcon name={isExpanded ? "expand_less" : "expand_more"} size={18} color={T.textMuted} />
+                                        </button>
+                                      )}
                                     </div>
-                                  </button>
+                                  </div>
                                   {visibleChildren.length > 0 && (
                                     <div style={{ display: "grid", gap: 6, marginTop: 8, paddingTop: 8, borderTop: `1px dashed ${T.border}` }}>
                                       {visibleChildren.map((child) => (
