@@ -849,35 +849,27 @@ export default function SecretaryPage() {
   }, [txFiltered]);
 
   const staffFundBalances = useMemo(() => {
-    const recipients = new Set();
-
-    // First pass: identify staff who have ever received secretary fund transfer auto-income.
-    for (const tx of transactions) {
-      const note = String(tx?.notes || "");
-      if (!note.includes("[AUTO_FUND_TRANSFER:")) continue;
-      const userId = String(tx?.created_by || "");
-      const profileInfo = staffById[userId] || null;
-      if (!profileInfo || !["driver", "housekeeper"].includes(profileInfo.role)) continue;
-      recipients.add(userId);
-    }
-
-    // Second pass: compute current operational balance of those staff from all their ops transactions.
     const map = new Map();
-    for (const tx of transactions) {
-      const userId = String(tx?.created_by || "");
-      if (!recipients.has(userId)) continue;
-      const profileInfo = staffById[userId] || null;
-      if (!profileInfo || !["driver", "housekeeper"].includes(profileInfo.role)) continue;
 
-      const prev = map.get(userId) || {
+    // Seed all transfer recipients (driver/housekeeper) with zero balance by default
+    for (const profileInfo of transferRecipients) {
+      const userId = String(profileInfo?.id || "");
+      if (!userId) continue;
+      map.set(userId, {
         userId,
-        name: profileInfo.full_name || tx?.recipient_name || "Nhân sự",
+        name: profileInfo.full_name || "Nhân sự",
         role: profileInfo.role,
         balance: 0,
         totalIn: 0,
         totalOut: 0,
-      };
+      });
+    }
 
+    // Merge in any operational transactions currently available for those staff
+    for (const tx of transactions) {
+      const userId = String(tx?.created_by || "");
+      const prev = map.get(userId);
+      if (!prev) continue;
       const signed = getSignedAmount(tx);
       prev.balance += signed;
       if (signed > 0) prev.totalIn += signed;
@@ -886,12 +878,12 @@ export default function SecretaryPage() {
     }
 
     return Array.from(map.values())
-      .filter((x) => x.totalIn > 0)
       .sort((a, b) => {
         if (a.role !== b.role) return a.role === "housekeeper" ? -1 : 1;
-        return Math.abs(b.balance) - Math.abs(a.balance);
+        if (Math.abs(b.balance) !== Math.abs(a.balance)) return Math.abs(b.balance) - Math.abs(a.balance);
+        return String(a.name || "").localeCompare(String(b.name || ""), "vi");
       });
-  }, [transactions, staffById]);
+  }, [transactions, transferRecipients]);
 
   const cashLedgerFiltered = useMemo(() => {
     const q = cashLedgerSearch.trim().toLowerCase();
