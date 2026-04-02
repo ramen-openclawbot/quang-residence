@@ -127,7 +127,7 @@ function isUserInCanary(userId) {
   return hashPercent(userId || "anonymous") < OCR_CANARY_PERCENT;
 }
 
-async function runOcrExtraction({ imageBase64, imageMimeType, systemPrompt, shortPromptMode = false }) {
+async function runSingleOcrAttempt({ imageBase64, imageMimeType, systemPrompt, shortPromptMode = false, model = "gpt-4o-mini" }) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -135,7 +135,8 @@ async function runOcrExtraction({ imageBase64, imageMimeType, systemPrompt, shor
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model,
+      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
         {
@@ -144,8 +145,8 @@ async function runOcrExtraction({ imageBase64, imageMimeType, systemPrompt, shor
             {
               type: "text",
               text: shortPromptMode
-                ? "Extract data from this bank slip:"
-                : "Extract all information from this Vietnamese bank transfer slip:",
+                ? "Extract data from this bank slip and return valid JSON only."
+                : "Extract all information from this Vietnamese bank transfer slip and return valid JSON only.",
             },
             {
               type: "image_url",
@@ -176,19 +177,37 @@ async function runOcrExtraction({ imageBase64, imageMimeType, systemPrompt, shor
       status: response.status,
       error: parsedJson?.error?.message || raw || "OCR processing failed",
       raw,
+      model,
     };
   }
 
   const content = parsedJson?.choices?.[0]?.message?.content || "";
   let extracted = null;
   try {
-    const clean = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const clean = String(content).replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     extracted = JSON.parse(clean);
   } catch {
-    return { ok: false, status: 422, error: "Could not parse OCR result", raw: content };
+    return { ok: false, status: 422, error: "Could not parse OCR result", raw: content, model };
   }
 
-  return { ok: true, extracted, raw: content };
+  return { ok: true, extracted, raw: content, model };
+}
+
+async function runOcrExtraction({ imageBase64, imageMimeType, systemPrompt, shortPromptMode = false }) {
+  const attempts = [
+    { model: "gpt-4o-mini" },
+    { model: "gpt-4.1-mini" },
+  ];
+
+  let lastResult = null;
+  for (const attempt of attempts) {
+    const result = await runSingleOcrAttempt({ imageBase64, imageMimeType, systemPrompt, shortPromptMode, model: attempt.model });
+    if (result.ok) return result;
+    lastResult = result;
+    if (result.status !== 422 && result.status < 500) break;
+  }
+
+  return lastResult || { ok: false, status: 500, error: "OCR processing failed", raw: "" };
 }
 
 /**
