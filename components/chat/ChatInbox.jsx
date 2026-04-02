@@ -116,6 +116,42 @@ function isSelectableExpenseCategory(category, allCategories = []) {
   return !allCategories.some((item) => String(item.parent_id || "") === String(category.id));
 }
 
+function getCategoryDisplayLabel(category, options = {}) {
+  const { withParents = false } = options;
+  if (!category) return "Chưa phân loại";
+  const parts = [];
+  const byId = options.allCategoriesById || null;
+  let current = category;
+  let guard = 0;
+  while (current && guard < 6) {
+    parts.unshift(current.name_vi || current.name || "");
+    current = byId && current.parent_id ? byId.get(String(current.parent_id)) : null;
+    guard += 1;
+  }
+  const clean = parts.filter(Boolean);
+  if (!clean.length) return "Chưa phân loại";
+  return withParents ? clean.join(" / ") : clean[clean.length - 1];
+}
+
+function buildExpenseCategoryGroups(categories = []) {
+  const byParent = new Map();
+  for (const category of categories) {
+    const key = category.parent_id == null ? "ROOT" : String(category.parent_id);
+    if (!byParent.has(key)) byParent.set(key, []);
+    byParent.get(key).push(category);
+  }
+  for (const list of byParent.values()) {
+    list.sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0) || Number(a.id || 0) - Number(b.id || 0));
+  }
+  return (byParent.get("ROOT") || []).map((parent) => ({
+    parent,
+    children: (byParent.get(String(parent.id)) || []).map((child) => ({
+      category: child,
+      leaves: (byParent.get(String(child.id)) || []).filter((leaf) => isSelectableExpenseCategory(leaf, categories)),
+    })),
+  }));
+}
+
 function suggestCategory({ description = "", recipient_name = "", bank_name = "" }, categories = [], learnedMap = {}) {
   const hay = `${description} ${recipient_name} ${bank_name}`.toLowerCase();
   if (!hay.trim() || !categories.length) return { id: "", source: "none", confidence: 0 };
@@ -1167,6 +1203,7 @@ function OCRCard({ data, categories = [], mode = "default", transferRecipients =
   const [showPicker, setShowPicker] = useState(false);
   const [q, setQ] = useState("");
   const [recent, setRecent] = useState([]);
+  const [parentId, setParentId] = useState(null);
   const upd = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   const categoryMissing = mode !== "cash-ledger" && form.type === "expense" && !form.category_id;
   const recipientMissing = mode === "cash-ledger" && !form.recipient_user_id;
@@ -1185,15 +1222,31 @@ function OCRCard({ data, categories = [], mode = "default", transferRecipients =
     upd("category_id", String(id));
     setShowPicker(false);
     setQ("");
+    setParentId(null);
     const next = [String(id), ...recent.filter((x) => String(x) !== String(id))].slice(0, 6);
     setRecent(next);
     try { localStorage.setItem("zenhome_recent_categories", JSON.stringify(next)); } catch {}
   };
 
+  const categoriesById = new Map(categories.map((c) => [String(c.id), c]));
+  const selectableCategories = categories.filter((c) => isSelectableExpenseCategory(c, categories));
+  const expenseCategoryGroups = buildExpenseCategoryGroups(categories);
+  const selectedGroup = expenseCategoryGroups.find((group) => String(group.parent.id) === String(parentId || "")) || null;
   const selectedCat = categories.find((c) => String(c.id) === String(form.category_id));
-  const suggested = categories.find((c) => String(c.id) === String(data.category_id));
-  const filtered = categories.filter((c) => (c.name_vi || c.name || "").toLowerCase().includes(q.toLowerCase()));
-  const recentCats = recent.map((id) => categories.find((c) => String(c.id) === String(id))).filter(Boolean);
+  const suggested = selectableCategories.find((c) => String(c.id) === String(data.category_id));
+  const filtered = selectableCategories.filter((c) => getCategoryDisplayLabel(c, { withParents: true, allCategoriesById: categoriesById }).toLowerCase().includes(q.toLowerCase()));
+  const recentCats = recent.map((id) => selectableCategories.find((c) => String(c.id) === String(id))).filter(Boolean);
+  const groupLeaves = selectedGroup
+    ? selectedGroup.children.flatMap((childGroup) => {
+        const child = childGroup.category;
+        const leaves = childGroup.leaves || [];
+        if (leaves.length > 0) {
+          return leaves.map((leaf) => ({ ...leaf, __sectionLabel: child.name_vi || child.name || "" }));
+        }
+        if (isSelectableExpenseCategory(child, categories)) return [{ ...child, __sectionLabel: null }];
+        return [];
+      })
+    : [];
 
   const fld = {
     width: "100%",
@@ -1269,14 +1322,14 @@ function OCRCard({ data, categories = [], mode = "default", transferRecipients =
         <div style={{ marginBottom: 10 }}>
           <div style={lbl}>Phân loại chi tiêu *</div>
           <button type="button" onClick={() => setShowPicker(true)} style={{ ...fld, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
-            <span style={{ color: selectedCat ? T.text : T.textMuted }}>{selectedCat ? (selectedCat.name_vi || selectedCat.name) : "Chọn phân loại"}</span>
+            <span style={{ color: selectedCat ? T.text : T.textMuted }}>{selectedCat ? getCategoryDisplayLabel(selectedCat, { withParents: true, allCategoriesById: categoriesById }) : "Chọn phân loại"}</span>
             <MIcon name="expand_more" size={18} color={T.textMuted} />
           </button>
           {selectedCat && (
             <div style={{ marginTop: 8 }}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 999, background: `${selectedCat.color || T.primary}22`, color: selectedCat.color || T.primary, fontSize: 11, fontWeight: 700, border: `1px solid ${(selectedCat.color || T.primary)}33` }}>
                 <span style={{ width: 6, height: 6, borderRadius: 999, background: selectedCat.color || T.primary }} />
-                {selectedCat.name_vi || selectedCat.name}
+                {getCategoryDisplayLabel(selectedCat, { allCategoriesById: categoriesById })}
               </span>
               {form.suggestion_source && (
                 <div style={{ marginTop: 4, fontSize: 10, color: T.textMuted }}>
@@ -1329,7 +1382,7 @@ function OCRCard({ data, categories = [], mode = "default", transferRecipients =
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxHeight: "76vh", background: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 14, overflowY: "auto", boxShadow: "0 -12px 40px rgba(0,0,0,0.14)" }}>
             <div style={{ width: 42, height: 4, borderRadius: 999, background: "#dfe7dd", margin: "2px auto 12px" }} />
             <div style={{ fontSize: 15, fontWeight: 800, color: T.text, marginBottom: 10 }}>Chọn phân loại</div>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm phân loại..." style={{ ...fld, marginBottom: 10, height: 40, borderRadius: 12, background: "#f8faf8" }} />
+            <input value={q} onChange={(e) => { setQ(e.target.value); if (e.target.value) setParentId(null); }} placeholder="Tìm phân loại..." style={{ ...fld, marginBottom: 10, height: 40, borderRadius: 12, background: "#f8faf8" }} />
 
             {!q && suggested && (
               <div style={{ marginBottom: 10 }}>
@@ -1356,16 +1409,59 @@ function OCRCard({ data, categories = [], mode = "default", transferRecipients =
             )}
 
             <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>Tất cả phân loại</div>
-            <div style={{ display: "grid", gap: 6 }}>
-              {filtered.map((c) => (
-                <button key={c.id} type="button" onClick={() => selectCategory(c.id)} style={{ ...fld, textAlign: "left", borderColor: String(form.category_id) === String(c.id) ? T.primary : T.border, padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 22, height: 22, borderRadius: 999, background: `${c.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                    <MIcon name={getCategoryIconName(c)} size={13} color={c.color || T.primary} />
-                  </span>
-                  <span>{c.name_vi || c.name}</span>
-                </button>
-              ))}
-            </div>
+            {!q ? (
+              !selectedGroup ? (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {expenseCategoryGroups.map((group) => (
+                    <button key={group.parent.id} type="button" onClick={() => setParentId(group.parent.id)} style={{ ...fld, textAlign: "left", padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                        <span style={{ width: 24, height: 24, borderRadius: 999, background: `${group.parent.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <MIcon name={getCategoryIconName(group.parent)} size={14} color={group.parent.color || T.primary} />
+                        </span>
+                        <span style={{ fontWeight: 700, color: T.text }}>{group.parent.name_vi || group.parent.name}</span>
+                      </span>
+                      <MIcon name="chevron_right" size={18} color={T.textMuted} />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: "grid", gap: 10 }}>
+                  <button type="button" onClick={() => setParentId(null)} style={{ border: "none", background: "transparent", padding: 0, textAlign: "left", fontSize: 11, fontWeight: 700, color: T.primary, cursor: "pointer" }}>
+                    ← Quay lại nhóm cha
+                  </button>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: T.text }}>
+                    {selectedGroup.parent.name_vi || selectedGroup.parent.name}
+                  </div>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {groupLeaves.map((c, idx) => {
+                      const showSection = c.__sectionLabel && (idx === 0 || groupLeaves[idx - 1].__sectionLabel !== c.__sectionLabel);
+                      return (
+                        <div key={c.id}>
+                          {showSection && <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>{c.__sectionLabel}</div>}
+                          <button key={c.id} type="button" onClick={() => selectCategory(c.id)} style={{ ...fld, textAlign: "left", borderColor: String(form.category_id) === String(c.id) ? T.primary : T.border, padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ width: 22, height: 22, borderRadius: 999, background: `${c.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                              <MIcon name={getCategoryIconName(c)} size={13} color={c.color || T.primary} />
+                            </span>
+                            <span>{getCategoryDisplayLabel(c, { allCategoriesById: categoriesById })}</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )
+            ) : (
+              <div style={{ display: "grid", gap: 6 }}>
+                {filtered.map((c) => (
+                  <button key={c.id} type="button" onClick={() => selectCategory(c.id)} style={{ ...fld, textAlign: "left", borderColor: String(form.category_id) === String(c.id) ? T.primary : T.border, padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 22, height: 22, borderRadius: 999, background: `${c.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                      <MIcon name={getCategoryIconName(c)} size={13} color={c.color || T.primary} />
+                    </span>
+                    <span>{getCategoryDisplayLabel(c, { withParents: true, allCategoriesById: categoriesById })}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
