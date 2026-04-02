@@ -207,7 +207,7 @@ export default function TransactionForm({ onClose, onSuccess }) {
   const [submitting, setSubmitting] = useState(false);
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [learnedCategoryMap, setLearnedCategoryMap] = useState({});
-  const [categoryPicker, setCategoryPicker] = useState({ open: false, resultIdx: null, q: "" });
+  const [categoryPicker, setCategoryPicker] = useState({ open: false, resultIdx: null, q: "", parentId: null });
   const [recentCategoryIds, setRecentCategoryIds] = useState([]);
   const [retryingIdx, setRetryingIdx] = useState(null);
   const [pendingQueue, setPendingQueue] = useState([]);
@@ -219,6 +219,10 @@ export default function TransactionForm({ onClose, onSuccess }) {
   const expenseCategoryGroups = useMemo(
     () => buildExpenseCategoryGroups(expenseCategories),
     [expenseCategories]
+  );
+  const selectedPickerGroup = useMemo(
+    () => expenseCategoryGroups.find((group) => String(group.parent.id) === String(categoryPicker.parentId || "")) || null,
+    [expenseCategoryGroups, categoryPicker.parentId]
   );
 
   // ==================== HELPERS ====================
@@ -1530,6 +1534,22 @@ export default function TransactionForm({ onClose, onSuccess }) {
                         const leaf = (c.name_vi || c.name || "").toLowerCase();
                         return !q || full.includes(q) || leaf.includes(q);
                       });
+                      const groupLeaves = selectedPickerGroup
+                        ? selectedPickerGroup.children.flatMap((childGroup) => {
+                            const child = childGroup.category;
+                            const leaves = childGroup.leaves || [];
+                            if (leaves.length > 0) {
+                              return leaves.map((leaf) => ({
+                                ...leaf,
+                                __sectionLabel: child.name_vi || child.name || "",
+                              }));
+                            }
+                            if (isSelectableExpenseCategory(child, expenseCategories)) {
+                              return [{ ...child, __sectionLabel: null }];
+                            }
+                            return [];
+                          })
+                        : [];
 
                       return (
                         <>
@@ -1557,49 +1577,59 @@ export default function TransactionForm({ onClose, onSuccess }) {
 
                           <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>Tất cả phân loại</div>
                           {!q ? (
-                            <div style={{ display: "grid", gap: 10 }}>
-                              {expenseCategoryGroups.map((group) => (
-                                <div key={group.parent.id} style={{ border: `1px solid ${T.border}`, borderRadius: 14, padding: 10, background: "#fafcf9" }}>
-                                  <div style={{ fontSize: 12, fontWeight: 800, color: T.text, marginBottom: 8 }}>
-                                    {group.parent.name_vi || group.parent.name}
-                                  </div>
-                                  <div style={{ display: "grid", gap: 8 }}>
-                                    {group.children.map((childGroup) => {
-                                      const child = childGroup.category;
-                                      const leaves = childGroup.leaves;
-                                      if (!leaves.length) {
-                                        if (!isSelectableExpenseCategory(child, expenseCategories)) return null;
-                                        return (
-                                          <button key={child.id} type="button" onClick={() => pickCategoryForResult(categoryPicker.resultIdx, child.id)} style={{ ...inputStyle, textAlign: "left", padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
-                                            <span style={{ width: 22, height: 22, borderRadius: 999, background: `${child.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                                              <MIcon name={getCategoryIconName(child)} size={13} color={child.color || T.primary} />
-                                            </span>
-                                            <span>{getCategoryDisplayLabel(child, { withParents: true })}</span>
-                                          </button>
-                                        );
-                                      }
-                                      return (
-                                        <div key={child.id}>
-                                          <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>
-                                            {child.name_vi || child.name}
-                                          </div>
-                                          <div style={{ display: "grid", gap: 6 }}>
-                                            {leaves.map((c) => (
-                                              <button key={c.id} type="button" onClick={() => pickCategoryForResult(categoryPicker.resultIdx, c.id)} style={{ ...inputStyle, textAlign: "left", padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
-                                                <span style={{ width: 22, height: 22, borderRadius: 999, background: `${c.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                                                  <MIcon name={getCategoryIconName(c)} size={13} color={c.color || T.primary} />
-                                                </span>
-                                                <span>{getCategoryDisplayLabel(c)}</span>
-                                              </button>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
+                            !selectedPickerGroup ? (
+                              <div style={{ display: "grid", gap: 8 }}>
+                                {expenseCategoryGroups.map((group) => (
+                                  <button
+                                    key={group.parent.id}
+                                    type="button"
+                                    onClick={() => setCategoryPicker((prev) => ({ ...prev, parentId: group.parent.id }))}
+                                    style={{ ...inputStyle, textAlign: "left", padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}
+                                  >
+                                    <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                                      <span style={{ width: 24, height: 24, borderRadius: 999, background: `${group.parent.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                        <MIcon name={getCategoryIconName(group.parent)} size={14} color={group.parent.color || T.primary} />
+                                      </span>
+                                      <span style={{ fontWeight: 700, color: T.text }}>{group.parent.name_vi || group.parent.name}</span>
+                                    </span>
+                                    <MIcon name="chevron_right" size={18} color={T.textMuted} />
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <div style={{ display: "grid", gap: 10 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setCategoryPicker((prev) => ({ ...prev, parentId: null }))}
+                                  style={{ border: "none", background: "transparent", padding: 0, textAlign: "left", fontSize: 11, fontWeight: 700, color: T.primary, cursor: "pointer" }}
+                                >
+                                  ← Quay lại nhóm cha
+                                </button>
+                                <div style={{ fontSize: 12, fontWeight: 800, color: T.text }}>
+                                  {selectedPickerGroup.parent.name_vi || selectedPickerGroup.parent.name}
                                 </div>
-                              ))}
-                            </div>
+                                <div style={{ display: "grid", gap: 8 }}>
+                                  {groupLeaves.map((c, idx) => {
+                                    const showSection = c.__sectionLabel && (idx === 0 || groupLeaves[idx - 1].__sectionLabel !== c.__sectionLabel);
+                                    return (
+                                      <div key={c.id}>
+                                        {showSection && (
+                                          <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, marginBottom: 6 }}>
+                                            {c.__sectionLabel}
+                                          </div>
+                                        )}
+                                        <button type="button" onClick={() => pickCategoryForResult(categoryPicker.resultIdx, c.id)} style={{ ...inputStyle, textAlign: "left", padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                                          <span style={{ width: 22, height: 22, borderRadius: 999, background: `${c.color || T.primary}22`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                                            <MIcon name={getCategoryIconName(c)} size={13} color={c.color || T.primary} />
+                                          </span>
+                                          <span>{getCategoryDisplayLabel(c)}</span>
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )
                           ) : (
                             <div style={{ display: "grid", gap: 6 }}>
                               {filtered.map((c) => (
