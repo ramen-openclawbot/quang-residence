@@ -29,6 +29,7 @@ const TABS = [
   { id: "transactions", label: "Giao dịch", icon: "receipt_long" },
   { id: "tasks", label: "Công việc", icon: "task_alt" },
   { id: "cash-ledger", label: "Sổ quỹ", icon: "account_balance_wallet" },
+  { id: "reconciliation", label: "Đối soát", icon: "fact_check" },
 ];
 
 const OPS_EXCLUDED_USER_PREFIX = "6487c846";
@@ -160,6 +161,11 @@ export default function SecretaryPage() {
   const [cashLedgerOcrError, setCashLedgerOcrError] = useState("");
   const [cashLedgerOcrPhase, setCashLedgerOcrPhase] = useState("idle");
   const cashLedgerSlipFileRef = useRef(null);
+  const reconciliationFileRef = useRef(null);
+  const [reconciliationLoading, setReconciliationLoading] = useState(false);
+  const [reconciliationError, setReconciliationError] = useState("");
+  const [reconciliationResult, setReconciliationResult] = useState(null);
+  const [reconciliationProfileId, setReconciliationProfileId] = useState("");
   const [cashLedgerForm, setCashLedgerForm] = useState({
     type: "expense",
     entry_kind: "fund_transfer_out",
@@ -654,6 +660,35 @@ export default function SecretaryPage() {
     }
   }
 
+  async function handleReconciliationFileSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setReconciliationLoading(true);
+      setReconciliationError("");
+      const token = await getToken();
+      if (!token) throw new Error("Phiên đăng nhập hết hạn");
+      if (!reconciliationProfileId) throw new Error("Vui lòng chọn người cần đối soát");
+      const form = new FormData();
+      form.append("file", file);
+      form.append("profileId", reconciliationProfileId);
+      form.append("monthKey", `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}`);
+      const res = await fetch("/api/reconciliation/techcombank", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Không đối soát được sao kê");
+      setReconciliationResult(json);
+    } catch (err) {
+      setReconciliationError(err.message || "Không đối soát được sao kê");
+    } finally {
+      setReconciliationLoading(false);
+      if (e?.target) e.target.value = "";
+    }
+  }
+
   const isOpsTransaction = useCallback((tx) => {
     const createdBy = String(tx?.created_by || "");
     return !createdBy.startsWith(OPS_EXCLUDED_USER_PREFIX);
@@ -686,6 +721,11 @@ export default function SecretaryPage() {
     });
   }, [staffProfiles]);
   const ROLE_VI = { secretary: "Thư ký", driver: "Lái xe", housekeeper: "Quản gia" };
+  useEffect(() => {
+    if (!reconciliationProfileId && transferRecipients[0]?.id) {
+      setReconciliationProfileId(String(transferRecipients[0].id));
+    }
+  }, [transferRecipients, reconciliationProfileId]);
   const yearOptions = useMemo(() => {
     const current = new Date().getFullYear();
     const years = [];
@@ -1700,6 +1740,123 @@ export default function SecretaryPage() {
                 </div>
               )}
 
+              {tab === "reconciliation" && (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Đối soát sao kê</div>
+                    <button onClick={() => reconciliationFileRef.current?.click()} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                      + Tải sao kê
+                    </button>
+                  </div>
+
+                  <div style={{ ...cardStyle, padding: 16, marginBottom: 12 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 6 }}>Phạm vi đối soát</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, lineHeight: 1.6 }}>
+                      Thư ký upload sao kê Techcombank và chọn user vận hành cần đối soát để so với giao dịch đã nhập tay trong app.
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 6 }}>User cần đối soát</div>
+                      <select value={reconciliationProfileId} onChange={(e) => setReconciliationProfileId(e.target.value)} style={{ width: "100%", height: 42, borderRadius: 12, border: `1px solid ${T.border}`, background: "#fff", padding: "0 12px", fontSize: 13, color: T.text }}>
+                        <option value="">Chọn user</option>
+                        {transferRecipients.map((p) => (
+                          <option key={p.id} value={p.id}>{p.full_name} ({ROLE_VI[p.role] || p.role})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                      <div style={{ ...subtleCard, padding: "10px 12px", minWidth: 120 }}>
+                        <div style={{ fontSize: 10, color: T.textMuted }}>Tháng đối soát</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{MONTHS[selectedMonth]} {selectedYear}</div>
+                      </div>
+                      <div style={{ ...subtleCard, padding: "10px 12px", minWidth: 180 }}>
+                        <div style={{ fontSize: 10, color: T.textMuted }}>Đối tượng đối soát</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{transferRecipients.find((p) => String(p.id) === String(reconciliationProfileId))?.full_name || "Chưa chọn user"}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {reconciliationError && (
+                    <div style={{ ...cardStyle, padding: 14, marginBottom: 12, borderColor: `${T.danger}30`, background: "#fff7f7" }}>
+                      <div style={{ fontSize: 12, color: T.danger, fontWeight: 700 }}>{reconciliationError}</div>
+                    </div>
+                  )}
+
+                  {reconciliationLoading && (
+                    <div style={{ ...cardStyle, padding: 18, marginBottom: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, color: T.textMuted, fontSize: 13 }}>
+                        <MIcon name="sync" size={18} color={T.primary} /> Đang đọc sao kê và đối soát...
+                      </div>
+                    </div>
+                  )}
+
+                  {reconciliationResult && (
+                    <>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                        <div style={{ ...subtleCard, padding: 12 }}>
+                          <div style={{ fontSize: 11, color: T.textMuted }}>Khớp</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: T.success }}>{reconciliationResult.reconciliation?.summary?.matched_count || 0}</div>
+                        </div>
+                        <div style={{ ...subtleCard, padding: 12 }}>
+                          <div style={{ fontSize: 11, color: T.textMuted }}>Thiếu trong app</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: T.danger }}>{reconciliationResult.reconciliation?.summary?.missing_count || 0}</div>
+                        </div>
+                        <div style={{ ...subtleCard, padding: 12 }}>
+                          <div style={{ fontSize: 11, color: T.textMuted }}>Thừa trong app</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: T.amber }}>{reconciliationResult.reconciliation?.summary?.extra_count || 0}</div>
+                        </div>
+                        <div style={{ ...subtleCard, padding: 12 }}>
+                          <div style={{ fontSize: 11, color: T.textMuted }}>Cần rà tay</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>{reconciliationResult.reconciliation?.summary?.review_count || 0}</div>
+                        </div>
+                      </div>
+
+                      <div style={{ ...cardStyle, padding: 16, marginBottom: 12 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10 }}>Tóm tắt sao kê</div>
+                        <div style={{ display: "grid", gap: 8 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12 }}><span style={{ color: T.textMuted }}>Chủ tài khoản</span><span style={{ color: T.text, fontWeight: 700 }}>{reconciliationResult.parsed?.meta?.customer_name || "—"}</span></div>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12 }}><span style={{ color: T.textMuted }}>Số dòng sao kê</span><span style={{ color: T.text, fontWeight: 700 }}>{reconciliationResult.parsed?.summary?.total_entries || 0}</span></div>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12 }}><span style={{ color: T.textMuted }}>Tổng tiền vào</span><span style={{ color: T.success, fontWeight: 800 }}>{fmtVND(reconciliationResult.parsed?.summary?.total_in || 0)}</span></div>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12 }}><span style={{ color: T.textMuted }}>Tổng tiền ra</span><span style={{ color: T.danger, fontWeight: 800 }}>{fmtVND(reconciliationResult.parsed?.summary?.total_out || 0)}</span></div>
+                        </div>
+                      </div>
+
+                      {[{ key: "missingInApp", label: "Thiếu trong app", color: T.danger }, { key: "extraInApp", label: "Thừa trong app", color: T.amber }, { key: "needsReview", label: "Cần rà tay", color: T.text }].map((section) => {
+                        const items = reconciliationResult.reconciliation?.[section.key] || [];
+                        return (
+                          <div key={section.key} style={{ ...cardStyle, padding: 16, marginBottom: 12 }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{section.label}</div>
+                              <div style={{ fontSize: 12, fontWeight: 800, color: section.color }}>{items.length}</div>
+                            </div>
+                            {items.length === 0 ? (
+                              <div style={{ fontSize: 12, color: T.textMuted }}>Không có mục nào.</div>
+                            ) : (
+                              <div style={{ display: "grid", gap: 8 }}>
+                                {items.slice(0, 8).map((item, idx) => {
+                                  const row = item.statement || item;
+                                  const tx = item.transaction || item.candidate || null;
+                                  return (
+                                    <div key={idx} style={{ border: `1px solid ${T.border}`, borderRadius: 12, padding: 10, background: "#fbfdf9" }}>
+                                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{row.statement_date || row.transaction_date || "—"}</div>
+                                        <div style={{ fontSize: 12, fontWeight: 800, color: row.direction === "in" ? T.success : T.danger }}>{fmtVND(row.amount || Math.abs(Number(row.amount || tx?.amount || 0)))}</div>
+                                      </div>
+                                      <div style={{ fontSize: 12, color: T.text }}>{row.details || row.description || "—"}</div>
+                                      {(row.partner_name || row.recipient_name) && <div style={{ marginTop: 4, fontSize: 11, color: T.textMuted }}>{row.partner_name || row.recipient_name}</div>}
+                                      {tx && <div style={{ marginTop: 6, fontSize: 11, color: T.textMuted }}>App: {tx.description || tx.recipient_name || tx.transaction_code || "Có giao dịch ứng viên"}</div>}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
+
               {tab === "cash-ledger" && (
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -2000,6 +2157,13 @@ export default function SecretaryPage() {
           })}
         </div>
       </div>
+      <input
+        ref={reconciliationFileRef}
+        type="file"
+        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        style={{ display: "none" }}
+        onChange={handleReconciliationFileSelect}
+      />
     </StaffShell>
   );
 }
