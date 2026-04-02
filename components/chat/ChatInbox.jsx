@@ -109,44 +109,106 @@ function normalizeTextKey(v = "") {
   return String(v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function isSelectableExpenseCategory(category, allCategories = []) {
+  if (!category) return false;
+  const code = String(category.code || "").toUpperCase();
+  if (code.startsWith("P_") || code.startsWith("C_")) return false;
+  return !allCategories.some((item) => String(item.parent_id || "") === String(category.id));
+}
+
 function suggestCategory({ description = "", recipient_name = "", bank_name = "" }, categories = [], learnedMap = {}) {
   const hay = `${description} ${recipient_name} ${bank_name}`.toLowerCase();
   if (!hay.trim() || !categories.length) return { id: "", source: "none", confidence: 0 };
 
+  const selectableCategories = categories.filter((c) => isSelectableExpenseCategory(c, categories));
+  const byCode = new Map(selectableCategories.map((c) => [String(c.code || "").toUpperCase(), c]));
+
   const descKey = normalizeTextKey(description);
   const recKey = normalizeTextKey(recipient_name);
+  const hayKey = normalizeTextKey(hay);
   const learnedKey = `${descKey}|${recKey}`;
 
   const personalNameLike = /^[a-z\s]{8,}$/i.test((description || "").trim()) && !/\d/.test(description || "");
   const recipientPersonalLike = /^[a-z\s]{6,}$/i.test((recipient_name || "").trim()) && !/\d/.test(recipient_name || "");
   const looksPersonalTransfer = personalNameLike || recipientPersonalLike;
 
-  const codeByKeyword = [
-    { code: "TIEN_CHO", keys: ["cho", "rau", "thit", "ca", "trai cay", "coopmart", "winmart", "bach hoa"] },
-    { code: "DO_AN_GOI", keys: ["grabfood", "shopeefood", "befood", "do an", "tra sua"] },
-    { code: "DIEN_NUOC_GAS_NET", keys: ["dien", "nuoc", "internet", "wifi", "gas"] },
-    { code: "DI_LAI", keys: ["xang", "taxi", "grab", "be", "xanh sm", "cau duong", "gui xe"] },
-    { code: "CHI_BEP", keys: ["nguyen lieu", "gia vi", "bep"] },
+  const directRules = [
+    { code: "TIEN_CHO", keys: ["cho", "rau", "thit", "ca", "trai cay", "coopmart", "winmart", "bach hoa", "sieu thi", "market"] },
+    { code: "DO_AN_GOI", keys: ["grabfood", "shopeefood", "befood", "do an", "tra sua", "highlands", "phuc long"] },
+    { code: "DIEN_NUOC_GAS_NET", keys: ["dien", "nuoc", "internet", "wifi", "gas", "cap quang", "viettel", "fpt", "vnpt"] },
+    { code: "DI_LAI", keys: ["xang", "taxi", "grab", "be", "xanh sm", "cau duong", "gui xe", "tram thu phi", "parking"] },
+    { code: "CHI_BEP", keys: ["nguyen lieu", "gia vi", "bep", "thuc an", "do kho"] },
+    { code: "DANG_KY_DICH_VU", keys: ["subscription", "icloud", "youtube", "netflix", "spotify", "chatgpt", "gemini", "claude"] },
+    { code: "SUA_CHUA_BAO_TRI", keys: ["sua chua", "bao tri", "thay", "lap dat", "ky thuat", "dien lanh"] },
+    { code: "DU_LICH", keys: ["khach san", "ve may bay", "booking", "travel", "resort", "villa"] },
+    { code: "PR_DOI_NGOAI", keys: ["doi ngoai", "gap mat", "tiep khach", "qua doi tac", "pr"] },
+    { code: "GIAI_TRI_QUA_TANG", keys: ["qua tang", "sinh nhat", "giai tri", "xem phim", "qua"] },
+    { code: "LUONG_NHAN_SU", keys: ["luong", "thuong", "nhan vien", "salary", "payroll"] },
   ];
 
-  for (const rule of codeByKeyword) {
-    if (rule.keys.some((k) => hay.includes(k))) {
-      const hit = categories.find((c) => String(c.code || "").toUpperCase() === rule.code);
+  for (const rule of directRules) {
+    if (rule.keys.some((k) => hayKey.includes(normalizeTextKey(k)))) {
+      const hit = byCode.get(rule.code);
       if (hit) return { id: String(hit.id), source: "keyword", confidence: 0.9 };
     }
   }
 
-  const fallbackOther = categories.find((c) => {
+  const familyRules = [
+    { targets: ["THUOC_ONG", "KHAM_CHUA_ONG", "MUA_SAM_ONG"], people: ["ong", "ba noi", "ba ngoai", "grandpa", "grandfather"] },
+    { targets: ["THUOC_ANH_QUANG", "KHAM_CHUA_ANH_QUANG", "MUA_SAM_ANH_QUANG"], people: ["anh quang", "quang", "mr quang"] },
+    { targets: ["THUOC_JENNIE", "KHAM_CHUA_JENNIE", "MUA_SAM_JENNIE", "GIAO_DUC_JENNIE"], people: ["jennie", "be jennie"] },
+    { targets: ["THUOC_CHIPTUN", "KHAM_CHUA_CHIPTUN", "MUA_SAM_CHIPTUN", "GIAO_DUC_CHIPTUN", "HOC_PHI_TRUONG_HOC_CHIPTUN"], people: ["chiptun", "chip tun", "be chip", "chip"] },
+    { targets: ["GIAO_DUC_KHANH_LINH_NHAN_VIEN"], people: ["khanh linh", "nhan vien", "staff"] },
+  ];
+
+  const healthKeys = ["thuoc", "pharmacy", "nha thuoc", "drug", "medicine", "vitamin", "kham", "benh vien", "clinic", "xet nghiem", "bac si", "hospital"];
+  const medicineKeys = ["thuoc", "pharmacy", "nha thuoc", "drug", "medicine", "vitamin", "toa thuoc"];
+  const hospitalKeys = ["kham", "benh vien", "clinic", "xet nghiem", "bac si", "hospital", "vien phi"];
+  const shoppingKeys = ["mua sam", "shopping", "quan ao", "giay", "my pham", "phu kien", "tui", "ao", "vay"];
+  const educationKeys = ["hoc", "hoc phi", "truong", "lop", "giao vien", "course", "khoa hoc", "tuition", "school"];
+
+  for (const familyRule of familyRules) {
+    const matchedPerson = familyRule.people.some((k) => hayKey.includes(normalizeTextKey(k)));
+    if (!matchedPerson) continue;
+
+    if (medicineKeys.some((k) => hayKey.includes(normalizeTextKey(k)))) {
+      const hit = familyRule.targets.map((code) => byCode.get(code)).find((c) => c && String(c.code).startsWith("THUOC_"));
+      if (hit) return { id: String(hit.id), source: "family_health", confidence: 0.93 };
+    }
+    if (hospitalKeys.some((k) => hayKey.includes(normalizeTextKey(k)))) {
+      const hit = familyRule.targets.map((code) => byCode.get(code)).find((c) => c && String(c.code).startsWith("KHAM_CHUA_"));
+      if (hit) return { id: String(hit.id), source: "family_health", confidence: 0.93 };
+    }
+    if (shoppingKeys.some((k) => hayKey.includes(normalizeTextKey(k)))) {
+      const hit = familyRule.targets.map((code) => byCode.get(code)).find((c) => c && String(c.code).startsWith("MUA_SAM_"));
+      if (hit) return { id: String(hit.id), source: "family_personal", confidence: 0.9 };
+    }
+    if (educationKeys.some((k) => hayKey.includes(normalizeTextKey(k)))) {
+      const hit = familyRule.targets.map((code) => byCode.get(code)).find((c) => c && (String(c.code).startsWith("GIAO_DUC_") || String(c.code).startsWith("HOC_PHI_")));
+      if (hit) return { id: String(hit.id), source: "family_education", confidence: 0.92 };
+    }
+    if (healthKeys.some((k) => hayKey.includes(normalizeTextKey(k)))) {
+      const hit = familyRule.targets.map((code) => byCode.get(code)).find((c) => c && (String(c.code).startsWith("THUOC_") || String(c.code).startsWith("KHAM_CHUA_")));
+      if (hit) return { id: String(hit.id), source: "family_health", confidence: 0.88 };
+    }
+  }
+
+  if (educationKeys.some((k) => hayKey.includes(normalizeTextKey(k)))) {
+    const schoolFee = byCode.get("HOC_PHI_TRUONG_HOC_CHIPTUN");
+    const genericEdu = byCode.get("GIAO_DUC_CHIPTUN") || byCode.get("GIAO_DUC_JENNIE") || byCode.get("GIAO_DUC_KHANH_LINH_NHAN_VIEN");
+    if (schoolFee && hayKey.includes("hoc phi")) return { id: String(schoolFee.id), source: "education_keyword", confidence: 0.9 };
+    if (genericEdu) return { id: String(genericEdu.id), source: "education_keyword", confidence: 0.78 };
+  }
+
+  const fallbackOther = selectableCategories.find((c) => {
     const code = String(c.code || "").toUpperCase();
     const vi = String(c.name_vi || "").toLowerCase();
     const en = String(c.name || "").toLowerCase();
     return code === "KHAC" || vi === "khác" || vi === "khac" || en === "other";
   });
 
-  if (looksPersonalTransfer && fallbackOther) return { id: String(fallbackOther.id), source: "personal_guard", confidence: 0.88 };
-
   if (learnedMap[learnedKey]) return { id: String(learnedMap[learnedKey]), source: "learned", confidence: 0.78 };
-
+  if (looksPersonalTransfer && fallbackOther) return { id: String(fallbackOther.id), source: "personal_guard", confidence: 0.88 };
   if (fallbackOther) return { id: String(fallbackOther.id), source: "fallback_other", confidence: 0.6 };
   return { id: "", source: "none", confidence: 0 };
 }
@@ -281,7 +343,7 @@ export default function ChatInbox() {
       const [{ data: cats }, { data: txs }, { data: staff }] = await Promise.all([
         supabase
           .from("categories")
-          .select("id, code, name, name_vi, color, sort_order")
+          .select("id, code, name, name_vi, color, sort_order, parent_id")
           .order("sort_order", { ascending: true }),
         supabase
           .from("transactions")

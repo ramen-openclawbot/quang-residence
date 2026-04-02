@@ -1,17 +1,27 @@
 import { NextResponse } from "next/server";
 import { requireRole, supabaseAdmin } from "../../../../lib/api-auth";
 
-function getCategoryPathLabel(category) {
-  if (!category) return "Chưa phân loại";
+function getCategoryPathParts(category) {
+  if (!category) return [];
   const parts = [];
   const seen = new Set();
   let current = category;
   while (current && !seen.has(current.id) && parts.length < 6) {
     seen.add(current.id);
-    parts.unshift(current.name_vi || current.name || "");
+    parts.unshift({
+      id: current.id || null,
+      code: current.code || null,
+      name_vi: current.name_vi || current.name || "",
+      name: current.name || current.name_vi || "",
+    });
     current = current.parent || null;
   }
-  return parts.filter(Boolean).join(" / ") || "Chưa phân loại";
+  return parts.filter((part) => part.name_vi);
+}
+
+function getCategoryPathLabel(category) {
+  const parts = getCategoryPathParts(category);
+  return parts.map((part) => part.name_vi).join(" / ") || "Chưa phân loại";
 }
 
 function parseMonthParam(searchParams) {
@@ -88,26 +98,81 @@ export async function GET(request) {
 
     const rows = data || [];
     const byCategoryMap = new Map();
+    const parentSummaryMap = new Map();
     let total = 0;
 
     for (const row of rows) {
       const amount = Math.abs(Number(row?.amount || 0));
       total += amount;
       const cat = row?.categories || null;
-      const key = cat?.code || `UNCATEGORIZED_${row?.category_id || "NONE"}`;
-      const prev = byCategoryMap.get(key) || {
+      const parts = getCategoryPathParts(cat);
+      const fullName = getCategoryPathLabel(cat);
+      const leaf = parts[parts.length - 1] || null;
+      const parent = parts[0] || leaf || { code: null, name_vi: "Chưa phân loại", id: null };
+      const leafKey = cat?.code || `UNCATEGORIZED_${row?.category_id || "NONE"}`;
+      const parentKey = parent?.code || `PARENT_${parent?.id || parent?.name_vi || "NONE"}`;
+
+      const prev = byCategoryMap.get(leafKey) || {
+        id: cat?.id || row?.category_id || null,
         code: cat?.code || null,
-        name_vi: cat?.name_vi || cat?.name || "Chưa phân loại",
-        full_name_vi: getCategoryPathLabel(cat),
+        name_vi: leaf?.name_vi || cat?.name_vi || cat?.name || "Chưa phân loại",
+        full_name_vi: fullName,
+        parent_code: parent?.code || null,
+        parent_name_vi: parent?.name_vi || "Chưa phân loại",
         count: 0,
         total: 0,
       };
       prev.count += 1;
       prev.total += amount;
-      byCategoryMap.set(key, prev);
+      byCategoryMap.set(leafKey, prev);
+
+      const parentPrev = parentSummaryMap.get(parentKey) || {
+        id: parent?.id || null,
+        code: parent?.code || null,
+        name_vi: parent?.name_vi || "Chưa phân loại",
+        count: 0,
+        total: 0,
+        children: new Map(),
+      };
+      parentPrev.count += 1;
+      parentPrev.total += amount;
+      const childPrev = parentPrev.children.get(leafKey) || {
+        id: cat?.id || row?.category_id || null,
+        code: cat?.code || null,
+        name_vi: leaf?.name_vi || cat?.name_vi || cat?.name || "Chưa phân loại",
+        full_name_vi: fullName,
+        count: 0,
+        total: 0,
+      };
+      childPrev.count += 1;
+      childPrev.total += amount;
+      parentPrev.children.set(leafKey, childPrev);
+      parentSummaryMap.set(parentKey, parentPrev);
     }
 
     const byCategory = Array.from(byCategoryMap.values()).sort((a, b) => b.total - a.total);
+    const parentSummary = Array.from(parentSummaryMap.values())
+      .sort((a, b) => b.total - a.total)
+      .map((parent) => ({
+        id: parent.id,
+        code: parent.code,
+        name_vi: parent.name_vi,
+        total: parent.total,
+        count: parent.count,
+        percent: total > 0 ? (parent.total / total) * 100 : 0,
+        children: Array.from(parent.children.values())
+          .sort((a, b) => b.total - a.total)
+          .map((child) => ({
+            ...child,
+            percent_of_parent: parent.total > 0 ? (child.total / parent.total) * 100 : 0,
+            percent_of_total: total > 0 ? (child.total / total) * 100 : 0,
+          })),
+      }));
+
+    const childSummary = byCategory.map((child) => ({
+      ...child,
+      percent_of_total: total > 0 ? (child.total / total) * 100 : 0,
+    }));
 
     return NextResponse.json({
       success: true,
@@ -126,6 +191,8 @@ export async function GET(request) {
           }
         : null,
       byCategory,
+      parentSummary,
+      childSummary,
     });
   } catch (err) {
     console.error("spending-by-category fatal", err);

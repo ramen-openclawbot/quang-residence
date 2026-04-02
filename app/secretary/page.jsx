@@ -124,6 +124,9 @@ export default function SecretaryPage() {
   const [selectedDate, setSelectedDate] = useState(""); // YYYY-MM-DD
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [spendingReport, setSpendingReport] = useState(null);
+  const [expandedSpendingParents, setExpandedSpendingParents] = useState({});
+  const [activeSpendingParent, setActiveSpendingParent] = useState(null);
   const [txActiveFilter, setTxActiveFilter] = useState(null); // "income" | "expense" | "pending" | null
 
   const [funds, setFunds] = useState([]);
@@ -287,6 +290,25 @@ export default function SecretaryPage() {
     loadSummary();
     loadCashLedger(true);
   }, [profile?.id, loadSummary, loadCashLedger]);
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}`;
+        const res = await fetch(`/api/reports/spending-by-category?month=${monthKey}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = await res.json().catch(() => null);
+        if (!ignore) setSpendingReport(res.ok ? json : null);
+      } catch {
+        if (!ignore) setSpendingReport(null);
+      }
+    })();
+    return () => { ignore = true; };
+  }, [getToken, selectedMonth, selectedYear]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -689,8 +711,11 @@ export default function SecretaryPage() {
   // Step 3: Search filter
   const txSearchFiltered = useMemo(() => {
     const q = txSearch.trim().toLowerCase();
-    if (!q) return txDayFiltered;
-    return txDayFiltered.filter((tx) => [
+    const parentFiltered = activeSpendingParent
+      ? txDayFiltered.filter((tx) => getTransactionCategoryMeta(tx)?.rootLabel === activeSpendingParent)
+      : txDayFiltered;
+    if (!q) return parentFiltered;
+    return parentFiltered.filter((tx) => [
       tx.description,
       tx.recipient_name,
       tx.bank_name,
@@ -699,7 +724,7 @@ export default function SecretaryPage() {
       tx.status,
       tx.type,
     ].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
-  }, [txDayFiltered, txSearch]);
+  }, [txDayFiltered, txSearch, activeSpendingParent]);
 
   // Step 4: Apply activeFilter (income/expense/pending)
   const txFiltered = useMemo(() => {
@@ -741,6 +766,36 @@ export default function SecretaryPage() {
   const txPendingCount = useMemo(() => txFiltered.filter((tx) => tx.status === "pending").length, [txFiltered]);
 
   const spendingPieData = useMemo(() => {
+    if (spendingReport?.parentSummary?.length) {
+      const total = Number(spendingReport.total || 0);
+      const palette = ["#56c91d", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6"];
+      const parents = spendingReport.parentSummary.map((parent, idx) => ({
+        key: parent.code || parent.name_vi || `PARENT_${idx}`,
+        label: parent.name_vi,
+        value: Number(parent.total || 0),
+        percent: Number(parent.percent || 0),
+        color: palette[idx % palette.length],
+        children: (parent.children || []).slice(0, 6).map((child) => ({
+          key: child.code || child.full_name_vi || child.name_vi,
+          label: child.full_name_vi || child.name_vi,
+          value: Number(child.total || 0),
+          parentPercent: Number(child.percent_of_parent || 0),
+          totalPercent: Number(child.percent_of_total || 0),
+        })),
+      }));
+      let cursor = 0;
+      return {
+        total,
+        parents,
+        items: parents.map((item) => {
+          const pct = total > 0 ? (item.value / total) * 100 : 0;
+          const slice = { ...item, percent: pct, dash: `${pct} ${100 - pct}`, offset: -cursor };
+          cursor += pct;
+          return slice;
+        }),
+      };
+    }
+
     const expenseRows = txFiltered.filter((tx) => getSignedAmount(tx) < 0);
     const total = expenseRows.reduce((sum, tx) => sum + Math.abs(getSignedAmount(tx)), 0);
     const palette = ["#56c91d", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6"];
@@ -1284,42 +1339,67 @@ export default function SecretaryPage() {
                       </div>
                       <div>
                         <div style={{ fontSize: 12, fontWeight: 800, color: T.text, marginBottom: 8 }}>Cơ cấu chi tiêu theo bộ lọc hiện tại</div>
+                        {activeSpendingParent && (
+                          <div style={{ marginBottom: 8 }}>
+                            <button type="button" onClick={() => setActiveSpendingParent(null)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 999, border: `1px solid ${T.border}`, background: "#fff", color: T.textMuted, fontSize: 10, fontWeight: 700, cursor: "pointer" }}>
+                              <MIcon name="filter_alt_off" size={13} color={T.textMuted} />
+                              Đang lọc: {activeSpendingParent}
+                            </button>
+                          </div>
+                        )}
                         {spendingPieData.items.length === 0 ? (
                           <div style={{ fontSize: 12, color: T.textMuted }}>Chưa có dữ liệu chi tiêu trong filter đang chọn.</div>
                         ) : (
                           <div style={{ display: "grid", gap: 10 }}>
-                            {spendingPieData.parents.slice(0, 4).map((parent) => (
-                              <div key={parent.key} style={{ border: `1px solid ${T.border}`, borderRadius: 14, background: "rgba(255,255,255,0.72)", padding: 10 }}>
-                                <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8, alignItems: "center" }}>
-                                  <div style={{ minWidth: 0 }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                      <span style={{ width: 8, height: 8, borderRadius: 999, background: parent.color, flexShrink: 0 }} />
-                                      <span style={{ fontSize: 12, color: T.text, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{parent.label}</span>
-                                    </div>
-                                  </div>
-                                  <div style={{ textAlign: "right" }}>
-                                    <div style={{ fontSize: 12, fontWeight: 800, color: T.text }}>{Math.round(parent.percent)}%</div>
-                                    <div style={{ fontSize: 10, color: T.textMuted }}>{fmtVND(parent.value)}</div>
-                                  </div>
-                                </div>
-                                {parent.children.length > 0 && (
-                                  <div style={{ display: "grid", gap: 6, marginTop: 8, paddingTop: 8, borderTop: `1px dashed ${T.border}` }}>
-                                    {parent.children.map((child) => (
-                                      <div key={child.key} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8, alignItems: "start", paddingLeft: 14 }}>
-                                        <div style={{ minWidth: 0 }}>
-                                          <div style={{ fontSize: 11, color: T.text, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{child.label}</div>
-                                          <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{Math.round(child.parentPercent)}% trong nhóm</div>
-                                        </div>
-                                        <div style={{ textAlign: "right" }}>
-                                          <div style={{ fontSize: 11, fontWeight: 800, color: T.text }}>{Math.round(child.totalPercent)}%</div>
-                                          <div style={{ fontSize: 10, color: T.textMuted }}>{fmtVND(child.value)}</div>
+                            {spendingPieData.parents.slice(0, 4).map((parent) => {
+                              const isExpanded = !!expandedSpendingParents[parent.key];
+                              const visibleChildren = isExpanded ? parent.children : parent.children.slice(0, 3);
+                              return (
+                                <div key={parent.key} style={{ border: `1px solid ${T.border}`, borderRadius: 14, background: "rgba(255,255,255,0.72)", padding: 10 }}>
+                                  <button type="button" onClick={() => setExpandedSpendingParents((prev) => ({ ...prev, [parent.key]: !prev[parent.key] }))} style={{ width: "100%", padding: 0, border: "none", background: "transparent", cursor: "pointer", textAlign: "left" }}>
+                                    <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8, alignItems: "center" }}>
+                                      <div style={{ minWidth: 0 }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                          <span style={{ width: 8, height: 8, borderRadius: 999, background: parent.color, flexShrink: 0 }} />
+                                          <span style={{ fontSize: 12, color: T.text, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{parent.label}</span>
+                                          <span onClick={(e) => { e.stopPropagation(); setActiveSpendingParent((prev) => (prev === parent.label ? null : parent.label)); }} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: 999, background: activeSpendingParent === parent.label ? `${T.primary}18` : "#f3f6f3", cursor: "pointer" }}>
+                                            <MIcon name="filter_alt" size={12} color={activeSpendingParent === parent.label ? T.primary : T.textMuted} />
+                                          </span>
                                         </div>
                                       </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                        <div style={{ textAlign: "right" }}>
+                                          <div style={{ fontSize: 12, fontWeight: 800, color: T.text }}>{Math.round(parent.percent)}%</div>
+                                          <div style={{ fontSize: 10, color: T.textMuted }}>{fmtVND(parent.value)}</div>
+                                        </div>
+                                        <MIcon name={isExpanded ? "expand_less" : "expand_more"} size={18} color={T.textMuted} />
+                                      </div>
+                                    </div>
+                                  </button>
+                                  {visibleChildren.length > 0 && (
+                                    <div style={{ display: "grid", gap: 6, marginTop: 8, paddingTop: 8, borderTop: `1px dashed ${T.border}` }}>
+                                      {visibleChildren.map((child) => (
+                                        <div key={child.key} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8, alignItems: "start", paddingLeft: 14 }}>
+                                          <div style={{ minWidth: 0 }}>
+                                            <div style={{ fontSize: 11, color: T.text, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{child.label}</div>
+                                            <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{Math.round(child.parentPercent)}% trong nhóm</div>
+                                          </div>
+                                          <div style={{ textAlign: "right" }}>
+                                            <div style={{ fontSize: 11, fontWeight: 800, color: T.text }}>{Math.round(child.totalPercent)}%</div>
+                                            <div style={{ fontSize: 10, color: T.textMuted }}>{fmtVND(child.value)}</div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                      {parent.children.length > 3 && (
+                                        <div style={{ paddingLeft: 14 }}>
+                                          <span style={{ fontSize: 10, color: T.textMuted }}>{isExpanded ? "Thu gọn" : `+${parent.children.length - 3} mục con`}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -1375,22 +1455,39 @@ export default function SecretaryPage() {
                     })}
                   </div>
                   {/* Active filter indicator */}
-                  {txActiveFilter && (
-                    <div style={{ marginBottom: 10 }}>
-                      <button
-                        onClick={() => setTxActiveFilter(null)}
-                        style={{
-                          display: "inline-flex", alignItems: "center", gap: 4,
-                          padding: "4px 10px", borderRadius: 8,
-                          background: `${txActiveFilter === "income" ? T.success : txActiveFilter === "expense" ? T.danger : T.amber}15`,
-                          color: txActiveFilter === "income" ? T.success : txActiveFilter === "expense" ? T.danger : T.amber,
-                          fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer",
-                        }}
-                      >
-                        <MIcon name="filter_list" size={14} color={txActiveFilter === "income" ? T.success : txActiveFilter === "expense" ? T.danger : T.amber} />
-                        {txActiveFilter === "income" ? "Thu nhập" : txActiveFilter === "expense" ? "Chi tiêu" : "Chờ duyệt"}
-                        <MIcon name="close" size={12} color={txActiveFilter === "income" ? T.success : txActiveFilter === "expense" ? T.danger : T.amber} />
-                      </button>
+                  {(txActiveFilter || activeSpendingParent) && (
+                    <div style={{ marginBottom: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {txActiveFilter && (
+                        <button
+                          onClick={() => setTxActiveFilter(null)}
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: 4,
+                            padding: "4px 10px", borderRadius: 8,
+                            background: `${txActiveFilter === "income" ? T.success : txActiveFilter === "expense" ? T.danger : T.amber}15`,
+                            color: txActiveFilter === "income" ? T.success : txActiveFilter === "expense" ? T.danger : T.amber,
+                            fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer",
+                          }}
+                        >
+                          <MIcon name="filter_list" size={14} color={txActiveFilter === "income" ? T.success : txActiveFilter === "expense" ? T.danger : T.amber} />
+                          {txActiveFilter === "income" ? "Thu nhập" : txActiveFilter === "expense" ? "Chi tiêu" : "Chờ duyệt"}
+                          <MIcon name="close" size={12} color={txActiveFilter === "income" ? T.success : txActiveFilter === "expense" ? T.danger : T.amber} />
+                        </button>
+                      )}
+                      {activeSpendingParent && (
+                        <button
+                          onClick={() => setActiveSpendingParent(null)}
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: 4,
+                            padding: "4px 10px", borderRadius: 8,
+                            background: `${T.primary}15`, color: T.primary,
+                            fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer",
+                          }}
+                        >
+                          <MIcon name="filter_alt_off" size={14} color={T.primary} />
+                          {activeSpendingParent}
+                          <MIcon name="close" size={12} color={T.primary} />
+                        </button>
+                      )}
                     </div>
                   )}
 
