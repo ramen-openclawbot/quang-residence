@@ -671,7 +671,20 @@ export default function SecretaryPage() {
 
   const pendingTx = useMemo(() => transactions.filter((t) => t.status === "pending" && isOpsTransaction(t)), [transactions, isOpsTransaction]);
   const staffById = useMemo(() => Object.fromEntries((staffProfiles || []).map((p) => [p.id, p])), [staffProfiles]);
-  const transferRecipients = useMemo(() => (staffProfiles || []).filter((p) => ["driver", "housekeeper"].includes(p.role)), [staffProfiles]);
+  const PINNED_FUND_PROFILES = {
+    a325bb7b: { name: "Trang", role: "housekeeper" },
+    "6994144f": { name: "Trường", role: "driver" },
+  };
+  const transferRecipients = useMemo(() => {
+    return Object.entries(PINNED_FUND_PROFILES).map(([id, info]) => {
+      const profile = (staffProfiles || []).find((p) => String(p.id || "").startsWith(id));
+      return {
+        id: profile?.id || id,
+        full_name: info.name,
+        role: info.role,
+      };
+    });
+  }, [staffProfiles]);
   const ROLE_VI = { secretary: "Thư ký", driver: "Lái xe", housekeeper: "Quản gia" };
   const yearOptions = useMemo(() => {
     const current = new Date().getFullYear();
@@ -857,7 +870,7 @@ export default function SecretaryPage() {
       if (!userId) continue;
       map.set(userId, {
         userId,
-        name: profileInfo.full_name || "Nhân sự",
+        name: profileInfo.full_name || PINNED_FUND_PROFILES[String(userId).slice(0, 8)]?.name || "Nhân sự",
         role: profileInfo.role,
         balance: 0,
         totalIn: 0,
