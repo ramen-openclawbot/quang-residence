@@ -34,10 +34,20 @@ function getCtx(path, mode = "default") {
 let _seq = 0;
 function uid() { return `m${++_seq}_${Date.now()}`; }
 
-// ─── Image compression (mirrors TransactionForm) ────────────────
-async function compressImage(file) {
+// ─── Image compression (aligned with TransactionForm stable path) ────────────────
+async function compressImage(file, options = {}) {
+  const { forceJpeg = false } = options;
+  const MAX_BYTES = 1024 * 1024;
+  const MAX_DIMENSION = 1600;
+  const JPEG_QUALITY = 0.82;
+
   if (!file?.type?.startsWith("image/")) return file;
-  const MAX = 1200, Q = 0.75;
+
+  const mime = (file.type || "").toLowerCase();
+  const shouldConvertForOCR = forceJpeg || !["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(mime);
+  const shouldProcess = shouldConvertForOCR || file.size > MAX_BYTES;
+  if (!shouldProcess) return file;
+
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise((ok, fail) => {
@@ -48,8 +58,8 @@ async function compressImage(file) {
     });
     let { width: w, height: h } = img;
     const largest = Math.max(w, h);
-    if (largest > MAX) {
-      const s = MAX / largest;
+    if (largest > MAX_DIMENSION) {
+      const s = MAX_DIMENSION / largest;
       w = Math.round(w * s);
       h = Math.round(h * s);
     }
@@ -60,20 +70,12 @@ async function compressImage(file) {
     if (!ctx) return file;
     ctx.drawImage(img, 0, 0, w, h);
 
-    // Phase 3: on-device OCR pre-enhancement (light contrast + sharpen)
-    const imageData = ctx.getImageData(0, 0, w, h);
-    const d = imageData.data;
-    const contrast = 1.12;
-    const bias = -8;
-    for (let i = 0; i < d.length; i += 4) {
-      d[i] = Math.max(0, Math.min(255, contrast * d[i] + bias));
-      d[i + 1] = Math.max(0, Math.min(255, contrast * d[i + 1] + bias));
-      d[i + 2] = Math.max(0, Math.min(255, contrast * d[i + 2] + bias));
-    }
-    ctx.putImageData(imageData, 0, 0);
-
-    const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", Q));
-    return blob ? new File([blob], "slip.jpg", { type: "image/jpeg" }) : file;
+    const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", JPEG_QUALITY));
+    if (!blob) return file;
+    const baseName = (file.name || "slip").replace(/\.[^.]+$/, "");
+    const normalized = new File([blob], `${baseName}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
+    if (shouldConvertForOCR) return normalized;
+    return normalized.size < file.size ? normalized : file;
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -473,7 +475,7 @@ export default function ChatInbox() {
         const res = await fetch("/api/ocr", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ imageBase64: base64, imageMimeType: "image/jpeg" }),
+          body: JSON.stringify({ imageBase64: base64, imageMimeType: compressed.type || file.type || "image/jpeg" }),
         });
 
         let json = null;
