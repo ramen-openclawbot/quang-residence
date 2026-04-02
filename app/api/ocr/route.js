@@ -136,7 +136,6 @@ async function runSingleOcrAttempt({ imageBase64, imageMimeType, systemPrompt, s
     },
     body: JSON.stringify({
       model,
-      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
         {
