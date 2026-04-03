@@ -1793,7 +1793,7 @@ export default function SecretaryPage() {
                     <>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
                         <div style={{ ...subtleCard, padding: 12 }}>
-                          <div style={{ fontSize: 11, color: T.textMuted }}>Khớp</div>
+                          <div style={{ fontSize: 11, color: T.textMuted }}>Đã khớp</div>
                           <div style={{ fontSize: 18, fontWeight: 800, color: T.success }}>{reconciliationResult.reconciliation?.summary?.matched_count || 0}</div>
                         </div>
                         <div style={{ ...subtleCard, padding: 12 }}>
@@ -1801,12 +1801,12 @@ export default function SecretaryPage() {
                           <div style={{ fontSize: 18, fontWeight: 800, color: T.danger }}>{reconciliationResult.reconciliation?.summary?.missing_count || 0}</div>
                         </div>
                         <div style={{ ...subtleCard, padding: 12 }}>
-                          <div style={{ fontSize: 11, color: T.textMuted }}>Thừa trong app</div>
-                          <div style={{ fontSize: 18, fontWeight: 800, color: T.amber }}>{reconciliationResult.reconciliation?.summary?.extra_count || 0}</div>
+                          <div style={{ fontSize: 11, color: T.textMuted }}>Tổng tiền đã khớp</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>{fmtVND(reconciliationResult.reconciliation?.summary?.matched_amount || 0)}</div>
                         </div>
                         <div style={{ ...subtleCard, padding: 12 }}>
-                          <div style={{ fontSize: 11, color: T.textMuted }}>Cần rà tay</div>
-                          <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>{reconciliationResult.reconciliation?.summary?.review_count || 0}</div>
+                          <div style={{ fontSize: 11, color: T.textMuted }}>Tổng tiền chưa ghi nhận</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: T.danger }}>{fmtVND(reconciliationResult.reconciliation?.summary?.missing_amount || 0)}</div>
                         </div>
                       </div>
 
@@ -1820,38 +1820,36 @@ export default function SecretaryPage() {
                         </div>
                       </div>
 
-                      {[{ key: "missingInApp", label: "Thiếu trong app", color: T.danger }, { key: "extraInApp", label: "Thừa trong app", color: T.amber }, { key: "needsReview", label: "Cần rà tay", color: T.text }].map((section) => {
-                        const items = reconciliationResult.reconciliation?.[section.key] || [];
+                      {(() => {
+                        const items = reconciliationResult.reconciliation?.missingInApp || [];
                         return (
-                          <div key={section.key} style={{ ...cardStyle, padding: 16, marginBottom: 12 }}>
+                          <div style={{ ...cardStyle, padding: 16, marginBottom: 12 }}>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                              <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{section.label}</div>
-                              <div style={{ fontSize: 12, fontWeight: 800, color: section.color }}>{items.length}</div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Thiếu trong app</div>
+                              <div style={{ fontSize: 12, fontWeight: 800, color: T.danger }}>{items.length}</div>
+                            </div>
+                            <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 10, lineHeight: 1.5 }}>
+                              Đây là các giao dịch có trong sao kê ngân hàng nhưng app chưa ghi nhận đúng hoặc chưa ghi nhận đủ.
                             </div>
                             {items.length === 0 ? (
                               <div style={{ fontSize: 12, color: T.textMuted }}>Không có mục nào.</div>
                             ) : (
                               <div style={{ display: "grid", gap: 8 }}>
-                                {items.slice(0, 8).map((item, idx) => {
-                                  const row = item.statement || item;
-                                  const tx = item.transaction || item.candidate || null;
-                                  return (
-                                    <div key={idx} style={{ border: `1px solid ${T.border}`, borderRadius: 12, padding: 10, background: "#fbfdf9" }}>
-                                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
-                                        <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{row.statement_date || row.transaction_date || "—"}</div>
-                                        <div style={{ fontSize: 12, fontWeight: 800, color: row.direction === "in" ? T.success : T.danger }}>{fmtVND(row.amount || Math.abs(Number(row.amount || tx?.amount || 0)))}</div>
-                                      </div>
-                                      <div style={{ fontSize: 12, color: T.text }}>{row.details || row.description || "—"}</div>
-                                      {(row.partner_name || row.recipient_name) && <div style={{ marginTop: 4, fontSize: 11, color: T.textMuted }}>{row.partner_name || row.recipient_name}</div>}
-                                      {tx && <div style={{ marginTop: 6, fontSize: 11, color: T.textMuted }}>App: {tx.description || tx.recipient_name || tx.transaction_code || "Có giao dịch ứng viên"}</div>}
+                                {items.slice(0, 12).map((row, idx) => (
+                                  <div key={idx} style={{ border: `1px solid ${T.border}`, borderRadius: 12, padding: 10, background: "#fbfdf9" }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+                                      <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{row.statement_date || "—"}</div>
+                                      <div style={{ fontSize: 12, fontWeight: 800, color: row.direction === "in" ? T.success : T.danger }}>{fmtVND(row.amount || 0)}</div>
                                     </div>
-                                  );
-                                })}
+                                    <div style={{ fontSize: 12, color: T.text }}>{row.details || "—"}</div>
+                                    {(row.partner_name || row.partner_bank) && <div style={{ marginTop: 4, fontSize: 11, color: T.textMuted }}>{[row.partner_name, row.partner_bank].filter(Boolean).join(" · ")}</div>}
+                                  </div>
+                                ))}
                               </div>
                             )}
                           </div>
                         );
-                      })}
+                      })()}
                     </>
                   )}
                 </div>
