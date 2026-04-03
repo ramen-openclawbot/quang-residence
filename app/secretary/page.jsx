@@ -167,6 +167,7 @@ export default function SecretaryPage() {
   const [reconciliationResult, setReconciliationResult] = useState(null);
   const [reconciliationProfileId, setReconciliationProfileId] = useState("");
   const [reconciliationSectionPage, setReconciliationSectionPage] = useState({ matched: 0, missingInApp: 0, needsReview: 0 });
+  const [activeReconciliationSection, setActiveReconciliationSection] = useState("missingInApp");
   const [cashLedgerForm, setCashLedgerForm] = useState({
     type: "expense",
     entry_kind: "fund_transfer_out",
@@ -682,6 +683,7 @@ export default function SecretaryPage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Không đối soát được sao kê");
       setReconciliationSectionPage({ matched: 0, missingInApp: 0, needsReview: 0 });
+      setActiveReconciliationSection("missingInApp");
       setReconciliationResult(json);
     } catch (err) {
       setReconciliationError(err.message || "Không đối soát được sao kê");
@@ -1794,18 +1796,19 @@ export default function SecretaryPage() {
                   {reconciliationResult && (
                     <>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-                        <div style={{ ...subtleCard, padding: 12 }}>
-                          <div style={{ fontSize: 11, color: T.textMuted }}>Đã khớp</div>
-                          <div style={{ fontSize: 18, fontWeight: 800, color: T.success }}>{reconciliationResult.reconciliation?.summary?.matched_count || 0}</div>
-                        </div>
-                        <div style={{ ...subtleCard, padding: 12 }}>
-                          <div style={{ fontSize: 11, color: T.textMuted }}>Thiếu trong app</div>
-                          <div style={{ fontSize: 18, fontWeight: 800, color: T.danger }}>{reconciliationResult.reconciliation?.summary?.missing_count || 0}</div>
-                        </div>
-                        <div style={{ ...subtleCard, padding: 12 }}>
-                          <div style={{ fontSize: 11, color: T.textMuted }}>Cần rà tay</div>
-                          <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>{reconciliationResult.reconciliation?.summary?.review_count || 0}</div>
-                        </div>
+                        {[
+                          { key: "matched", label: "Đã khớp", value: reconciliationResult.reconciliation?.summary?.matched_count || 0, color: T.success },
+                          { key: "missingInApp", label: "Thiếu trong app", value: reconciliationResult.reconciliation?.summary?.missing_count || 0, color: T.danger },
+                          { key: "needsReview", label: "Cần rà tay", value: reconciliationResult.reconciliation?.summary?.review_count || 0, color: T.text },
+                        ].map((card) => {
+                          const active = activeReconciliationSection === card.key;
+                          return (
+                            <button key={card.key} type="button" onClick={() => setActiveReconciliationSection(card.key)} style={{ ...subtleCard, padding: 12, textAlign: "left", cursor: "pointer", borderColor: active ? `${card.color}55` : T.border, boxShadow: active ? `0 0 0 2px ${card.color}18` : subtleCard.boxShadow }}>
+                              <div style={{ fontSize: 11, color: T.textMuted }}>{card.label}</div>
+                              <div style={{ fontSize: 18, fontWeight: 800, color: card.color }}>{card.value}</div>
+                            </button>
+                          );
+                        })}
                         <div style={{ ...subtleCard, padding: 12 }}>
                           <div style={{ fontSize: 11, color: T.textMuted }}>Tổng tiền đã khớp</div>
                           <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>{fmtVND(reconciliationResult.reconciliation?.summary?.matched_amount || 0)}</div>
@@ -1826,7 +1829,7 @@ export default function SecretaryPage() {
                         { key: "matched", label: "Đã khớp", color: T.success, helper: "Các giao dịch trong sao kê đã được ghi nhận đúng trong app." },
                         { key: "missingInApp", label: "Thiếu trong app", color: T.danger, helper: "Các giao dịch có trong sao kê nhưng app chưa ghi nhận đúng hoặc chưa ghi nhận đủ." },
                         { key: "needsReview", label: "Cần rà tay", color: T.text, helper: "Các giao dịch có ứng viên gần đúng trong app nhưng chưa đủ chắc để tự kết luận khớp." },
-                      ].map((section) => {
+                      ].filter((section) => section.key === activeReconciliationSection).map((section) => {
                         const items = reconciliationResult.reconciliation?.[section.key] || [];
                         const page = reconciliationSectionPage[section.key] || 0;
                         const pageSize = 20;
