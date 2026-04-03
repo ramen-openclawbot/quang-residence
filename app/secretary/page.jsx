@@ -166,6 +166,7 @@ export default function SecretaryPage() {
   const [reconciliationError, setReconciliationError] = useState("");
   const [reconciliationResult, setReconciliationResult] = useState(null);
   const [reconciliationProfileId, setReconciliationProfileId] = useState("");
+  const [reconciliationSectionPage, setReconciliationSectionPage] = useState({ matched: 0, missingInApp: 0, needsReview: 0 });
   const [cashLedgerForm, setCashLedgerForm] = useState({
     type: "expense",
     entry_kind: "fund_transfer_out",
@@ -680,6 +681,7 @@ export default function SecretaryPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Không đối soát được sao kê");
+      setReconciliationSectionPage({ matched: 0, missingInApp: 0, needsReview: 0 });
       setReconciliationResult(json);
     } catch (err) {
       setReconciliationError(err.message || "Không đối soát được sao kê");
@@ -1801,12 +1803,12 @@ export default function SecretaryPage() {
                           <div style={{ fontSize: 18, fontWeight: 800, color: T.danger }}>{reconciliationResult.reconciliation?.summary?.missing_count || 0}</div>
                         </div>
                         <div style={{ ...subtleCard, padding: 12 }}>
-                          <div style={{ fontSize: 11, color: T.textMuted }}>Tổng tiền đã khớp</div>
-                          <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>{fmtVND(reconciliationResult.reconciliation?.summary?.matched_amount || 0)}</div>
+                          <div style={{ fontSize: 11, color: T.textMuted }}>Cần rà tay</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>{reconciliationResult.reconciliation?.summary?.review_count || 0}</div>
                         </div>
                         <div style={{ ...subtleCard, padding: 12 }}>
-                          <div style={{ fontSize: 11, color: T.textMuted }}>Tổng tiền chưa ghi nhận</div>
-                          <div style={{ fontSize: 18, fontWeight: 800, color: T.danger }}>{fmtVND(reconciliationResult.reconciliation?.summary?.missing_amount || 0)}</div>
+                          <div style={{ fontSize: 11, color: T.textMuted }}>Tổng tiền đã khớp</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>{fmtVND(reconciliationResult.reconciliation?.summary?.matched_amount || 0)}</div>
                         </div>
                       </div>
 
@@ -1820,36 +1822,56 @@ export default function SecretaryPage() {
                         </div>
                       </div>
 
-                      {(() => {
-                        const items = reconciliationResult.reconciliation?.missingInApp || [];
+                      {[
+                        { key: "matched", label: "Đã khớp", color: T.success, helper: "Các giao dịch trong sao kê đã được ghi nhận đúng trong app." },
+                        { key: "missingInApp", label: "Thiếu trong app", color: T.danger, helper: "Các giao dịch có trong sao kê nhưng app chưa ghi nhận đúng hoặc chưa ghi nhận đủ." },
+                        { key: "needsReview", label: "Cần rà tay", color: T.text, helper: "Các giao dịch có ứng viên gần đúng trong app nhưng chưa đủ chắc để tự kết luận khớp." },
+                      ].map((section) => {
+                        const items = reconciliationResult.reconciliation?.[section.key] || [];
+                        const page = reconciliationSectionPage[section.key] || 0;
+                        const pageSize = 20;
+                        const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+                        const visible = items.slice(page * pageSize, page * pageSize + pageSize);
                         return (
-                          <div style={{ ...cardStyle, padding: 16, marginBottom: 12 }}>
+                          <div key={section.key} style={{ ...cardStyle, padding: 16, marginBottom: 12 }}>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                              <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Thiếu trong app</div>
-                              <div style={{ fontSize: 12, fontWeight: 800, color: T.danger }}>{items.length}</div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{section.label}</div>
+                              <div style={{ fontSize: 12, fontWeight: 800, color: section.color }}>{items.length}</div>
                             </div>
-                            <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 10, lineHeight: 1.5 }}>
-                              Đây là các giao dịch có trong sao kê ngân hàng nhưng app chưa ghi nhận đúng hoặc chưa ghi nhận đủ.
-                            </div>
+                            <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 10, lineHeight: 1.5 }}>{section.helper}</div>
                             {items.length === 0 ? (
                               <div style={{ fontSize: 12, color: T.textMuted }}>Không có mục nào.</div>
                             ) : (
-                              <div style={{ display: "grid", gap: 8 }}>
-                                {items.slice(0, 12).map((row, idx) => (
-                                  <div key={idx} style={{ border: `1px solid ${T.border}`, borderRadius: 12, padding: 10, background: "#fbfdf9" }}>
-                                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
-                                      <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{row.statement_date || "—"}</div>
-                                      <div style={{ fontSize: 12, fontWeight: 800, color: row.direction === "in" ? T.success : T.danger }}>{fmtVND(row.amount || 0)}</div>
-                                    </div>
-                                    <div style={{ fontSize: 12, color: T.text }}>{row.details || "—"}</div>
-                                    {(row.partner_name || row.partner_bank) && <div style={{ marginTop: 4, fontSize: 11, color: T.textMuted }}>{[row.partner_name, row.partner_bank].filter(Boolean).join(" · ")}</div>}
+                              <>
+                                <div style={{ display: "grid", gap: 8 }}>
+                                  {visible.map((item, idx) => {
+                                    const row = item.statement || item;
+                                    const tx = item.transaction || item.candidate || null;
+                                    return (
+                                      <div key={idx} style={{ border: `1px solid ${T.border}`, borderRadius: 12, padding: 10, background: "#fbfdf9" }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+                                          <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{row.statement_date || row.transaction_date || "—"}</div>
+                                          <div style={{ fontSize: 12, fontWeight: 800, color: row.direction === "in" ? T.success : T.danger }}>{fmtVND(row.amount || Math.abs(Number(tx?.amount || 0)))}</div>
+                                        </div>
+                                        <div style={{ fontSize: 12, color: T.text }}>{row.details || row.description || "—"}</div>
+                                        {(row.partner_name || row.partner_bank || row.recipient_name) && <div style={{ marginTop: 4, fontSize: 11, color: T.textMuted }}>{[row.partner_name, row.partner_bank, row.recipient_name].filter(Boolean).join(" · ")}</div>}
+                                        {tx && <div style={{ marginTop: 6, fontSize: 11, color: T.textMuted }}>App: {tx.description || tx.recipient_name || tx.transaction_code || "Có giao dịch ứng viên"}</div>}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                {items.length > pageSize && (
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
+                                    <button type="button" onClick={() => setReconciliationSectionPage((prev) => ({ ...prev, [section.key]: Math.max(0, page - 1) }))} disabled={page === 0} style={{ border: "none", background: page === 0 ? "#eef3ed" : T.primary, color: page === 0 ? T.textMuted : "white", borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: page === 0 ? "default" : "pointer" }}>Trước</button>
+                                    <div style={{ fontSize: 11, color: T.textMuted }}>Trang {page + 1} / {totalPages} · {items.length} giao dịch</div>
+                                    <button type="button" onClick={() => setReconciliationSectionPage((prev) => ({ ...prev, [section.key]: Math.min(totalPages - 1, page + 1) }))} disabled={page >= totalPages - 1} style={{ border: "none", background: page >= totalPages - 1 ? "#eef3ed" : T.primary, color: page >= totalPages - 1 ? T.textMuted : "white", borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: page >= totalPages - 1 ? "default" : "pointer" }}>Sau</button>
                                   </div>
-                                ))}
-                              </div>
+                                )}
+                              </>
                             )}
                           </div>
                         );
-                      })()}
+                      })}
                     </>
                   )}
                 </div>
