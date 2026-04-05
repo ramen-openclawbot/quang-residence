@@ -964,6 +964,7 @@ export default function SecretaryPage() {
   const cashLedgerExpense = useMemo(() => cashLedgerFiltered.reduce((sum, x) => x.type === "expense" ? sum + Number(x.amount || 0) : sum, 0), [cashLedgerFiltered]);
 
   useEffect(() => {
+    if (tab === "transactions") return;
     if (!transactions.length) return;
     const latest = getTxDateParts(transactions[0]);
     const hasCurrentSelection = transactions.some((tx) => {
@@ -974,7 +975,7 @@ export default function SecretaryPage() {
       setSelectedMonth(latest.month);
       setSelectedYear(latest.year);
     }
-  }, [transactions, selectedMonth, selectedYear]);
+  }, [transactions, selectedMonth, selectedYear, tab]);
 
   const isTodayTransaction = (t) => {
     const createdKey = getLocalDateKey(t.created_at);
