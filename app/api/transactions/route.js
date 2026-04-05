@@ -8,7 +8,7 @@ async function fetchFilteredTransactionRows({ month, year, columns = "created_by
   let startDate = null;
   let endDate = null;
   if (month !== null && year !== null) {
-    ({ startDate, endDate } = buildMonthDateRange(Number(year), Number(month)));
+    ({ startDate, endDate } = buildMonthDateRange(Number(year), Number(month) - 1));
   }
 
   return fetchPagedRows((from, to) => {
@@ -54,7 +54,7 @@ export async function GET(request) {
       .range(offset, offset + limit - 1);
 
     if (month !== null && year !== null) {
-      const { startDate, endDate } = buildMonthDateRange(Number(year), Number(month));
+      const { startDate, endDate } = buildMonthDateRange(Number(year), Number(month) - 1);
       query = query.gte("transaction_date", startDate).lte("transaction_date", endDate);
     }
 
@@ -70,7 +70,7 @@ export async function GET(request) {
     let summary = null;
     if (month !== null && year !== null) {
       try {
-        const summaryRows = await fetchFilteredTransactionRows({ month, year, columns: "type, amount, adjustment_direction, status, created_by" });
+        const summaryRows = await fetchFilteredTransactionRows({ month: month !== null ? String(Number(month) - 1) : month, year, columns: "type, amount, adjustment_direction, status, created_by" });
         const rows = summaryRows.filter(isOpsTransaction);
         const opsSummary = summarizeOpsTransactions(rows, { includePending: true, includeRejected: false });
         summary = {
