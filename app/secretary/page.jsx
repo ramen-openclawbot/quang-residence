@@ -252,7 +252,7 @@ export default function SecretaryPage() {
   }, [getToken]);
 
   /* ── Full transactions: loaded only when Transactions tab is first opened ── */
-  const loadFullTransactions = useCallback(async (limit = 300) => {
+  const loadFullTransactions = useCallback(async (limit = 500) => {
     try {
       const token = await getToken();
       const month = selectedMonth + 1;

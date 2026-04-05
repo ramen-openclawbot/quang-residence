@@ -42,7 +42,7 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(Math.max(Number(searchParams.get("limit") || 40), 1), 300);
+    const limit = Math.min(Math.max(Number(searchParams.get("limit") || 40), 1), 500);
     const offset = Math.max(Number(searchParams.get("offset") || 0), 0);
     const month = searchParams.get("month");
     const year = searchParams.get("year");
