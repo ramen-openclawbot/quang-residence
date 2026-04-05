@@ -1832,7 +1832,7 @@ export default function SecretaryPage() {
                       {[
                         { key: "matched", label: "Đã khớp", color: T.success, helper: "Các giao dịch trong sao kê đã được ghi nhận đúng trong app." },
                         { key: "missingInApp", label: "Thiếu trong app", color: T.danger, helper: "Các giao dịch có trong sao kê nhưng app chưa ghi nhận đúng hoặc chưa ghi nhận đủ." },
-                        { key: "needsReview", label: "Cần rà tay", color: T.text, helper: "Các giao dịch có ứng viên trong app cùng ngày, cùng số tiền, cùng chiều nhưng nội dung còn khác nhẹ nên cần xác nhận tay." },
+                        { key: "needsReview", label: "Cần rà tay", color: T.text, helper: "Các giao dịch có ứng viên gần đúng trong app: cùng số tiền, cùng chiều và lệch ngày rất nhỏ hoặc nội dung gần giống, nên cần xác nhận tay." },
                         { key: "reversalPairs", label: "Đã huỷ / hoàn", color: T.amber, helper: "Các giao dịch bị trừ rồi hoàn lại, không cần user nhập vào app vì net effect bằng 0." },
                       ].filter((section) => section.key === activeReconciliationSection).map((section) => {
                         const items = reconciliationResult.reconciliation?.[section.key] || [];
