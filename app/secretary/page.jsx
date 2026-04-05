@@ -252,10 +252,12 @@ export default function SecretaryPage() {
   }, [getToken]);
 
   /* ── Full transactions: loaded only when Transactions tab is first opened ── */
-  const loadFullTransactions = useCallback(async (limit = 200) => {
+  const loadFullTransactions = useCallback(async (limit = 300) => {
     try {
       const token = await getToken();
-      const txApiRes = await fetch(`/api/transactions?limit=${limit}`, {
+      const month = selectedMonth + 1;
+      const year = selectedYear;
+      const txApiRes = await fetch(`/api/transactions?limit=${limit}&month=${month}&year=${year}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!txApiRes.ok) throw new Error("Transactions API failed");
@@ -265,7 +267,7 @@ export default function SecretaryPage() {
     } catch (err) {
       console.error("Thư ký loadFullTransactions error:", err);
     }
-  }, [getToken]);
+  }, [getToken, selectedMonth, selectedYear]);
 
   const loadCashLedger = useCallback(async (silent = false) => {
     try {
@@ -345,9 +347,9 @@ export default function SecretaryPage() {
 
   /* Lazy-load full transactions on first visit to Transactions tab */
   useEffect(() => {
-    if (tab !== "transactions" || txFullLoaded) return;
+    if (tab !== "transactions") return;
     loadFullTransactions();
-  }, [tab, txFullLoaded, loadFullTransactions]);
+  }, [tab, selectedMonth, selectedYear, loadFullTransactions]);
 
   useEffect(() => {
     if (tab !== "cash-ledger" || cashLedgerLoaded) return;
