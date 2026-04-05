@@ -74,6 +74,29 @@ function buildExpenseCategoryGroups(categories = []) {
   }));
 }
 
+async function detectDuplicateSlipTransaction(supabase, payload) {
+  const txDate = payload?.transaction_date ? String(payload.transaction_date).slice(0, 10) : null;
+  if (!payload?.created_by || !txDate || !payload?.amount) return null;
+
+  let query = supabase
+    .from("transactions")
+    .select("id, transaction_date, amount, description, recipient_name, transaction_code, status")
+    .eq("created_by", payload.created_by)
+    .gte("transaction_date", `${txDate}T00:00:00.000Z`)
+    .lte("transaction_date", `${txDate}T23:59:59.999Z`)
+    .eq("amount", payload.amount)
+    .limit(5);
+
+  if (payload.transaction_code) {
+    query = query.eq("transaction_code", payload.transaction_code);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  if (data?.length) return data[0];
+  return null;
+}
+
 function suggestCategory({ description = "", recipient_name = "", bank_name = "" }, categories = [], learnedMap = {}) {
   const hay = `${description} ${recipient_name} ${bank_name}`.toLowerCase();
   if (!hay.trim() || !categories.length) return { id: "", source: "none", confidence: 0 };
@@ -721,6 +744,11 @@ export default function TransactionForm({ onClose, onSuccess }) {
                 : null,
             },
           };
+
+          const duplicate = await detectDuplicateSlipTransaction(supabase, payload);
+          if (duplicate) {
+            throw new Error(`Giao dịch có vẻ đã được nhập rồi (${duplicate.transaction_code || duplicate.id}).`);
+          }
 
           const { data: inserted, error } = await supabase.from("transactions").insert(payload).select("id").single();
           if (error) throw error;

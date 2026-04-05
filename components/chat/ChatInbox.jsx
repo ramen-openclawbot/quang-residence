@@ -109,6 +109,28 @@ function normalizeTextKey(v = "") {
   return String(v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+async function detectDuplicateSlipTransaction(supabase, payload) {
+  const txDate = payload?.transaction_date ? String(payload.transaction_date).slice(0, 10) : null;
+  if (!payload?.created_by || !txDate || !payload?.amount) return null;
+
+  let query = supabase
+    .from("transactions")
+    .select("id, transaction_date, amount, description, recipient_name, transaction_code, status")
+    .eq("created_by", payload.created_by)
+    .gte("transaction_date", `${txDate}T00:00:00.000Z`)
+    .lte("transaction_date", `${txDate}T23:59:59.999Z`)
+    .eq("amount", payload.amount)
+    .limit(5);
+
+  if (payload.transaction_code) {
+    query = query.eq("transaction_code", payload.transaction_code);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
 function isSelectableExpenseCategory(category, allCategories = []) {
   if (!category) return false;
   const code = String(category.code || "").toUpperCase();
@@ -694,6 +716,11 @@ export default function ChatInbox() {
               : null,
           },
         };
+
+        const duplicate = await detectDuplicateSlipTransaction(supabase, payload);
+        if (duplicate) {
+          throw new Error(`Giao dịch có vẻ đã được nhập rồi (${duplicate.transaction_code || duplicate.id}).`);
+        }
 
         const { data: inserted, error } = await supabase
           .from("transactions")
