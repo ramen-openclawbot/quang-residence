@@ -166,7 +166,7 @@ export default function SecretaryPage() {
   const [reconciliationError, setReconciliationError] = useState("");
   const [reconciliationResult, setReconciliationResult] = useState(null);
   const [reconciliationProfileId, setReconciliationProfileId] = useState("");
-  const [reconciliationSectionPage, setReconciliationSectionPage] = useState({ matched: 0, missingInApp: 0, needsReview: 0 });
+  const [reconciliationSectionPage, setReconciliationSectionPage] = useState({ matched: 0, missingInApp: 0, needsReview: 0, reversalPairs: 0 });
   const [activeReconciliationSection, setActiveReconciliationSection] = useState("missingInApp");
   const [cashLedgerForm, setCashLedgerForm] = useState({
     type: "expense",
@@ -684,7 +684,7 @@ export default function SecretaryPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Không đối soát được sao kê");
-      setReconciliationSectionPage({ matched: 0, missingInApp: 0, needsReview: 0 });
+      setReconciliationSectionPage({ matched: 0, missingInApp: 0, needsReview: 0, reversalPairs: 0 });
       setActiveReconciliationSection("missingInApp");
       setReconciliationResult(json);
     } catch (err) {
@@ -1803,6 +1803,7 @@ export default function SecretaryPage() {
                           { key: "matched", label: "Đã khớp", value: reconciliationResult.reconciliation?.summary?.matched_count || 0, color: T.success },
                           { key: "missingInApp", label: "Thiếu trong app", value: reconciliationResult.reconciliation?.summary?.missing_count || 0, color: T.danger },
                           { key: "needsReview", label: "Cần rà tay", value: reconciliationResult.reconciliation?.summary?.review_count || 0, color: T.text },
+                          { key: "reversalPairs", label: "Đã huỷ / hoàn", value: reconciliationResult.reconciliation?.summary?.reversal_count || 0, color: T.amber },
                         ].map((card) => {
                           const active = activeReconciliationSection === card.key;
                           return (
@@ -1832,6 +1833,7 @@ export default function SecretaryPage() {
                         { key: "matched", label: "Đã khớp", color: T.success, helper: "Các giao dịch trong sao kê đã được ghi nhận đúng trong app." },
                         { key: "missingInApp", label: "Thiếu trong app", color: T.danger, helper: "Các giao dịch có trong sao kê nhưng app chưa ghi nhận đúng hoặc chưa ghi nhận đủ." },
                         { key: "needsReview", label: "Cần rà tay", color: T.text, helper: "Các giao dịch có ứng viên gần đúng trong app nhưng chưa đủ chắc để tự kết luận khớp." },
+                        { key: "reversalPairs", label: "Đã huỷ / hoàn", color: T.amber, helper: "Các giao dịch bị trừ rồi hoàn lại, không cần user nhập vào app vì net effect bằng 0." },
                       ].filter((section) => section.key === activeReconciliationSection).map((section) => {
                         const items = reconciliationResult.reconciliation?.[section.key] || [];
                         const page = reconciliationSectionPage[section.key] || 0;
@@ -1851,6 +1853,20 @@ export default function SecretaryPage() {
                               <>
                                 <div style={{ display: "grid", gap: 8 }}>
                                   {visible.map((item, idx) => {
+                                    if (section.key === "reversalPairs") {
+                                      return (
+                                        <div key={idx} style={{ border: `1px solid ${T.border}`, borderRadius: 12, padding: 10, background: "#fbfdf9" }}>
+                                          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+                                            <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{item.debit?.statement_date || item.credit?.statement_date || "—"}</div>
+                                            <div style={{ fontSize: 12, fontWeight: 800, color: T.amber }}>{fmtVND(item.amount || 0)}</div>
+                                          </div>
+                                          <div style={{ fontSize: 12, color: T.text }}>{item.debit?.details || item.credit?.details || "Giao dịch huỷ / hoàn tiền"}</div>
+                                          <div style={{ marginTop: 4, fontSize: 11, color: T.textMuted }}>
+                                            Debit: {item.debit?.statement_date || "—"} · Credit: {item.credit?.statement_date || "—"}
+                                          </div>
+                                        </div>
+                                      );
+                                    }
                                     const row = item.statement || item;
                                     const tx = item.transaction || item.candidate || null;
                                     return (
