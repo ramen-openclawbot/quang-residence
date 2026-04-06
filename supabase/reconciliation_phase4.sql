@@ -9,6 +9,8 @@ create table if not exists public.bank_statement_uploads (
   account_holder text,
   statement_month text,
   file_name text,
+  status text not null default 'draft',
+  saved_at timestamptz,
   notes text
 );
 

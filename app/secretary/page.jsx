@@ -169,6 +169,7 @@ export default function SecretaryPage() {
   const [reconciliationSectionPage, setReconciliationSectionPage] = useState({ matched: 0, missingInApp: 0, needsReview: 0, reversalPairs: 0 });
   const [activeReconciliationSection, setActiveReconciliationSection] = useState("missingInApp");
   const [reconciliationReviewSaving, setReconciliationReviewSaving] = useState(false);
+  const [reconciliationSessionSaving, setReconciliationSessionSaving] = useState(false);
   const [cashLedgerForm, setCashLedgerForm] = useState({
     type: "expense",
     entry_kind: "fund_transfer_out",
@@ -665,6 +666,32 @@ export default function SecretaryPage() {
     }
   }
 
+  async function handleReconciliationSave() {
+    try {
+      if (!reconciliationResult?.uploadId) return;
+      setReconciliationSessionSaving(true);
+      const token = await getToken();
+      const res = await fetch("/api/reconciliation/techcombank/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          uploadId: reconciliationResult.uploadId,
+          notes: "Saved manually from secretary reconciliation screen",
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Không lưu được phiên đối soát");
+      setReconciliationResult((prev) => prev ? { ...prev, savedAt: json.data?.saved_at || new Date().toISOString(), uploadStatus: json.data?.status || "saved" } : prev);
+    } catch (err) {
+      setReconciliationError(err.message || "Không lưu được phiên đối soát");
+    } finally {
+      setReconciliationSessionSaving(false);
+    }
+  }
+
   async function handleReconciliationApprove(item) {
     try {
       if (!reconciliationResult?.uploadId || !item?.candidate?.id || !item?.statement?.row_number) return;
@@ -702,6 +729,8 @@ export default function SecretaryPage() {
               ...prev.reconciliation.summary,
               matched_count: nextMatched.length,
               review_count: nextNeedsReview.length,
+              matched_in_amount: Number(prev.reconciliation.summary?.matched_in_amount || 0) + (item.statement?.direction === "in" ? Number(item.statement?.amount || 0) : 0),
+              matched_out_amount: Number(prev.reconciliation.summary?.matched_out_amount || 0) + (item.statement?.direction === "out" ? Number(item.statement?.amount || 0) : 0),
               matched_amount: Number(prev.reconciliation.summary?.matched_amount || 0) + Number(item.statement?.amount || 0),
             },
           },
@@ -1848,6 +1877,14 @@ export default function SecretaryPage() {
 
                   {reconciliationResult && (
                     <>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+                        <div style={{ fontSize: 11, color: T.textMuted }}>
+                          {reconciliationResult.uploadStatus === "saved" ? `Đã lưu đối soát${reconciliationResult.savedAt ? ` · ${fmtDateTime(reconciliationResult.savedAt)}` : ""}` : "Kết quả đang ở trạng thái tạm thời cho đến khi bấm Lưu đối soát"}
+                        </div>
+                        <button type="button" onClick={handleReconciliationSave} disabled={reconciliationSessionSaving} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: reconciliationSessionSaving ? "default" : "pointer", opacity: reconciliationSessionSaving ? 0.7 : 1 }}>
+                          {reconciliationSessionSaving ? "Đang lưu..." : "Lưu đối soát"}
+                        </button>
+                      </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
                         {[
                           { key: "matched", label: "Đã khớp", value: reconciliationResult.reconciliation?.summary?.matched_count || 0, color: T.success },
@@ -1864,7 +1901,15 @@ export default function SecretaryPage() {
                           );
                         })}
                         <div style={{ ...subtleCard, padding: 12 }}>
-                          <div style={{ fontSize: 11, color: T.textMuted }}>Tổng tiền đã khớp</div>
+                          <div style={{ fontSize: 11, color: T.textMuted }}>Tiền vào đã khớp</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: T.success }}>{fmtVND(reconciliationResult.reconciliation?.summary?.matched_in_amount || 0)}</div>
+                        </div>
+                        <div style={{ ...subtleCard, padding: 12 }}>
+                          <div style={{ fontSize: 11, color: T.textMuted }}>Tiền ra đã khớp</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: T.danger }}>{fmtVND(reconciliationResult.reconciliation?.summary?.matched_out_amount || 0)}</div>
+                        </div>
+                        <div style={{ ...subtleCard, padding: 12 }}>
+                          <div style={{ fontSize: 11, color: T.textMuted }}>Tổng giá trị đã khớp</div>
                           <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>{fmtVND(reconciliationResult.reconciliation?.summary?.matched_amount || 0)}</div>
                         </div>
                       </div>
