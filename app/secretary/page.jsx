@@ -168,6 +168,7 @@ export default function SecretaryPage() {
   const [reconciliationProfileId, setReconciliationProfileId] = useState("");
   const [reconciliationSectionPage, setReconciliationSectionPage] = useState({ matched: 0, missingInApp: 0, needsReview: 0, reversalPairs: 0 });
   const [activeReconciliationSection, setActiveReconciliationSection] = useState("missingInApp");
+  const [reconciliationReviewSaving, setReconciliationReviewSaving] = useState(false);
   const [cashLedgerForm, setCashLedgerForm] = useState({
     type: "expense",
     entry_kind: "fund_transfer_out",
@@ -661,6 +662,55 @@ export default function SecretaryPage() {
       alert(err.message || "Không tạo được bút toán sổ quỹ");
     } finally {
       setCashLedgerSubmitting(false);
+    }
+  }
+
+  async function handleReconciliationApprove(item) {
+    try {
+      if (!reconciliationResult?.uploadId || !item?.candidate?.id || !item?.statement?.row_number) return;
+      setReconciliationReviewSaving(true);
+      const token = await getToken();
+      const currentSection = reconciliationResult.reconciliation?.needsReview || [];
+      const target = currentSection.find((x) => x.statement?.row_number === item.statement?.row_number && x.statement?.amount === item.statement?.amount);
+      if (!target?.entryId) throw new Error("Không tìm thấy entry đối soát để duyệt");
+      const res = await fetch("/api/reconciliation/techcombank/review", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          entryId: target.entryId,
+          matchedTransactionId: item.candidate.id,
+          reviewReason: "Approved manually: secretary confirmed same transaction",
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Không lưu được kết quả duyệt tay");
+
+      setReconciliationResult((prev) => {
+        if (!prev) return prev;
+        const nextNeedsReview = (prev.reconciliation?.needsReview || []).filter((x) => !(x.statement?.row_number === item.statement?.row_number && x.statement?.amount === item.statement?.amount));
+        const nextMatched = [...(prev.reconciliation?.matched || []), { ...item, reason: "approved_manual" }];
+        return {
+          ...prev,
+          reconciliation: {
+            ...prev.reconciliation,
+            matched: nextMatched,
+            needsReview: nextNeedsReview,
+            summary: {
+              ...prev.reconciliation.summary,
+              matched_count: nextMatched.length,
+              review_count: nextNeedsReview.length,
+              matched_amount: Number(prev.reconciliation.summary?.matched_amount || 0) + Number(item.statement?.amount || 0),
+            },
+          },
+        };
+      });
+    } catch (err) {
+      setReconciliationError(err.message || "Không lưu được kết quả duyệt tay");
+    } finally {
+      setReconciliationReviewSaving(false);
     }
   }
 
@@ -1878,6 +1928,13 @@ export default function SecretaryPage() {
                                         <div style={{ fontSize: 12, color: T.text }}>{row.details || row.description || "—"}</div>
                                         {(row.partner_name || row.partner_bank || row.recipient_name) && <div style={{ marginTop: 4, fontSize: 11, color: T.textMuted }}>{[row.partner_name, row.partner_bank, row.recipient_name].filter(Boolean).join(" · ")}</div>}
                                         {tx && <div style={{ marginTop: 6, fontSize: 11, color: T.textMuted }}>App: {tx.description || tx.recipient_name || tx.transaction_code || "Có giao dịch ứng viên"}</div>}
+                                        {section.key === "needsReview" && item.candidate && (
+                                          <div style={{ marginTop: 8 }}>
+                                            <button type="button" disabled={reconciliationReviewSaving} onClick={() => handleReconciliationApprove(item)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: reconciliationReviewSaving ? "default" : "pointer", opacity: reconciliationReviewSaving ? 0.7 : 1 }}>
+                                              {reconciliationReviewSaving ? "Đang lưu..." : "Approve tay"}
+                                            </button>
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })}
