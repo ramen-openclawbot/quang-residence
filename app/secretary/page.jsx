@@ -1908,10 +1908,6 @@ export default function SecretaryPage() {
                           <div style={{ fontSize: 11, color: T.textMuted }}>Tiền ra đã khớp</div>
                           <div style={{ fontSize: 18, fontWeight: 800, color: T.danger }}>{fmtVND(reconciliationResult.reconciliation?.summary?.matched_out_amount || 0)}</div>
                         </div>
-                        <div style={{ ...subtleCard, padding: 12 }}>
-                          <div style={{ fontSize: 11, color: T.textMuted }}>Tổng giá trị đã khớp</div>
-                          <div style={{ fontSize: 18, fontWeight: 800, color: T.text }}>{fmtVND(reconciliationResult.reconciliation?.summary?.matched_amount || 0)}</div>
-                        </div>
                       </div>
 
                       <div style={{ ...cardStyle, padding: 16, marginBottom: 12 }}>
