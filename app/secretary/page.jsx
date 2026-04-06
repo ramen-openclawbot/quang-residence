@@ -1912,6 +1912,28 @@ export default function SecretaryPage() {
 
                       <div style={{ ...cardStyle, padding: 16, marginBottom: 12 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10 }}>Tóm tắt sao kê</div>
+                         {(() => {
+                           const summary = reconciliationResult.reconciliation?.summary || {};
+                           const totalIn = Number(reconciliationResult.parsed?.summary?.total_in || 0);
+                           const totalOut = Number(reconciliationResult.parsed?.summary?.total_out || 0);
+                           const inBucketTotal = Number(summary.matched_in_amount || 0) + Number(summary.review_in_amount || 0) + Number(summary.missing_in_amount || 0) + Number(summary.reversal_in_amount || 0);
+                           const outBucketTotal = Number(summary.matched_out_amount || 0) + Number(summary.review_out_amount || 0) + Number(summary.missing_out_amount || 0) + Number(summary.reversal_out_amount || 0);
+                           const inDiff = totalIn - inBucketTotal;
+                           const outDiff = totalOut - outBucketTotal;
+                           const balanced = Math.abs(inDiff) < 0.5 && Math.abs(outDiff) < 0.5;
+                           return (
+                             <div style={{ ...subtleCard, padding: 12, marginBottom: 12, borderColor: balanced ? `${T.success}30` : `${T.amber}35`, background: balanced ? "#f4fff8" : "#fffaf0" }}>
+                               <div style={{ fontSize: 12, fontWeight: 800, color: balanced ? T.success : T.amber }}>
+                                 {balanced ? "Đã khớp tổng thu + chi với toàn bộ các nhóm phân loại trên sao kê" : "Tổng thu/chi chưa khớp hoàn toàn với các nhóm phân loại — cần debug"}
+                               </div>
+                               {!balanced && (
+                                 <div style={{ fontSize: 11, color: T.textMuted, marginTop: 6, lineHeight: 1.6 }}>
+                                   Chênh lệch tiền vào: <span style={{ fontWeight: 800, color: T.text }}>{fmtVND(inDiff)}</span> · Chênh lệch tiền ra: <span style={{ fontWeight: 800, color: T.text }}>{fmtVND(outDiff)}</span>
+                                 </div>
+                               )}
+                             </div>
+                           );
+                         })()}
                         <div style={{ display: "grid", gap: 8 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12 }}><span style={{ color: T.textMuted }}>Chủ tài khoản</span><span style={{ color: T.text, fontWeight: 700 }}>{reconciliationResult.parsed?.meta?.customer_name || "—"}</span></div>
                           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12 }}><span style={{ color: T.textMuted }}>Số dòng sao kê</span><span style={{ color: T.text, fontWeight: 700 }}>{reconciliationResult.parsed?.summary?.total_entries || 0}</span></div>
