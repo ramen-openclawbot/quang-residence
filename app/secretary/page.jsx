@@ -8,7 +8,6 @@ import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { fmtDate, fmtRelative, fmtVND } from "../../lib/format";
 import { getSignedAmount, getLocalDateKey, getTodayKey, getTransactionDateKey, matchesTransactionFilter, getTransactionCategoryMeta } from "../../lib/transaction";
-import TransactionForm from "../../components/TransactionForm";
 
 const MONTHS = ["Thg 1","Thg 2","Thg 3","Thg 4","Thg 5","Thg 6","Thg 7","Thg 8","Thg 9","Thg 10","Thg 11","Thg 12"];
 
@@ -112,7 +111,6 @@ export default function SecretaryPage() {
   const { profile, signOut, getToken } = useAuth();
   const [tab, setTab] = useState("home");
   const [loading, setLoading] = useState(true);
-  const [showTxForm, setShowTxForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [activePanel, setActivePanel] = useState("");
   const [selectedTransaction, setSelectedTransaction] = useState(null);
@@ -196,12 +194,11 @@ export default function SecretaryPage() {
       if (e.key === "Escape") {
         if (activePanel) setActivePanel("");
         else if (showTaskForm) setShowTaskForm(false);
-        else if (showTxForm) setShowTxForm(false);
       }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [activePanel, showTaskForm, showTxForm]);
+  }, [activePanel, showTaskForm]);
 
   /* ── Home summary: single API call for dashboard data ── */
   const loadSummary = useCallback(async (silent = false) => {
@@ -1307,7 +1304,7 @@ export default function SecretaryPage() {
                   )}
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
-                    <QuickAction icon="upload_file" label="Tải hóa đơn" sub="Quét hóa đơn và ghi giao dịch" onClick={() => setShowTxForm(true)} primary />
+                    <QuickAction icon="upload_file" label="Tải hóa đơn" sub="Mở bút toán quỹ để chuyển hoặc thu quỹ" onClick={() => setShowCashLedgerForm(true)} primary />
                     <QuickAction icon="task_alt" label="Việc mới" sub="Tạo công việc nhanh chóng" onClick={() => setShowTaskForm(true)} />
                   </div>
 
@@ -1414,7 +1411,7 @@ export default function SecretaryPage() {
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                     <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>Giao dịch</div>
-                    <button onClick={() => setShowTxForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                    <button onClick={() => setShowCashLedgerForm(true)} style={{ border: "none", background: T.primary, color: "white", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
                       + Tải hóa đơn
                     </button>
                   </div>
@@ -2104,7 +2101,6 @@ export default function SecretaryPage() {
           )}
         </div>
 
-        {showTxForm && <TransactionForm onClose={() => setShowTxForm(false)} onSuccess={() => { setShowTxForm(false); reloadAll(); }} />}
 
         {activePanel && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,15,0.38)", zIndex: 220, display: "flex", alignItems: "flex-end" }} onClick={() => setActivePanel("")}>
@@ -2122,8 +2118,8 @@ export default function SecretaryPage() {
 
               {activePanel === "help" && (
                 <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Hành động nhanh</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Tải hóa đơn nhanh chóng\n• Tạo công việc nhanh chóng\n• Mở bất kỳ thẻ nào để xem chi tiết</div></div>
-                  <button onClick={() => setShowTxForm(true)} style={panelBtn}>Tải hóa đơn</button>
+                  <div style={{ ...subtleCard, padding: 14 }}><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Hành động nhanh</div><div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>• Mở bút toán quỹ để chuyển/thu quỹ\n• Tạo công việc nhanh chóng\n• Mở bất kỳ thẻ nào để xem chi tiết</div></div>
+                  <button onClick={() => setShowCashLedgerForm(true)} style={panelBtn}>Tải hóa đơn</button>
                 </div>
               )}
 
