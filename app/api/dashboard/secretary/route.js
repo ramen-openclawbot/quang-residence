@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole, supabaseAdmin } from "../../../../lib/api-auth";
-import { isOpsTransaction, summarizeOpsTransactions } from "../../../../lib/finance-ops";
+import { fetchPagedRows, isOpsTransaction, summarizeOpsTransactions } from "../../../../lib/finance-ops";
 
 /**
  * GET /api/dashboard/secretary
@@ -22,7 +22,7 @@ export async function GET(request) {
     const todayStart = `${todayStr}T00:00:00`;
     const todayEnd = `${todayStr}T23:59:59`;
 
-    const [fundsRes, tasksRes, maintenanceRes, scheduleRes, tripsRes, profilesRes, recentTxRes, todayTxRes, pendingTxRes] = await Promise.all([
+    const [fundsRes, tasksRes, maintenanceRes, scheduleRes, tripsRes, profilesRes, recentTxRes, todayTxRes, pendingTxRes, allOpsTxRes] = await Promise.all([
       supabaseAdmin.from("funds").select("*").order("id"),
       supabaseAdmin.from("tasks").select("*").order("due_date", { ascending: true }),
       supabaseAdmin.from("home_maintenance").select("*").order("created_at", { ascending: false }),
@@ -44,12 +44,39 @@ export async function GET(request) {
         .select("id, status, created_by")
         .eq("status", "pending")
         .limit(5000),
+      fetchPagedRows((from, to) => supabaseAdmin
+        .from("transactions")
+        .select("type, amount, adjustment_direction, status, created_by, profiles!created_by(id, full_name, role)")
+        .order("created_at", { ascending: false })
+        .range(from, to)),
     ]);
 
     const recentTx = (recentTxRes.data || []).filter(isOpsTransaction).slice(0, 10);
     const todayRows = (todayTxRes.data || []).filter(isOpsTransaction);
     const pendingRows = (pendingTxRes.data || []).filter(isOpsTransaction);
     const todaySummary = summarizeOpsTransactions(todayRows, { includePending: true, includeRejected: false });
+
+    const opsBalanceMap = new Map();
+    for (const tx of (allOpsTxRes || []).filter(isOpsTransaction)) {
+      const actor = tx.profiles || {};
+      const userId = String(tx.created_by || "");
+      if (!userId) continue;
+      const prev = opsBalanceMap.get(userId) || {
+        userId,
+        name: actor.full_name || "Nhân sự",
+        role: actor.role || "secretary",
+        balance: 0,
+        totalIn: 0,
+        totalOut: 0,
+      };
+      const amount = Number(tx.amount || 0);
+      const signed = tx.type === "income" ? amount : tx.type === "adjustment" ? (tx.adjustment_direction === "increase" ? amount : -amount) : -amount;
+      prev.balance += signed;
+      if (signed > 0) prev.totalIn += signed;
+      if (signed < 0) prev.totalOut += Math.abs(signed);
+      opsBalanceMap.set(userId, prev);
+    }
+    const opsBalances = Array.from(opsBalanceMap.values());
 
     const response = {
       success: true,
@@ -65,6 +92,7 @@ export async function GET(request) {
         recentTx,
         todaySummary: { income: todaySummary.income, expense: todaySummary.expense },
         pendingCount: pendingRows.length,
+        balances: opsBalances,
       },
 
       // Backward-compatible fields used by current secretary page
@@ -77,6 +105,7 @@ export async function GET(request) {
       recentTx,
       todaySummary: { income: todaySummary.income, expense: todaySummary.expense },
       pendingCount: pendingRows.length,
+      opsBalances,
     };
 
     return NextResponse.json(response);

@@ -226,7 +226,7 @@ export default function SecretaryPage() {
         setStaffProfiles(resources.staffProfiles || json.staffProfiles || []);
         setAgendaItems(agendaJson.items || []);
         setTransactions(ops.recentTx || json.recentTx || []);
-        setServerSummary({ todaySummary: ops.todaySummary || json.todaySummary, pendingCount: ops.pendingCount ?? json.pendingCount });
+        setServerSummary({ todaySummary: ops.todaySummary || json.todaySummary, pendingCount: ops.pendingCount ?? json.pendingCount, balances: ops.balances || json.opsBalances || [] });
       } else {
         /* Fallback: direct Supabase queries */
         const [fundsRes, tasksRes, maintenanceRes, scheduleRes, tripsRes, profilesRes, txRes] = await Promise.all([
@@ -987,25 +987,42 @@ export default function SecretaryPage() {
   }, [txFiltered]);
 
   const staffFundBalances = useMemo(() => {
+    if ((serverSummary?.balances || []).length) {
+      const roleRank = { secretary: 0, housekeeper: 1, driver: 2 };
+      return [...serverSummary.balances].sort((a, b) => {
+        if ((roleRank[a.role] ?? 9) !== (roleRank[b.role] ?? 9)) return (roleRank[a.role] ?? 9) - (roleRank[b.role] ?? 9);
+        if (Math.abs(b.balance) !== Math.abs(a.balance)) return Math.abs(b.balance) - Math.abs(a.balance);
+        return String(a.name || "").localeCompare(String(b.name || ""), "vi");
+      });
+    }
     const map = new Map();
 
-    // Seed all transfer recipients (driver/housekeeper) with zero balance by default
-    for (const profileInfo of transferRecipients) {
-      const userId = String(profileInfo?.id || "");
-      if (!userId) continue;
-      map.set(userId, {
-        userId,
-        name: profileInfo.full_name || PINNED_FUND_PROFILES[String(userId).slice(0, 8)]?.name || "Nhân sự",
-        role: profileInfo.role,
+    const addSeed = (userId, name, role) => {
+      const key = String(userId || "");
+      if (!key || map.has(key)) return;
+      map.set(key, {
+        userId: key,
+        name: name || PINNED_FUND_PROFILES[String(key).slice(0, 8)]?.name || "Nhân sự",
+        role: role || "secretary",
         balance: 0,
         totalIn: 0,
         totalOut: 0,
       });
-    }
+    };
 
-    // Merge in any operational transactions currently available for those staff
+    // Seed operational actors shown on secretary dashboard, including secretary's shared fund usage.
+    for (const profileInfo of transferRecipients) {
+      addSeed(profileInfo?.id, profileInfo?.full_name, profileInfo?.role);
+    }
+    addSeed(profile?.id, profile?.full_name || "Thư ký", "secretary");
+
+    // Merge in any operational transactions currently available for seeded users.
     for (const tx of transactions) {
       const userId = String(tx?.created_by || "");
+      const actor = staffById[userId] || tx?.profiles || null;
+      if (!map.has(userId) && ["secretary", "driver", "housekeeper"].includes(String(actor?.role || "").toLowerCase())) {
+        addSeed(userId, actor?.full_name, actor?.role);
+      }
       const prev = map.get(userId);
       if (!prev) continue;
       const signed = getSignedAmount(tx);
@@ -1017,11 +1034,12 @@ export default function SecretaryPage() {
 
     return Array.from(map.values())
       .sort((a, b) => {
-        if (a.role !== b.role) return a.role === "housekeeper" ? -1 : 1;
+        const roleRank = { secretary: 0, housekeeper: 1, driver: 2 };
+        if ((roleRank[a.role] ?? 9) !== (roleRank[b.role] ?? 9)) return (roleRank[a.role] ?? 9) - (roleRank[b.role] ?? 9);
         if (Math.abs(b.balance) !== Math.abs(a.balance)) return Math.abs(b.balance) - Math.abs(a.balance);
         return String(a.name || "").localeCompare(String(b.name || ""), "vi");
       });
-  }, [transactions, transferRecipients]);
+  }, [transactions, transferRecipients, profile, staffById, serverSummary]);
 
   const cashLedgerFiltered = useMemo(() => {
     const q = cashLedgerSearch.trim().toLowerCase();
@@ -1543,9 +1561,9 @@ export default function SecretaryPage() {
                   </div>
 
                   <div style={{ ...subtleCard, padding: 14, marginBottom: 14 }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: T.text, marginBottom: 10 }}>Số dư quỹ đã chuyển cho nhân sự</div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: T.text, marginBottom: 10 }}>Số dư quỹ vận hành</div>
                     {staffFundBalances.length === 0 ? (
-                      <div style={{ fontSize: 12, color: T.textMuted }}>Chưa có số dư quỹ nào từ luồng chuyển quỹ.</div>
+                      <div style={{ fontSize: 12, color: T.textMuted }}>Chưa có số dư quỹ vận hành nào để hiển thị.</div>
                     ) : (
                       <div style={{ display: "grid", gap: 8 }}>
                         {staffFundBalances.map((item) => (
