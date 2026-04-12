@@ -76,7 +76,7 @@ export async function GET(request) {
       if (signed < 0) prev.totalOut += Math.abs(signed);
       opsBalanceMap.set(userId, prev);
     }
-    const opsBalances = Array.from(opsBalanceMap.values());
+    const opsBalances = Array.from(opsBalanceMap.values()).filter((item) => ["driver", "housekeeper"].includes(String(item.role || "").toLowerCase()));
 
     const response = {
       success: true,
